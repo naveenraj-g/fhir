@@ -96,14 +96,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         user = getattr(request.state, "user", None)
         if user:
             user_id = user.get("sub", "unknown")
-            roles = user.get("realm_access", {}).get("roles", [])
         else:
             forwarded = request.headers.get("x-forwarded-for")
             user_id = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
-            roles = []
-
-        if "admin" in roles:
-            return await call_next(request)
 
         is_read = request.method in ("GET", "HEAD", "OPTIONS")
         limit = self.read_limit if is_read else self.write_limit

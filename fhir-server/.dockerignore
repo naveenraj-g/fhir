@@ -11,10 +11,12 @@ __pycache__/
 .git
 .gitignore
 
-# Environment
+# Secrets — never bake into image
 .env
+.env.*
+!.env.example
 
-# IDE
+# IDE / tooling
 .vscode/
 .idea/
 .claude/
@@ -22,6 +24,7 @@ __pycache__/
 # Caches
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 .cache/
 
 # Build artifacts
@@ -31,3 +34,14 @@ build/
 # Logs / DB
 *.log
 *.sqlite3
+
+# Tests and docs — not needed at runtime
+tests/
+*.md
+AGENTS.md
+PRODUCTION_READINESS_REPORT.md
+
+# Migrations run outside the container
+migrations/
+alembic.ini
+justfile

@@ -82,6 +82,8 @@ class PatientCreateSchema(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
+                "user_id": "user-uuid-123",
+                "org_id": "org-uuid-456",
                 "given_name": "John",
                 "family_name": "Doe",
                 "gender": "male",
