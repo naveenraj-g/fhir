@@ -37,22 +37,6 @@ db: Database = container.core.database()
 async def lifespan(app: FastAPI):
     logger.info("🟢 Starting up the application")
 
-    # Startup event to create tables if they don't exist (for demo purposes)
-    # In production, use Alembic migrations.
-    if settings.ENVIRONMENT == "development":
-        logger.info("Creating database tables (development mode)...")
-        await db.connect()
-        # async with db.engine.connect() as conn:
-        #     await conn.execute(
-        #         text("""
-        #         ALTER TABLE appointment
-        #         ADD COLUMN IF NOT EXISTS recurrence_id INTEGER,
-        #         ADD COLUMN IF NOT EXISTS occurrence_changed BOOLEAN;
-        #     """)
-        #     )
-        #     await conn.commit()
-        logger.info("Database tables ensured.")
-
     try:
         await cast(Any, redis_client.ping())
         app.state.redis = redis_client
