@@ -46,14 +46,14 @@ class PractitionerService:
     # ── Write ─────────────────────────────────────────────────────────────
 
     async def create_practitioner(
-        self, payload: PractitionerCreateSchema, user_id: str, org_id: Optional[str] = None
+        self, payload: PractitionerCreateSchema, user_id: Optional[str], org_id: Optional[str] = None, created_by: Optional[str] = None
     ) -> PractitionerModel:
-        return await self.repository.create(payload, user_id, org_id)
+        return await self.repository.create(payload, user_id, org_id, created_by)
 
     async def patch_practitioner(
-        self, practitioner_id: int, payload: PractitionerPatchSchema
+        self, practitioner_id: int, payload: PractitionerPatchSchema, updated_by: Optional[str] = None
     ) -> Optional[PractitionerModel]:
-        return await self.repository.patch(practitioner_id, payload)
+        return await self.repository.patch(practitioner_id, payload, updated_by)
 
     async def delete_practitioner(self, practitioner_id: int) -> bool:
         return await self.repository.delete(practitioner_id)

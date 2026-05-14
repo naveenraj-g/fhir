@@ -50,14 +50,14 @@ class PatientService:
     # ── Write ─────────────────────────────────────────────────────────────
 
     async def create_patient(
-        self, payload: PatientCreateSchema, user_id: str, org_id: Optional[str] = None
+        self, payload: PatientCreateSchema, user_id: Optional[str], org_id: Optional[str] = None, created_by: Optional[str] = None
     ) -> PatientModel:
-        return await self.repository.create(payload, user_id, org_id)
+        return await self.repository.create(payload, user_id, org_id, created_by)
 
     async def patch_patient(
-        self, patient_id: int, payload: PatientPatchSchema
+        self, patient_id: int, payload: PatientPatchSchema, updated_by: Optional[str] = None
     ) -> Optional[PatientModel]:
-        return await self.repository.patch(patient_id, payload)
+        return await self.repository.patch(patient_id, payload, updated_by)
 
     async def delete_patient(self, patient_id: int) -> bool:
         return await self.repository.delete(patient_id)

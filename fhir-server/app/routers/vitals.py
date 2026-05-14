@@ -98,9 +98,8 @@ async def create_vitals(
     request: Request,
     vitals_service: VitalsService = Depends(get_vitals_service),
 ):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    vitals = await vitals_service.create_vitals(payload, user_id, org_id)
+    created_by: str = request.state.user.get("sub")
+    vitals = await vitals_service.create_vitals(payload, payload.user_id, payload.org_id, created_by)
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,
         content=jsonable_encoder(_serialize(vitals)),
@@ -194,8 +193,8 @@ async def patch_vitals(
     vitals: VitalsModel = Depends(get_authorized_vitals),
     vitals_service: VitalsService = Depends(get_vitals_service),
 ):
-    user_id: str = request.state.user.get("sub")
-    updated = await vitals_service.patch_vitals(vitals.vitals_id, payload, user_id)
+    updated_by: str = request.state.user.get("sub")
+    updated = await vitals_service.patch_vitals(vitals.vitals_id, payload, updated_by=updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Vitals not found")
     return JSONResponse(content=jsonable_encoder(_serialize(updated)))

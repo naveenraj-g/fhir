@@ -77,7 +77,7 @@ class PractitionerRepository:
             result = await session.execute(stmt)
             return result.scalars().first()
 
-    async def create(self, payload: PractitionerCreateSchema, user_id: str, org_id: Optional[str] = None) -> PractitionerModel:
+    async def create(self, payload: PractitionerCreateSchema, user_id: Optional[str], org_id: Optional[str] = None, created_by: Optional[str] = None) -> PractitionerModel:
         async with self.session_factory() as session:
             practitioner = PractitionerModel(
                 user_id=user_id,
@@ -87,6 +87,7 @@ class PractitionerRepository:
                 active=payload.active,
                 gender=payload.gender,
                 birth_date=payload.birth_date,
+                created_by=created_by,
             )
             try:
                 session.add(practitioner)
@@ -98,7 +99,7 @@ class PractitionerRepository:
 
         return await self.get_by_practitioner_id(practitioner.practitioner_id)
 
-    async def patch(self, practitioner_id: int, payload: PractitionerPatchSchema) -> Optional[PractitionerModel]:
+    async def patch(self, practitioner_id: int, payload: PractitionerPatchSchema, updated_by: Optional[str] = None) -> Optional[PractitionerModel]:
         """Partial update — only fields explicitly set in payload are written."""
         async with self.session_factory() as session:
             stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
@@ -111,6 +112,8 @@ class PractitionerRepository:
             update_data = payload.model_dump(exclude_unset=True)
             for field, value in update_data.items():
                 setattr(practitioner, field, value)
+            if updated_by is not None:
+                practitioner.updated_by = updated_by
 
             try:
                 await session.commit()

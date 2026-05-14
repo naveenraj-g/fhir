@@ -220,8 +220,9 @@ class QuestionnaireResponseRepository:
     async def create(
         self,
         payload: QuestionnaireResponseCreateSchema,
-        user_id: str,
+        user_id: Optional[str],
         org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
     ) -> QuestionnaireResponseModel:
         subject_type, subject_id = _parse_subject(payload.subject)
         author_type, author_id = _parse_author(payload.author)
@@ -242,6 +243,7 @@ class QuestionnaireResponseRepository:
             qr = QuestionnaireResponseModel(
                 user_id=user_id,
                 org_id=org_id,
+                created_by=created_by,
                 questionnaire=payload.questionnaire,
                 status=payload.status,
                 subject_type=subject_type,
@@ -277,6 +279,7 @@ class QuestionnaireResponseRepository:
         self,
         questionnaire_response_id: int,
         payload: QuestionnaireResponsePatchSchema,
+        updated_by: Optional[str] = None,
     ) -> Optional[QuestionnaireResponseModel]:
         """Partial update — only status and authored are patchable."""
         async with self.session_factory() as session:
@@ -293,6 +296,8 @@ class QuestionnaireResponseRepository:
             update_data = payload.model_dump(exclude_unset=True)
             for field, value in update_data.items():
                 setattr(qr, field, value)
+            if updated_by is not None:
+                qr.updated_by = updated_by
 
             try:
                 await session.commit()

@@ -119,9 +119,10 @@ class EncounterRepository:
     async def create(
         self,
         payload: EncounterCreateSchema,
-        user_id: str,
+        user_id: Optional[str],
         org_id: Optional[str] = None,
         subject_display: Optional[str] = None,
+        created_by: Optional[str] = None,
     ) -> EncounterModel:
         subject_type, subject_id = _parse_subject(payload.subject)
 
@@ -137,6 +138,7 @@ class EncounterRepository:
                 subject_display=subject_display,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
+                created_by=created_by,
             )
 
             # based_on
@@ -223,7 +225,7 @@ class EncounterRepository:
         return await self.get_by_encounter_id(encounter.encounter_id)
 
     async def patch(
-        self, encounter_id: int, payload: EncounterPatchSchema
+        self, encounter_id: int, payload: EncounterPatchSchema, updated_by: Optional[str] = None
     ) -> Optional[EncounterModel]:
         """Partial update — only fields explicitly set in payload are written."""
         async with self.session_factory() as session:
@@ -239,6 +241,8 @@ class EncounterRepository:
             update_data = payload.model_dump(exclude_unset=True)
             for field, value in update_data.items():
                 setattr(encounter, field, value)
+            if updated_by is not None:
+                encounter.updated_by = updated_by
 
             try:
                 await session.commit()

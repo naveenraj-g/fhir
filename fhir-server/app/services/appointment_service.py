@@ -44,15 +44,16 @@ class AppointmentService:
     async def create_appointment(
         self,
         payload: AppointmentCreateSchema,
-        user_id: str,
+        user_id: Optional[str],
         org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
     ) -> AppointmentModel:
-        return await self.repository.create(payload, user_id, org_id)
+        return await self.repository.create(payload, user_id, org_id, created_by)
 
     async def patch_appointment(
-        self, appointment_id: int, payload: AppointmentPatchSchema
+        self, appointment_id: int, payload: AppointmentPatchSchema, updated_by: Optional[str] = None
     ) -> Optional[AppointmentModel]:
-        return await self.repository.patch(appointment_id, payload)
+        return await self.repository.patch(appointment_id, payload, updated_by)
 
     async def delete_appointment(self, appointment_id: int) -> bool:
         return await self.repository.delete(appointment_id)

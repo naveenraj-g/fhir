@@ -63,9 +63,8 @@ async def create_questionnaire_response(
         get_questionnaire_response_service
     ),
 ):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    qr = await qr_service.create_questionnaire_response(payload, user_id, org_id)
+    created_by: str = request.state.user.get("sub")
+    qr = await qr_service.create_questionnaire_response(payload, payload.user_id, payload.org_id, created_by)
     return format_response(
         qr_service._to_fhir(qr),
         qr_service._to_plain(qr),
@@ -170,8 +169,9 @@ async def patch_questionnaire_response(
         get_questionnaire_response_service
     ),
 ):
+    updated_by: str = request.state.user.get("sub")
     updated = await qr_service.patch_questionnaire_response(
-        qr.questionnaire_response_id, payload
+        qr.questionnaire_response_id, payload, updated_by
     )
     if not updated:
         raise HTTPException(status_code=404, detail="QuestionnaireResponse not found")

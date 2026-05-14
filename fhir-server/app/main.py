@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 from typing import Any, cast
-from sqlalchemy import text
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import Response

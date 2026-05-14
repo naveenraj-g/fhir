@@ -56,9 +56,8 @@ async def create_practitioner(
     request: Request,
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    practitioner = await practitioner_service.create_practitioner(payload, user_id, org_id)
+    created_by: str = request.state.user.get("sub")
+    practitioner = await practitioner_service.create_practitioner(payload, payload.user_id, payload.org_id, created_by)
     return format_response(
         practitioner_service._to_fhir(practitioner),
         practitioner_service._to_plain(practitioner),
@@ -163,7 +162,8 @@ async def patch_practitioner(
     practitioner: PractitionerModel = Depends(get_authorized_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
-    updated = await practitioner_service.patch_practitioner(practitioner.practitioner_id, payload)
+    updated_by: str = request.state.user.get("sub")
+    updated = await practitioner_service.patch_practitioner(practitioner.practitioner_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Practitioner not found")
     return format_response(

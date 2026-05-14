@@ -87,11 +87,13 @@ class VitalsRepository:
         payload: VitalsCreateSchema,
         user_id: Optional[str] = None,
         org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
     ) -> VitalsModel:
-        data = payload.model_dump(exclude_unset=False)
+        data = payload.model_dump(exclude_unset=False, exclude={"user_id", "org_id"})
         vitals = VitalsModel(
             user_id=user_id,
             org_id=org_id,
+            created_by=created_by,
             **data,
         )
         async with self.session_factory() as session:
@@ -105,7 +107,7 @@ class VitalsRepository:
         return await self.get_by_vitals_id(vitals.vitals_id)
 
     async def patch(
-        self, vitals_id: int, payload: VitalsPatchSchema
+        self, vitals_id: int, payload: VitalsPatchSchema, updated_by: Optional[str] = None
     ) -> Optional[VitalsModel]:
         async with self.session_factory() as session:
             stmt = select(VitalsModel).where(VitalsModel.vitals_id == vitals_id)
@@ -117,6 +119,8 @@ class VitalsRepository:
 
             for field, value in payload.model_dump(exclude_unset=True).items():
                 setattr(vitals, field, value)
+            if updated_by is not None:
+                vitals.updated_by = updated_by
 
             try:
                 await session.commit()

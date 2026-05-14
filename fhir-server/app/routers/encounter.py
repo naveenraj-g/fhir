@@ -57,9 +57,8 @@ async def create_encounter(
     request: Request,
     encounter_service: EncounterService = Depends(get_encounter_service),
 ):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    encounter = await encounter_service.create_encounter(payload, user_id, org_id)
+    created_by: str = request.state.user.get("sub")
+    encounter = await encounter_service.create_encounter(payload, payload.user_id, payload.org_id, created_by)
     return format_response(
         encounter_service._to_fhir(encounter),
         encounter_service._to_plain(encounter),
@@ -160,7 +159,8 @@ async def patch_encounter(
     encounter: EncounterModel = Depends(get_authorized_encounter),
     encounter_service: EncounterService = Depends(get_encounter_service),
 ):
-    updated = await encounter_service.patch_encounter(encounter.encounter_id, payload)
+    updated_by: str = request.state.user.get("sub")
+    updated = await encounter_service.patch_encounter(encounter.encounter_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Encounter not found")
     return format_response(

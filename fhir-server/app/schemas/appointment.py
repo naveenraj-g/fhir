@@ -170,6 +170,8 @@ class AppointmentCreateSchema(BaseModel):
         },
     )
 
+    user_id: Optional[str] = None
+    org_id: Optional[str] = None
     status: AppointmentStatus
     subject: Optional[str] = Field(
         None,

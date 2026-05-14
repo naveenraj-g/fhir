@@ -78,7 +78,7 @@ class PatientRepository:
             result = await session.execute(stmt)
             return result.scalars().first()
 
-    async def create(self, payload: PatientCreateSchema, user_id: str, org_id: Optional[str] = None) -> PatientModel:
+    async def create(self, payload: PatientCreateSchema, user_id: Optional[str], org_id: Optional[str] = None, created_by: Optional[str] = None) -> PatientModel:
         async with self.session_factory() as session:
             patient = PatientModel(
                 user_id=user_id,
@@ -88,6 +88,7 @@ class PatientRepository:
                 gender=payload.gender,
                 birth_date=payload.birth_date,
                 active=payload.active,
+                created_by=created_by,
             )
             try:
                 session.add(patient)
@@ -99,7 +100,7 @@ class PatientRepository:
 
             return await self.get_by_patient_id(patient.patient_id)
 
-    async def patch(self, patient_id: int, payload: PatientPatchSchema) -> Optional[PatientModel]:
+    async def patch(self, patient_id: int, payload: PatientPatchSchema, updated_by: Optional[str] = None) -> Optional[PatientModel]:
         """Partial update — only fields explicitly set in payload are written."""
         async with self.session_factory() as session:
             stmt = _with_relationships(
@@ -114,6 +115,8 @@ class PatientRepository:
             update_data = payload.model_dump(exclude_unset=True)
             for field, value in update_data.items():
                 setattr(patient, field, value)
+            if updated_by is not None:
+                patient.updated_by = updated_by
 
             try:
                 await session.commit()

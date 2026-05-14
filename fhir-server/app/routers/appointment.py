@@ -56,9 +56,8 @@ async def create_appointment(
     request: Request,
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    appointment = await appointment_service.create_appointment(payload, user_id, org_id)
+    created_by: str = request.state.user.get("sub")
+    appointment = await appointment_service.create_appointment(payload, payload.user_id, payload.org_id, created_by)
     return format_response(
         appointment_service._to_fhir(appointment),
         appointment_service._to_plain(appointment),
@@ -159,8 +158,9 @@ async def patch_appointment(
     appointment: AppointmentModel = Depends(get_authorized_appointment),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ):
+    updated_by: str = request.state.user.get("sub")
     updated = await appointment_service.patch_appointment(
-        appointment.appointment_id, payload
+        appointment.appointment_id, payload, updated_by
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Appointment not found")

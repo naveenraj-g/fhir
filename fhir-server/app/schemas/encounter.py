@@ -152,6 +152,8 @@ class EncounterCreateSchema(BaseModel):
         },
     )
 
+    user_id: Optional[str] = None
+    org_id: Optional[str] = None
     status: EncounterStatus
     class_code: EncounterClass = Field(
         ...,

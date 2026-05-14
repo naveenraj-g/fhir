@@ -135,6 +135,8 @@ class PractitionerCreateSchema(BaseModel):
         },
     )
 
+    user_id: Optional[str] = None
+    org_id: Optional[str] = None
     given_name: Optional[str] = Field(None, max_length=100)
     family_name: Optional[str] = Field(None, max_length=100)
     active: Optional[bool] = True

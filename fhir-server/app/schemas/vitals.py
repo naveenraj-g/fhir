@@ -56,6 +56,8 @@ class VitalsCreateSchema(BaseModel):
     )
 
     # Identity
+    user_id: Optional[str] = None
+    org_id: Optional[str] = None
     pseudo_id: Optional[str] = None
     pseudo_id2: Optional[str] = None
     patient_id: Optional[int] = Field(None, description="Public patient_id.")

@@ -119,8 +119,9 @@ class AppointmentRepository:
     async def create(
         self,
         payload: AppointmentCreateSchema,
-        user_id: str,
+        user_id: Optional[str],
         org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
     ) -> AppointmentModel:
         subject_type, subject_id = _parse_subject(payload.subject)
 
@@ -138,6 +139,7 @@ class AppointmentRepository:
             appointment = AppointmentModel(
                 user_id=user_id,
                 org_id=org_id,
+                created_by=created_by,
                 status=payload.status,
                 subject_type=subject_type,
                 subject_id=subject_id,
@@ -237,7 +239,7 @@ class AppointmentRepository:
         return await self.get_by_appointment_id(appointment.appointment_id)
 
     async def patch(
-        self, appointment_id: int, payload: AppointmentPatchSchema
+        self, appointment_id: int, payload: AppointmentPatchSchema, updated_by: Optional[str] = None
     ) -> Optional[AppointmentModel]:
         """Partial update — only fields explicitly set in payload are written."""
         async with self.session_factory() as session:
@@ -253,6 +255,8 @@ class AppointmentRepository:
             update_data = payload.model_dump(exclude_unset=True)
             for field, value in update_data.items():
                 setattr(appointment, field, value)
+            if updated_by is not None:
+                appointment.updated_by = updated_by
 
             try:
                 await session.commit()

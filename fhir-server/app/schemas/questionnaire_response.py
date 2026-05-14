@@ -127,6 +127,8 @@ class QuestionnaireResponseCreateSchema(BaseModel):
         },
     )
 
+    user_id: Optional[str] = None
+    org_id: Optional[str] = None
     questionnaire: str = Field(
         ...,
         description="Canonical URL or id of the Questionnaire this response answers.",

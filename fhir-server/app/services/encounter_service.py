@@ -46,8 +46,9 @@ class EncounterService:
     async def create_encounter(
         self,
         payload: EncounterCreateSchema,
-        user_id: str,
+        user_id: Optional[str],
         org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
     ) -> EncounterModel:
         subject_display: Optional[str] = None
         if payload.subject:
@@ -55,12 +56,12 @@ class EncounterService:
             subject_display = await resolve_subject(
                 subject_type, subject_id, user_id, org_id, patient_service=self.patient_service
             )
-        return await self.repository.create(payload, user_id, org_id, subject_display)
+        return await self.repository.create(payload, user_id, org_id, subject_display, created_by)
 
     async def patch_encounter(
-        self, encounter_id: int, payload: EncounterPatchSchema
+        self, encounter_id: int, payload: EncounterPatchSchema, updated_by: Optional[str] = None
     ) -> Optional[EncounterModel]:
-        return await self.repository.patch(encounter_id, payload)
+        return await self.repository.patch(encounter_id, payload, updated_by)
 
     async def delete_encounter(self, encounter_id: int) -> bool:
         return await self.repository.delete(encounter_id)

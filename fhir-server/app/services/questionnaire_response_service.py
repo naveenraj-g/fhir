@@ -58,17 +58,19 @@ class QuestionnaireResponseService:
     async def create_questionnaire_response(
         self,
         payload: QuestionnaireResponseCreateSchema,
-        user_id: str,
+        user_id: Optional[str],
         org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
     ) -> QuestionnaireResponseModel:
-        return await self.repository.create(payload, user_id, org_id)
+        return await self.repository.create(payload, user_id, org_id, created_by)
 
     async def patch_questionnaire_response(
         self,
         questionnaire_response_id: int,
         payload: QuestionnaireResponsePatchSchema,
+        updated_by: Optional[str] = None,
     ) -> Optional[QuestionnaireResponseModel]:
-        return await self.repository.patch(questionnaire_response_id, payload)
+        return await self.repository.patch(questionnaire_response_id, payload, updated_by)
 
     async def delete_questionnaire_response(
         self, questionnaire_response_id: int

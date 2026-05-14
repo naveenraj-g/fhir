@@ -55,9 +55,8 @@ async def create_patient(
     request: Request,
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    patient = await patient_service.create_patient(payload, user_id, org_id)
+    created_by: str = request.state.user.get("sub")
+    patient = await patient_service.create_patient(payload, payload.user_id, payload.org_id, created_by)
     return format_response(
         patient_service._to_fhir(patient),
         patient_service._to_plain(patient),
@@ -162,7 +161,8 @@ async def patch_patient(
     patient: PatientModel = Depends(get_authorized_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    updated = await patient_service.patch_patient(patient.patient_id, payload)
+    updated_by: str = request.state.user.get("sub")
+    updated = await patient_service.patch_patient(patient.patient_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
     return format_response(
