@@ -42,9 +42,6 @@ async def get_current_user(request: Request):
         raise AuthenticationError("Invalid or expired token")
 
 
-# Permission
-#   Resource = Patient
-#   action = read
 async def check_permission(user: str, resource: str, action: str):
     permissions = user.get("permissions", [])
 
