@@ -1,36 +1,42 @@
 from typing import List, Optional, Tuple
-from sqlalchemy import func
+from sqlalchemy import exists, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.models.practitioner import (
     PractitionerModel,
+    PractitionerName,
     PractitionerIdentifier,
     PractitionerTelecom,
     PractitionerAddress,
+    PractitionerPhoto,
     PractitionerQualification,
+    PractitionerCommunication,
 )
-from app.models.datatypes import CodeableConcept as CodeableConceptModel, Coding as CodingModel
 from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
+    PractitionerNameCreate,
     PractitionerIdentifierCreate,
     PractitionerTelecomCreate,
     PractitionerAddressCreate,
+    PractitionerPhotoCreate,
     PractitionerQualificationCreate,
+    PractitionerCommunicationCreate,
 )
 
 
 def _with_relationships(stmt):
-    """Attach eager-load options for all practitioner sub-resources."""
+    """Eager-load all practitioner sub-resources to avoid N+1 and async lazy-load failures."""
     return stmt.options(
-        selectinload(PractitionerModel.identifiers)
-            .selectinload(PractitionerIdentifier.type)
-            .selectinload(CodeableConceptModel.codings),
+        selectinload(PractitionerModel.names),
+        selectinload(PractitionerModel.identifiers),
         selectinload(PractitionerModel.telecoms),
         selectinload(PractitionerModel.addresses),
+        selectinload(PractitionerModel.photos),
         selectinload(PractitionerModel.qualifications),
+        selectinload(PractitionerModel.communications),
     )
 
 
@@ -41,22 +47,28 @@ class PractitionerRepository:
     # ── Read ──────────────────────────────────────────────────────────────
 
     async def get_by_practitioner_id(self, practitioner_id: int) -> Optional[PractitionerModel]:
-        """Fetch by public practitioner_id with all sub-resources loaded."""
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
             )
-            result = await session.execute(stmt)
-            return result.scalars().first()
+            return (await session.execute(stmt)).scalars().first()
 
     async def get_by_user_id(self, user_id: str) -> Optional[PractitionerModel]:
-        """Fetch by user_id with all sub-resources loaded."""
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(PractitionerModel).where(PractitionerModel.user_id == user_id)
             )
-            result = await session.execute(stmt)
-            return result.scalars().first()
+            return (await session.execute(stmt)).scalars().first()
+
+    async def get_me(self, user_id: str, org_id: str) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            stmt = _with_relationships(
+                select(PractitionerModel).where(
+                    PractitionerModel.user_id == user_id,
+                    PractitionerModel.org_id == org_id,
+                )
+            )
+            return (await session.execute(stmt)).scalars().first()
 
     def _apply_list_filters(self, stmt, user_id, org_id, family_name, given_name, role, active):
         if user_id:
@@ -64,9 +76,23 @@ class PractitionerRepository:
         if org_id:
             stmt = stmt.where(PractitionerModel.org_id == org_id)
         if family_name:
-            stmt = stmt.where(PractitionerModel.family_name.ilike(f"%{family_name}%"))
+            stmt = stmt.where(
+                exists(
+                    select(PractitionerName.id).where(
+                        PractitionerName.practitioner_id == PractitionerModel.id,
+                        PractitionerName.family.ilike(f"%{family_name}%"),
+                    )
+                )
+            )
         if given_name:
-            stmt = stmt.where(PractitionerModel.given_name.ilike(f"%{given_name}%"))
+            stmt = stmt.where(
+                exists(
+                    select(PractitionerName.id).where(
+                        PractitionerName.practitioner_id == PractitionerModel.id,
+                        PractitionerName.given.ilike(f"%{given_name}%"),
+                    )
+                )
+            )
         if role is not None:
             stmt = stmt.where(PractitionerModel.role == role)
         if active is not None:
@@ -101,28 +127,24 @@ class PractitionerRepository:
 
     # ── Write ─────────────────────────────────────────────────────────────
 
-    async def get_me(self, user_id: str, org_id: str) -> Optional[PractitionerModel]:
-        """Fetch the practitioner profile that belongs to user_id within org_id."""
-        async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(PractitionerModel).where(
-                    PractitionerModel.user_id == user_id,
-                    PractitionerModel.org_id == org_id,
-                )
-            )
-            result = await session.execute(stmt)
-            return result.scalars().first()
-
-    async def create(self, payload: PractitionerCreateSchema, user_id: Optional[str], org_id: Optional[str] = None, created_by: Optional[str] = None) -> PractitionerModel:
+    async def create(
+        self,
+        payload: PractitionerCreateSchema,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
+    ) -> PractitionerModel:
         async with self.session_factory() as session:
             practitioner = PractitionerModel(
                 user_id=user_id,
                 org_id=org_id,
-                given_name=payload.given_name,
-                family_name=payload.family_name,
                 active=payload.active,
                 gender=payload.gender,
                 birth_date=payload.birth_date,
+                deceased_boolean=payload.deceased_boolean,
+                deceased_datetime=payload.deceased_datetime,
+                role=payload.role,
+                specialty=payload.specialty,
                 created_by=created_by,
             )
             try:
@@ -132,43 +154,37 @@ class PractitionerRepository:
             except Exception:
                 await session.rollback()
                 raise
-
         return await self.get_by_practitioner_id(practitioner.practitioner_id)
 
-    async def patch(self, practitioner_id: int, payload: PractitionerPatchSchema, updated_by: Optional[str] = None) -> Optional[PractitionerModel]:
-        """Partial update — only fields explicitly set in payload are written."""
+    async def patch(
+        self,
+        practitioner_id: int,
+        payload: PractitionerPatchSchema,
+        updated_by: Optional[str] = None,
+    ) -> Optional[PractitionerModel]:
         async with self.session_factory() as session:
             stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
-            result = await session.execute(stmt)
-            practitioner = result.scalars().first()
-
+            practitioner = (await session.execute(stmt)).scalars().first()
             if not practitioner:
                 return None
-
-            update_data = payload.model_dump(exclude_unset=True)
-            for field, value in update_data.items():
+            for field, value in payload.model_dump(exclude_unset=True).items():
                 setattr(practitioner, field, value)
             if updated_by is not None:
                 practitioner.updated_by = updated_by
-
             try:
                 await session.commit()
                 await session.refresh(practitioner)
             except Exception:
                 await session.rollback()
                 raise
-
         return await self.get_by_practitioner_id(practitioner_id)
 
     async def delete(self, practitioner_id: int) -> bool:
         async with self.session_factory() as session:
             stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
-            result = await session.execute(stmt)
-            practitioner = result.scalars().first()
-
+            practitioner = (await session.execute(stmt)).scalars().first()
             if not practitioner:
                 return False
-
             try:
                 await session.delete(practitioner)
                 await session.commit()
@@ -179,48 +195,62 @@ class PractitionerRepository:
 
     # ── Sub-resource mutations ────────────────────────────────────────────
 
-    async def add_identifier(
-        self, practitioner_id: int, payload: PractitionerIdentifierCreate
+    async def add_name(
+        self, practitioner_id: int, payload: PractitionerNameCreate
     ) -> Optional[PractitionerModel]:
         async with self.session_factory() as session:
             stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
-            result = await session.execute(stmt)
-            practitioner = result.scalars().first()
-
+            practitioner = (await session.execute(stmt)).scalars().first()
             if not practitioner:
                 return None
-
-            row = PractitionerIdentifier(
+            row = PractitionerName(
                 practitioner_id=practitioner.id,
-                use=payload.use.value if payload.use else None,
-                system=payload.system,
-                value=payload.value,
+                org_id=practitioner.org_id,
+                use=payload.use,
+                text=payload.text,
+                family=payload.family,
+                given=",".join(payload.given) if payload.given else None,
+                prefix=",".join(payload.prefix) if payload.prefix else None,
+                suffix=",".join(payload.suffix) if payload.suffix else None,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
-                assigner=payload.assigner,
             )
-            if payload.type:
-                cc = CodeableConceptModel(text=payload.type.text)
-                if payload.type.coding:
-                    cc.codings = [
-                        CodingModel(
-                            system=c.system,
-                            version=c.version,
-                            code=c.code,
-                            display=c.display,
-                            user_selected=c.userSelected,
-                        )
-                        for c in payload.type.coding
-                    ]
-                row.type = cc
-
             try:
                 session.add(row)
                 await session.commit()
             except Exception:
                 await session.rollback()
                 raise
+        return await self.get_by_practitioner_id(practitioner_id)
 
+    async def add_identifier(
+        self, practitioner_id: int, payload: PractitionerIdentifierCreate
+    ) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
+            practitioner = (await session.execute(stmt)).scalars().first()
+            if not practitioner:
+                return None
+            row = PractitionerIdentifier(
+                practitioner_id=practitioner.id,
+                org_id=practitioner.org_id,
+                use=payload.use.value if payload.use else None,
+                type_system=payload.type_system,
+                type_code=payload.type_code,
+                type_display=payload.type_display,
+                type_text=payload.type_text,
+                system=payload.system,
+                value=payload.value,
+                period_start=payload.period_start,
+                period_end=payload.period_end,
+                assigner=payload.assigner,
+            )
+            try:
+                session.add(row)
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
         return await self.get_by_practitioner_id(practitioner_id)
 
     async def add_telecom(
@@ -228,18 +258,18 @@ class PractitionerRepository:
     ) -> Optional[PractitionerModel]:
         async with self.session_factory() as session:
             stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
-            result = await session.execute(stmt)
-            practitioner = result.scalars().first()
-
+            practitioner = (await session.execute(stmt)).scalars().first()
             if not practitioner:
                 return None
-
             row = PractitionerTelecom(
                 practitioner_id=practitioner.id,
-                system=payload.system,
+                org_id=practitioner.org_id,
+                system=payload.system.value if payload.system else None,
                 value=payload.value,
-                use=payload.use,
+                use=payload.use.value if payload.use else None,
                 rank=payload.rank,
+                period_start=payload.period_start,
+                period_end=payload.period_end,
             )
             try:
                 session.add(row)
@@ -247,7 +277,6 @@ class PractitionerRepository:
             except Exception:
                 await session.rollback()
                 raise
-
         return await self.get_by_practitioner_id(practitioner_id)
 
     async def add_address(
@@ -255,23 +284,23 @@ class PractitionerRepository:
     ) -> Optional[PractitionerModel]:
         async with self.session_factory() as session:
             stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
-            result = await session.execute(stmt)
-            practitioner = result.scalars().first()
-
+            practitioner = (await session.execute(stmt)).scalars().first()
             if not practitioner:
                 return None
-
             row = PractitionerAddress(
                 practitioner_id=practitioner.id,
-                use=payload.use,
-                type=payload.type,
+                org_id=practitioner.org_id,
+                use=payload.use.value if payload.use else None,
+                type=payload.type.value if payload.type else None,
                 text=payload.text,
-                line=payload.line,
+                line=",".join(payload.line) if payload.line else None,
                 city=payload.city,
                 district=payload.district,
                 state=payload.state,
                 postal_code=payload.postal_code,
                 country=payload.country,
+                period_start=payload.period_start,
+                period_end=payload.period_end,
             )
             try:
                 session.add(row)
@@ -279,7 +308,34 @@ class PractitionerRepository:
             except Exception:
                 await session.rollback()
                 raise
+        return await self.get_by_practitioner_id(practitioner_id)
 
+    async def add_photo(
+        self, practitioner_id: int, payload: PractitionerPhotoCreate
+    ) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
+            practitioner = (await session.execute(stmt)).scalars().first()
+            if not practitioner:
+                return None
+            row = PractitionerPhoto(
+                practitioner_id=practitioner.id,
+                org_id=practitioner.org_id,
+                content_type=payload.content_type,
+                language=payload.language,
+                data=payload.data,
+                url=payload.url,
+                size=payload.size,
+                hash=payload.hash,
+                title=payload.title,
+                creation=payload.creation,
+            )
+            try:
+                session.add(row)
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
         return await self.get_by_practitioner_id(practitioner_id)
 
     async def add_qualification(
@@ -287,18 +343,22 @@ class PractitionerRepository:
     ) -> Optional[PractitionerModel]:
         async with self.session_factory() as session:
             stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
-            result = await session.execute(stmt)
-            practitioner = result.scalars().first()
-
+            practitioner = (await session.execute(stmt)).scalars().first()
             if not practitioner:
                 return None
-
             row = PractitionerQualification(
                 practitioner_id=practitioner.id,
+                org_id=practitioner.org_id,
                 identifier_system=payload.identifier_system,
                 identifier_value=payload.identifier_value,
+                code_system=payload.code_system,
+                code_code=payload.code_code,
+                code_display=payload.code_display,
                 code_text=payload.code_text,
-                issuer=payload.issuer,
+                period_start=payload.period_start,
+                period_end=payload.period_end,
+                issuer_id=payload.issuer_id,
+                issuer_display=payload.issuer_display,
             )
             try:
                 session.add(row)
@@ -306,5 +366,29 @@ class PractitionerRepository:
             except Exception:
                 await session.rollback()
                 raise
+        return await self.get_by_practitioner_id(practitioner_id)
 
+    async def add_communication(
+        self, practitioner_id: int, payload: PractitionerCommunicationCreate
+    ) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
+            practitioner = (await session.execute(stmt)).scalars().first()
+            if not practitioner:
+                return None
+            row = PractitionerCommunication(
+                practitioner_id=practitioner.id,
+                org_id=practitioner.org_id,
+                language_system=payload.language_system,
+                language_code=payload.language_code,
+                language_display=payload.language_display,
+                language_text=payload.language_text,
+                preferred=payload.preferred,
+            )
+            try:
+                session.add(row)
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
         return await self.get_by_practitioner_id(practitioner_id)

@@ -8,12 +8,16 @@ from sqlalchemy.orm import selectinload
 
 from app.models.questionnaire_response.questionnaire_response import (
     QuestionnaireResponseModel,
+    QuestionnaireResponseBasedOn,
+    QuestionnaireResponsePartOf,
     QuestionnaireResponseItemModel,
     QuestionnaireResponseAnswerModel,
 )
 from app.models.questionnaire_response.enums import (
     QuestionnaireResponseAuthorReferenceType,
     QuestionnaireResponseSourceReferenceType,
+    QRBasedOnReferenceType,
+    QRPartOfReferenceType,
 )
 from app.models.encounter.encounter import EncounterModel
 from app.models.enums import SubjectReferenceType
@@ -26,9 +30,10 @@ from app.schemas.questionnaire_response import (
 
 
 def _with_relationships(stmt):
-    """Attach eager-load options for encounter + items (2 levels deep) with answers."""
     return stmt.options(
         selectinload(QuestionnaireResponseModel.encounter),
+        selectinload(QuestionnaireResponseModel.based_ons),
+        selectinload(QuestionnaireResponseModel.part_ofs),
         selectinload(QuestionnaireResponseModel.items).selectinload(
             QuestionnaireResponseItemModel.answers
         ),
@@ -39,7 +44,6 @@ def _with_relationships(stmt):
 
 
 def _parse_subject(subject_str: Optional[str]):
-    """Parse 'Patient/10001' → (SubjectReferenceType.PATIENT, 10001)."""
     if not subject_str:
         return None, None
     parts = subject_str.split("/")
@@ -52,7 +56,6 @@ def _parse_subject(subject_str: Optional[str]):
 
 
 def _parse_author(author_str: Optional[str]):
-    """Parse 'Practitioner/30001' → (QuestionnaireResponseAuthorReferenceType, 30001)."""
     if not author_str:
         return None, None
     parts = author_str.split("/")
@@ -65,7 +68,6 @@ def _parse_author(author_str: Optional[str]):
 
 
 def _parse_source(source_str: Optional[str]):
-    """Parse 'Patient/10001' → (QuestionnaireResponseSourceReferenceType, 10001)."""
     if not source_str:
         return None, None
     parts = source_str.split("/")
@@ -78,7 +80,6 @@ def _parse_source(source_str: Optional[str]):
 
 
 def _parse_encounter_ref(encounter_str: Optional[str]) -> Optional[int]:
-    """Parse 'Encounter/20001' → public encounter_id 20001."""
     if not encounter_str:
         return None
     parts = encounter_str.split("/")
@@ -131,6 +132,18 @@ def _build_answer(answer: AnswerInput) -> QuestionnaireResponseAnswerModel:
     elif answer.value_reference is not None:
         db.value_type = "reference"
         db.value_reference = answer.value_reference
+        db.value_reference_display = answer.value_reference_display
+    elif answer.value_attachment is not None:
+        db.value_type = "attachment"
+        att = answer.value_attachment
+        db.value_attachment_content_type = att.content_type
+        db.value_attachment_language = att.language
+        db.value_attachment_data = att.data
+        db.value_attachment_url = att.url
+        db.value_attachment_size = att.size
+        db.value_attachment_hash = att.hash
+        db.value_attachment_title = att.title
+        db.value_attachment_creation = att.creation
 
     return db
 
@@ -155,12 +168,11 @@ class QuestionnaireResponseRepository:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         self.session_factory = session_factory
 
-    # ── Read ──────────────────────────────────────────────────────────────
+    # ── Read ──────────────────────────────────────────────────────────────────
 
     async def get_by_qr_id(
         self, questionnaire_response_id: int
     ) -> Optional[QuestionnaireResponseModel]:
-        """Fetch by public questionnaire_response_id with all items loaded."""
         async with self.session_factory() as session:
             stmt = _with_relationships(
                 select(QuestionnaireResponseModel).where(
@@ -198,7 +210,9 @@ class QuestionnaireResponseRepository:
             )).scalars().all())
         return rows, total
 
-    def _apply_list_filters(self, stmt, user_id, org_id, status, patient_id, questionnaire, authored_from, authored_to):
+    def _apply_list_filters(
+        self, stmt, user_id, org_id, status, patient_id, questionnaire, authored_from, authored_to
+    ):
         if user_id:
             stmt = stmt.where(QuestionnaireResponseModel.user_id == user_id)
         if org_id:
@@ -245,7 +259,7 @@ class QuestionnaireResponseRepository:
             )).scalars().all())
         return rows, total
 
-    # ── Write ─────────────────────────────────────────────────────────────
+    # ── Write ─────────────────────────────────────────────────────────────────
 
     async def create(
         self,
@@ -276,6 +290,18 @@ class QuestionnaireResponseRepository:
                 created_by=created_by,
                 questionnaire=payload.questionnaire,
                 status=payload.status,
+                # identifier
+                identifier_use=payload.identifier_use,
+                identifier_type_system=payload.identifier_type_system,
+                identifier_type_code=payload.identifier_type_code,
+                identifier_type_display=payload.identifier_type_display,
+                identifier_type_text=payload.identifier_type_text,
+                identifier_system=payload.identifier_system,
+                identifier_value=payload.identifier_value,
+                identifier_period_start=payload.identifier_period_start,
+                identifier_period_end=payload.identifier_period_end,
+                identifier_assigner=payload.identifier_assigner,
+                # subject / encounter / author / source
                 subject_type=subject_type,
                 subject_id=subject_id,
                 subject_display=payload.subject_display,
@@ -289,9 +315,29 @@ class QuestionnaireResponseRepository:
                 source_reference_display=payload.source_display,
             )
 
+            # basedOn
+            if payload.based_on:
+                for b in payload.based_on:
+                    qr.based_ons.append(QuestionnaireResponseBasedOn(
+                        org_id=org_id,
+                        reference_type=b.reference_type,
+                        reference_id=b.reference_id,
+                        reference_display=b.reference_display,
+                    ))
+
+            # partOf
+            if payload.part_of:
+                for p in payload.part_of:
+                    qr.part_ofs.append(QuestionnaireResponsePartOf(
+                        org_id=org_id,
+                        reference_type=p.reference_type,
+                        reference_id=p.reference_id,
+                        reference_display=p.reference_display,
+                    ))
+
             try:
                 session.add(qr)
-                await session.flush()  # inserts qr row alone → qr.id is now set
+                await session.flush()  # inserts qr row → qr.id is now set
 
                 if payload.item:
                     for item in payload.item:
@@ -311,7 +357,6 @@ class QuestionnaireResponseRepository:
         payload: QuestionnaireResponsePatchSchema,
         updated_by: Optional[str] = None,
     ) -> Optional[QuestionnaireResponseModel]:
-        """Partial update — only status and authored are patchable."""
         async with self.session_factory() as session:
             stmt = select(QuestionnaireResponseModel).where(
                 QuestionnaireResponseModel.questionnaire_response_id

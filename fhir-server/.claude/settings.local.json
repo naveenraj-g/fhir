@@ -6,7 +6,15 @@
       "Bash(wc:*)",
       "Bash(find:*)",
       "Read(//tmp/**)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(uv run python -c ' *)",
+      "Bash(uv run *)",
+      "Bash(curl -s http://localhost:8000/openapi.json)",
+      "Bash(python -c ' *)",
+      "Bash(Start-Sleep -Seconds 5)",
+      "Bash(Invoke-WebRequest -Uri \"http://localhost:8000/openapi.json\" -UseBasicParsing)",
+      "Bash(Select-Object -First 5)",
+      "Bash(python3 -c \"import json,sys; spec=json.load\\(sys.stdin\\); qr_post=spec['paths'].get\\('/api/fhir/v1/questionnaire-responses/',{}\\); print\\('POST requestBody keys:', list\\(qr_post.get\\('post',{}\\).get\\('requestBody',{}\\).get\\('content',{}\\).get\\('application/json',{}\\).get\\('schema',{}\\).get\\('properties',{}\\).keys\\(\\)\\)[:10]\\)\")"
     ]
   }
 }

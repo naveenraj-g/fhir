@@ -1,5 +1,5 @@
 from fastapi import Depends, HTTPException, Path, status
-from app.models.patient import PatientModel
+from app.models.patient.patient import PatientModel
 from app.services.patient_service import PatientService
 from app.di.dependencies.patient import get_patient_service
 

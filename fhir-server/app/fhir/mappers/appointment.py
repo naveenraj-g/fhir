@@ -6,36 +6,165 @@ if TYPE_CHECKING:
     from app.models.appointment.appointment import AppointmentModel
 
 
-def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
-    """
-    Convert AppointmentModel (with relationships loaded) to a FHIR R4 Appointment dict.
+def _cc(system, code, display, text) -> dict | None:
+    """Build a CodeableConcept dict; return None if all fields are empty."""
+    coding = {k: v for k, v in {"system": system, "code": code, "display": display}.items() if v}
+    result: dict = {}
+    if coding:
+        result["coding"] = [coding]
+    if text:
+        result["text"] = text
+    return result if result else None
 
-    Rules:
-      - Uses appointment_id (public) as the FHIR logical id — never the internal PK.
-      - priority is an unsignedInt in FHIR R4 (not an object).
-      - subject and participant actor are reconstructed from stored type enum + public ID.
-      - None / empty values are stripped from the output.
-    """
+
+def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
     result: dict = {
         "resourceType": "Appointment",
         "id": str(appointment.appointment_id),
-        "status": appointment.status,
+        "status": appointment.status.value if hasattr(appointment.status, "value") else appointment.status,
     }
+
+    # identifier
+    if appointment.identifiers:
+        id_list = []
+        for i in appointment.identifiers:
+            entry: dict = {}
+            if i.use:
+                entry["use"] = i.use
+            type_cc = _cc(i.type_system, i.type_code, i.type_display, i.type_text)
+            if type_cc:
+                entry["type"] = type_cc
+            if i.system:
+                entry["system"] = i.system
+            if i.value:
+                entry["value"] = i.value
+            if i.period_start or i.period_end:
+                entry["period"] = {k: v for k, v in {
+                    "start": i.period_start.isoformat() if i.period_start else None,
+                    "end": i.period_end.isoformat() if i.period_end else None,
+                }.items() if v}
+            if i.assigner:
+                entry["assigner"] = {"display": i.assigner}
+            if entry:
+                id_list.append(entry)
+        if id_list:
+            result["identifier"] = id_list
+
+    # cancelationReason (R4: single 'l')
+    cancelation_cc = _cc(
+        appointment.cancelation_reason_system,
+        appointment.cancelation_reason_code,
+        appointment.cancelation_reason_display,
+        appointment.cancelation_reason_text,
+    )
+    if cancelation_cc:
+        result["cancelationReason"] = cancelation_cc
+
+    # serviceCategory
+    if appointment.service_categories:
+        result["serviceCategory"] = [
+            cc for sc in appointment.service_categories
+            if (cc := _cc(sc.coding_system, sc.coding_code, sc.coding_display, sc.text))
+        ]
+
+    # serviceType
+    if appointment.service_types:
+        result["serviceType"] = [
+            cc for st in appointment.service_types
+            if (cc := _cc(st.coding_system, st.coding_code, st.coding_display, st.text))
+        ]
+
+    # specialty
+    if appointment.specialties:
+        result["specialty"] = [
+            cc for sp in appointment.specialties
+            if (cc := _cc(sp.coding_system, sp.coding_code, sp.coding_display, sp.text))
+        ]
+
+    # appointmentType
+    appt_type_cc = _cc(
+        appointment.appointment_type_system,
+        appointment.appointment_type_code,
+        appointment.appointment_type_display,
+        appointment.appointment_type_text,
+    )
+    if appt_type_cc:
+        result["appointmentType"] = appt_type_cc
+
+    # reasonCode
+    if appointment.reason_codes:
+        result["reasonCode"] = [
+            cc for rc in appointment.reason_codes
+            if (cc := _cc(rc.coding_system, rc.coding_code, rc.coding_display, rc.text))
+        ]
+
+    # reasonReference
+    if appointment.reason_references:
+        refs = []
+        for rr in appointment.reason_references:
+            if rr.reference_type and rr.reference_id:
+                ref: dict = {"reference": f"{rr.reference_type}/{rr.reference_id}"}
+                if rr.reference_display:
+                    ref["display"] = rr.reference_display
+                refs.append(ref)
+        if refs:
+            result["reasonReference"] = refs
+
+    # supportingInformation
+    if appointment.supporting_informations:
+        refs = []
+        for si in appointment.supporting_informations:
+            if si.reference_type and si.reference_id:
+                ref = {"reference": f"{si.reference_type}/{si.reference_id}"}
+                if si.reference_display:
+                    ref["display"] = si.reference_display
+                refs.append(ref)
+        if refs:
+            result["supportingInformation"] = refs
+
+    if appointment.priority_value is not None:
+        result["priority"] = appointment.priority_value
+
+    if appointment.description:
+        result["description"] = appointment.description
+
+    # slot
+    if appointment.slots:
+        result["slot"] = [
+            {k: v for k, v in {
+                "reference": f"Slot/{s.slot_id}" if s.slot_id else None,
+                "display": s.slot_display,
+            }.items() if v}
+            for s in appointment.slots
+        ]
+
+    # basedOn
+    if appointment.based_ons:
+        result["basedOn"] = [
+            {k: v for k, v in {
+                "reference": f"ServiceRequest/{b.service_request_id}" if b.service_request_id else None,
+                "display": b.service_request_display,
+            }.items() if v}
+            for b in appointment.based_ons
+        ]
+
+    if appointment.created:
+        result["created"] = appointment.created.isoformat()
+    if appointment.comment:
+        result["comment"] = appointment.comment
+    if appointment.patient_instruction:
+        result["patientInstruction"] = appointment.patient_instruction
 
     # subject
     if appointment.subject_type and appointment.subject_id:
-        subject: dict = {
-            "reference": f"{appointment.subject_type.value}/{appointment.subject_id}"
-        }
+        subj: dict = {"reference": f"{appointment.subject_type.value}/{appointment.subject_id}"}
         if appointment.subject_display:
-            subject["display"] = appointment.subject_display
-        result["subject"] = subject
+            subj["display"] = appointment.subject_display
+        result["subject"] = subj
 
-    # encounter (loaded via relationship → use public encounter_id)
+    # encounter
     if appointment.encounter and appointment.encounter.encounter_id:
-        result["encounter"] = {
-            "reference": f"Encounter/{appointment.encounter.encounter_id}"
-        }
+        result["encounter"] = {"reference": f"Encounter/{appointment.encounter.encounter_id}"}
 
     if appointment.start:
         result["start"] = appointment.start.isoformat()
@@ -43,117 +172,55 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
         result["end"] = appointment.end.isoformat()
     if appointment.minutes_duration is not None:
         result["minutesDuration"] = appointment.minutes_duration
-    if appointment.created:
-        result["created"] = appointment.created.isoformat()
-    if appointment.description:
-        result["description"] = appointment.description
-    if appointment.patient_instruction:
-        result["patientInstruction"] = appointment.patient_instruction
-    if appointment.comment:
-        result["comment"] = appointment.comment
-    if appointment.priority_value is not None:
-        result["priority"] = appointment.priority_value  # R4: unsignedInt
 
-    # cancellation
-    if appointment.cancellation_reason:
-        result["cancellationReason"] = {"text": appointment.cancellation_reason}
-    if appointment.cancellation_date:
-        result["cancellationDate"] = appointment.cancellation_date.isoformat()
-
-    # Coded concept fields
-    if appointment.service_category_code:
-        coding = {k: v for k, v in {
-            "code": appointment.service_category_code,
-            "display": appointment.service_category_display,
-        }.items() if v}
-        result["serviceCategory"] = [{"coding": [coding]}]
-
-    if appointment.service_type_code:
-        coding = {k: v for k, v in {
-            "code": appointment.service_type_code,
-            "display": appointment.service_type_display,
-        }.items() if v}
-        result["serviceType"] = [{"coding": [coding]}]
-
-    if appointment.specialty_code:
-        coding = {k: v for k, v in {
-            "code": appointment.specialty_code,
-            "display": appointment.specialty_display,
-        }.items() if v}
-        result["specialty"] = [{"coding": [coding]}]
-
-    if appointment.appointment_type_code:
-        coding = {k: v for k, v in {
-            "code": appointment.appointment_type_code,
-            "display": appointment.appointment_type_display,
-        }.items() if v}
-        result["appointmentType"] = {"coding": [coding]}
-
-    # reasonCode (FHIR R4)
-    if appointment.reason_codes:
-        reason_list = []
-        for r in appointment.reason_codes:
-            entry: dict = {}
-            coding = {k: v for k, v in {
-                "system": r.coding_system,
-                "code": r.coding_code,
-                "display": r.coding_display,
+    # requestedPeriod
+    if appointment.requested_periods:
+        periods = []
+        for rp in appointment.requested_periods:
+            period = {k: v for k, v in {
+                "start": rp.period_start.isoformat() if rp.period_start else None,
+                "end": rp.period_end.isoformat() if rp.period_end else None,
             }.items() if v}
-            if coding:
-                entry["coding"] = [coding]
-            if r.text:
-                entry["text"] = r.text
-            if entry:
-                reason_list.append(entry)
-        if reason_list:
-            result["reasonCode"] = reason_list
+            if period:
+                periods.append(period)
+        if periods:
+            result["requestedPeriod"] = periods
 
-    # participant (required by FHIR spec)
+    # participant (1..*)
     participant_list = []
     for p in appointment.participants:
         entry: dict = {"status": p.status}
 
-        if p.actor_reference_type and p.actor_reference_id:
+        if p.types:
+            type_list = []
+            for t in p.types:
+                cc = _cc(t.coding_system, t.coding_code, t.coding_display, t.text)
+                if cc:
+                    type_list.append(cc)
+            if type_list:
+                entry["type"] = type_list
+
+        if p.actor_type and p.actor_id:
             actor: dict = {
-                "reference": f"{p.actor_reference_type.value}/{p.actor_reference_id}"
+                "reference": f"{p.actor_type.value}/{p.actor_id}"
             }
             if p.actor_display:
                 actor["display"] = p.actor_display
             entry["actor"] = actor
 
-        if p.type_code or p.type_text:
-            type_entry: dict = {}
-            if p.type_code:
-                type_entry["coding"] = [{k: v for k, v in {
-                    "code": p.type_code,
-                    "display": p.type_display,
-                }.items() if v}]
-            if p.type_text:
-                type_entry["text"] = p.type_text
-            entry["type"] = [type_entry]
-
         if p.required:
             entry["required"] = p.required
 
         if p.period_start or p.period_end:
-            period: dict = {}
-            if p.period_start:
-                period["start"] = p.period_start.isoformat()
-            if p.period_end:
-                period["end"] = p.period_end.isoformat()
-            entry["period"] = period
+            entry["period"] = {k: v for k, v in {
+                "start": p.period_start.isoformat() if p.period_start else None,
+                "end": p.period_end.isoformat() if p.period_end else None,
+            }.items() if v}
 
         participant_list.append(entry)
-
     result["participant"] = participant_list
 
-    # recurrenceId / occurrenceChanged (on the instance, not the template)
-    if appointment.recurrence_id is not None:
-        result["recurrenceId"] = appointment.recurrence_id
-    if appointment.occurrence_changed is not None:
-        result["occurrenceChanged"] = appointment.occurrence_changed
-
-    # recurrenceTemplate
+    # recurrenceTemplate (operational extension)
     rt = appointment.recurrence_template
     if rt:
         rt_data: dict = {
@@ -181,20 +248,14 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
         if rt.excluding_dates:
             rt_data["excludingDate"] = [d for d in rt.excluding_dates.split(",") if d]
         if rt.excluding_recurrence_ids:
-            rt_data["excludingRecurrenceId"] = [
-                int(i) for i in rt.excluding_recurrence_ids.split(",") if i
-            ]
+            rt_data["excludingRecurrenceId"] = [int(i) for i in rt.excluding_recurrence_ids.split(",") if i]
 
-        weekly_fields = {
-            "monday": rt.weekly_monday,
-            "tuesday": rt.weekly_tuesday,
-            "wednesday": rt.weekly_wednesday,
-            "thursday": rt.weekly_thursday,
-            "friday": rt.weekly_friday,
-            "saturday": rt.weekly_saturday,
+        weekly = {k: v for k, v in {
+            "monday": rt.weekly_monday, "tuesday": rt.weekly_tuesday,
+            "wednesday": rt.weekly_wednesday, "thursday": rt.weekly_thursday,
+            "friday": rt.weekly_friday, "saturday": rt.weekly_saturday,
             "sunday": rt.weekly_sunday,
-        }
-        weekly = {k: v for k, v in weekly_fields.items() if v is not None}
+        }.items() if v is not None}
         if rt.weekly_week_interval is not None:
             weekly["weekInterval"] = rt.weekly_week_interval
         if weekly:
@@ -206,13 +267,11 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
                 monthly["dayOfMonth"] = rt.monthly_day_of_month
             if rt.monthly_nth_week_code:
                 monthly["nthWeekOfMonth"] = {k: v for k, v in {
-                    "code": rt.monthly_nth_week_code,
-                    "display": rt.monthly_nth_week_display,
+                    "code": rt.monthly_nth_week_code, "display": rt.monthly_nth_week_display,
                 }.items() if v}
             if rt.monthly_day_of_week_code:
                 monthly["dayOfWeek"] = {k: v for k, v in {
-                    "code": rt.monthly_day_of_week_code,
-                    "display": rt.monthly_day_of_week_display,
+                    "code": rt.monthly_day_of_week_code, "display": rt.monthly_day_of_week_display,
                 }.items() if v}
             rt_data["monthlyTemplate"] = monthly
 
@@ -225,15 +284,19 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
 
 
 def to_plain_appointment(appointment: "AppointmentModel") -> dict:
-    """
-    Return the appointment as a flat snake_case JSON object — no FHIR conventions.
-    Uses public appointment_id as `id`.
-    """
     result: dict = {
         "id": appointment.appointment_id,
         "user_id": appointment.user_id,
         "org_id": appointment.org_id,
-        "status": appointment.status.value if appointment.status else None,
+        "status": appointment.status.value if hasattr(appointment.status, "value") else appointment.status,
+        "cancelation_reason_system": appointment.cancelation_reason_system,
+        "cancelation_reason_code": appointment.cancelation_reason_code,
+        "cancelation_reason_display": appointment.cancelation_reason_display,
+        "cancelation_reason_text": appointment.cancelation_reason_text,
+        "appointment_type_system": appointment.appointment_type_system,
+        "appointment_type_code": appointment.appointment_type_code,
+        "appointment_type_display": appointment.appointment_type_display,
+        "appointment_type_text": appointment.appointment_type_text,
         "subject_type": appointment.subject_type.value if appointment.subject_type else None,
         "subject_id": appointment.subject_id,
         "subject_display": appointment.subject_display,
@@ -249,47 +312,111 @@ def to_plain_appointment(appointment: "AppointmentModel") -> dict:
         "description": appointment.description,
         "comment": appointment.comment,
         "patient_instruction": appointment.patient_instruction,
-        "priority": appointment.priority_value,
-        "cancellation_reason": appointment.cancellation_reason,
-        "cancellation_date": appointment.cancellation_date.isoformat() if appointment.cancellation_date else None,
-        "service_category_code": appointment.service_category_code,
-        "service_category_display": appointment.service_category_display,
-        "service_type_code": appointment.service_type_code,
-        "service_type_display": appointment.service_type_display,
-        "specialty_code": appointment.specialty_code,
-        "specialty_display": appointment.specialty_display,
-        "appointment_type_code": appointment.appointment_type_code,
-        "appointment_type_display": appointment.appointment_type_display,
-        "recurrence_id": appointment.recurrence_id,
-        "occurrence_changed": appointment.occurrence_changed,
+        "priority_value": appointment.priority_value,
+        "created_at": appointment.created_at.isoformat() if appointment.created_at else None,
+        "updated_at": appointment.updated_at.isoformat() if appointment.updated_at else None,
+        "created_by": appointment.created_by,
+        "updated_by": appointment.updated_by,
     }
+
+    if appointment.identifiers:
+        result["identifier"] = [
+            {
+                "use": i.use,
+                "type_system": i.type_system,
+                "type_code": i.type_code,
+                "type_display": i.type_display,
+                "type_text": i.type_text,
+                "system": i.system,
+                "value": i.value,
+                "period_start": i.period_start.isoformat() if i.period_start else None,
+                "period_end": i.period_end.isoformat() if i.period_end else None,
+                "assigner": i.assigner,
+            }
+            for i in appointment.identifiers
+        ]
+
+    if appointment.service_categories:
+        result["service_category"] = [
+            {"coding_system": sc.coding_system, "coding_code": sc.coding_code,
+             "coding_display": sc.coding_display, "text": sc.text}
+            for sc in appointment.service_categories
+        ]
+
+    if appointment.service_types:
+        result["service_type"] = [
+            {"coding_system": st.coding_system, "coding_code": st.coding_code,
+             "coding_display": st.coding_display, "text": st.text}
+            for st in appointment.service_types
+        ]
+
+    if appointment.specialties:
+        result["specialty"] = [
+            {"coding_system": sp.coding_system, "coding_code": sp.coding_code,
+             "coding_display": sp.coding_display, "text": sp.text}
+            for sp in appointment.specialties
+        ]
 
     if appointment.reason_codes:
         result["reason_code"] = [
-            {
-                "coding_system": r.coding_system,
-                "coding_code": r.coding_code,
-                "coding_display": r.coding_display,
-                "text": r.text,
-            }
-            for r in appointment.reason_codes
+            {"coding_system": rc.coding_system, "coding_code": rc.coding_code,
+             "coding_display": rc.coding_display, "text": rc.text}
+            for rc in appointment.reason_codes
+        ]
+
+    if appointment.reason_references:
+        result["reason_reference"] = [
+            {"reference_type": rr.reference_type, "reference_id": rr.reference_id,
+             "reference_display": rr.reference_display}
+            for rr in appointment.reason_references
+        ]
+
+    if appointment.supporting_informations:
+        result["supporting_information"] = [
+            {"reference_type": si.reference_type, "reference_id": si.reference_id,
+             "reference_display": si.reference_display}
+            for si in appointment.supporting_informations
+        ]
+
+    if appointment.slots:
+        result["slot"] = [
+            {"slot_id": s.slot_id, "slot_display": s.slot_display}
+            for s in appointment.slots
+        ]
+
+    if appointment.based_ons:
+        result["based_on"] = [
+            {"service_request_id": b.service_request_id, "service_request_display": b.service_request_display}
+            for b in appointment.based_ons
         ]
 
     if appointment.participants:
-        result["participant"] = [
-            {
-                "actor_type": p.actor_reference_type.value if p.actor_reference_type else None,
-                "actor_id": p.actor_reference_id,
+        result["participant"] = []
+        for p in appointment.participants:
+            entry = {
+                "actor_type": p.actor_type.value if p.actor_type else None,
+                "actor_id": p.actor_id,
                 "actor_display": p.actor_display,
-                "type_code": p.type_code,
-                "type_display": p.type_display,
-                "type_text": p.type_text,
                 "required": p.required,
                 "status": p.status,
                 "period_start": p.period_start.isoformat() if p.period_start else None,
                 "period_end": p.period_end.isoformat() if p.period_end else None,
             }
-            for p in appointment.participants
+            if p.types:
+                entry["types"] = [
+                    {"coding_system": t.coding_system, "coding_code": t.coding_code,
+                     "coding_display": t.coding_display, "text": t.text}
+                    for t in p.types
+                ]
+            result["participant"].append(entry)
+
+    if appointment.requested_periods:
+        result["requested_period"] = [
+            {
+                "period_start": rp.period_start.isoformat() if rp.period_start else None,
+                "period_end": rp.period_end.isoformat() if rp.period_end else None,
+            }
+            for rp in appointment.requested_periods
         ]
 
     rt = appointment.recurrence_template
@@ -310,19 +437,15 @@ def to_plain_appointment(appointment: "AppointmentModel") -> dict:
             ),
         }
 
-        weekly_fields = {k: v for k, v in {
-            "monday": rt.weekly_monday,
-            "tuesday": rt.weekly_tuesday,
-            "wednesday": rt.weekly_wednesday,
-            "thursday": rt.weekly_thursday,
-            "friday": rt.weekly_friday,
-            "saturday": rt.weekly_saturday,
-            "sunday": rt.weekly_sunday,
-            "week_interval": rt.weekly_week_interval,
+        weekly = {k: v for k, v in {
+            "monday": rt.weekly_monday, "tuesday": rt.weekly_tuesday,
+            "wednesday": rt.weekly_wednesday, "thursday": rt.weekly_thursday,
+            "friday": rt.weekly_friday, "saturday": rt.weekly_saturday,
+            "sunday": rt.weekly_sunday, "week_interval": rt.weekly_week_interval,
         }.items() if v is not None}
-        rt_plain["weekly_template"] = weekly_fields if weekly_fields else None
+        rt_plain["weekly_template"] = weekly if weekly else None
 
-        monthly_fields = {k: v for k, v in {
+        monthly = {k: v for k, v in {
             "day_of_month": rt.monthly_day_of_month,
             "nth_week_code": rt.monthly_nth_week_code,
             "nth_week_display": rt.monthly_nth_week_display,
@@ -330,11 +453,10 @@ def to_plain_appointment(appointment: "AppointmentModel") -> dict:
             "day_of_week_display": rt.monthly_day_of_week_display,
             "month_interval": rt.monthly_month_interval,
         }.items() if v is not None}
-        rt_plain["monthly_template"] = monthly_fields if monthly_fields else None
+        rt_plain["monthly_template"] = monthly if monthly else None
 
         rt_plain["yearly_template"] = (
-            {"year_interval": rt.yearly_year_interval}
-            if rt.yearly_year_interval is not None else None
+            {"year_interval": rt.yearly_year_interval} if rt.yearly_year_interval is not None else None
         )
 
         result["recurrence_template"] = {k: v for k, v in rt_plain.items() if v is not None}

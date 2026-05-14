@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Tuple
+from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status as http_status
 from sqlalchemy import func
@@ -9,8 +9,18 @@ from sqlalchemy.orm import selectinload
 
 from app.models.appointment.appointment import (
     AppointmentModel,
-    AppointmentParticipant,
+    AppointmentIdentifier,
+    AppointmentServiceCategory,
+    AppointmentServiceType,
+    AppointmentSpecialty,
     AppointmentReasonCode,
+    AppointmentReasonReference,
+    AppointmentSupportingInformation,
+    AppointmentSlot,
+    AppointmentBasedOn,
+    AppointmentParticipant,
+    AppointmentParticipantType,
+    AppointmentRequestedPeriod,
     AppointmentRecurrenceTemplate,
 )
 from app.models.appointment.enums import AppointmentParticipantActorType
@@ -21,30 +31,50 @@ from app.core.references import parse_reference
 
 
 def _with_relationships(stmt):
-    """Attach eager-load options for all appointment sub-resources."""
     return stmt.options(
         selectinload(AppointmentModel.encounter),
-        selectinload(AppointmentModel.participants),
+        selectinload(AppointmentModel.identifiers),
+        selectinload(AppointmentModel.service_categories),
+        selectinload(AppointmentModel.service_types),
+        selectinload(AppointmentModel.specialties),
         selectinload(AppointmentModel.reason_codes),
+        selectinload(AppointmentModel.reason_references),
+        selectinload(AppointmentModel.supporting_informations),
+        selectinload(AppointmentModel.slots),
+        selectinload(AppointmentModel.based_ons),
+        selectinload(AppointmentModel.participants).selectinload(AppointmentParticipant.types),
+        selectinload(AppointmentModel.requested_periods),
         selectinload(AppointmentModel.recurrence_template),
     )
+
+
+def _parse_open_ref(ref: str) -> Tuple[str, int]:
+    """Parse 'ResourceType/id' into (type_str, id_int) without enum validation."""
+    parts = ref.split("/", 1)
+    if len(parts) != 2:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid reference format: '{ref}'. Expected 'ResourceType/id'.",
+        )
+    try:
+        return parts[0], int(parts[1])
+    except ValueError:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid reference id in: '{ref}'. Id must be an integer.",
+        )
 
 
 class AppointmentRepository:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         self.session_factory = session_factory
 
-    # ── Read ──────────────────────────────────────────────────────────────
+    # ── Read ──────────────────────────────────────────────────────────────────
 
-    async def get_by_appointment_id(
-        self, appointment_id: int
-    ) -> Optional[AppointmentModel]:
-        """Fetch by public appointment_id with all sub-resources loaded."""
+    async def get_by_appointment_id(self, appointment_id: int) -> Optional[AppointmentModel]:
         async with self.session_factory() as session:
             stmt = _with_relationships(
-                select(AppointmentModel).where(
-                    AppointmentModel.appointment_id == appointment_id
-                )
+                select(AppointmentModel).where(AppointmentModel.appointment_id == appointment_id)
             )
             result = await session.execute(stmt)
             return result.scalars().first()
@@ -119,7 +149,7 @@ class AppointmentRepository:
             )).scalars().all())
         return rows, total
 
-    # ── Write ─────────────────────────────────────────────────────────────
+    # ── Write ─────────────────────────────────────────────────────────────────
 
     async def create(
         self,
@@ -128,16 +158,17 @@ class AppointmentRepository:
         org_id: Optional[str] = None,
         created_by: Optional[str] = None,
     ) -> AppointmentModel:
-        subject_type, subject_id = parse_reference(payload.subject, SubjectReferenceType) if payload.subject else (None, None)
+        subject_type, subject_id = (
+            parse_reference(payload.subject, SubjectReferenceType)
+            if payload.subject else (None, None)
+        )
 
         async with self.session_factory() as session:
-            # Resolve public encounter_id → internal encounter PK
+            # Resolve public encounter_id → internal PK
             internal_encounter_id: Optional[int] = None
             if payload.encounter_id is not None:
                 enc_result = await session.execute(
-                    select(EncounterModel.id).where(
-                        EncounterModel.encounter_id == payload.encounter_id
-                    )
+                    select(EncounterModel.id).where(EncounterModel.encounter_id == payload.encounter_id)
                 )
                 internal_encounter_id = enc_result.scalar_one_or_none()
                 if internal_encounter_id is None:
@@ -151,6 +182,14 @@ class AppointmentRepository:
                 org_id=org_id,
                 created_by=created_by,
                 status=payload.status,
+                cancelation_reason_system=payload.cancelation_reason_system,
+                cancelation_reason_code=payload.cancelation_reason_code,
+                cancelation_reason_display=payload.cancelation_reason_display,
+                cancelation_reason_text=payload.cancelation_reason_text,
+                appointment_type_system=payload.appointment_type_system,
+                appointment_type_code=payload.appointment_type_code,
+                appointment_type_display=payload.appointment_type_display,
+                appointment_type_text=payload.appointment_type_text,
                 subject_type=subject_type,
                 subject_id=subject_id,
                 subject_display=payload.subject_display,
@@ -163,49 +202,144 @@ class AppointmentRepository:
                 comment=payload.comment,
                 patient_instruction=payload.patient_instruction,
                 priority_value=payload.priority_value,
-                service_category_code=payload.service_category_code,
-                service_category_display=payload.service_category_display,
-                service_type_code=payload.service_type_code,
-                service_type_display=payload.service_type_display,
-                specialty_code=payload.specialty_code,
-                specialty_display=payload.specialty_display,
-                appointment_type_code=payload.appointment_type_code,
-                appointment_type_display=payload.appointment_type_display,
-                cancellation_reason=payload.cancellation_reason,
-                cancellation_date=payload.cancellation_date,
-                recurrence_id=payload.recurrence_id,
-                occurrence_changed=payload.occurrence_changed,
             )
 
-            # reason codes
-            if payload.reason_codes:
-                for r in payload.reason_codes:
-                    appointment.reason_codes.append(
-                        AppointmentReasonCode(
-                            coding_system=r.coding_system,
-                            coding_code=r.coding_code,
-                            coding_display=r.coding_display,
-                            text=r.text,
-                        )
-                    )
+            # identifier
+            if payload.identifier:
+                for i in payload.identifier:
+                    appointment.identifiers.append(AppointmentIdentifier(
+                        org_id=org_id,
+                        use=i.use,
+                        type_system=i.type_system,
+                        type_code=i.type_code,
+                        type_display=i.type_display,
+                        type_text=i.type_text,
+                        system=i.system,
+                        value=i.value,
+                        period_start=i.period_start,
+                        period_end=i.period_end,
+                        assigner=i.assigner,
+                    ))
+
+            # serviceCategory
+            if payload.service_category:
+                for sc in payload.service_category:
+                    appointment.service_categories.append(AppointmentServiceCategory(
+                        org_id=org_id,
+                        coding_system=sc.coding_system,
+                        coding_code=sc.coding_code,
+                        coding_display=sc.coding_display,
+                        text=sc.text,
+                    ))
+
+            # serviceType
+            if payload.service_type:
+                for st in payload.service_type:
+                    appointment.service_types.append(AppointmentServiceType(
+                        org_id=org_id,
+                        coding_system=st.coding_system,
+                        coding_code=st.coding_code,
+                        coding_display=st.coding_display,
+                        text=st.text,
+                    ))
+
+            # specialty
+            if payload.specialty:
+                for sp in payload.specialty:
+                    appointment.specialties.append(AppointmentSpecialty(
+                        org_id=org_id,
+                        coding_system=sp.coding_system,
+                        coding_code=sp.coding_code,
+                        coding_display=sp.coding_display,
+                        text=sp.text,
+                    ))
+
+            # reasonCode
+            if payload.reason_code:
+                for rc in payload.reason_code:
+                    appointment.reason_codes.append(AppointmentReasonCode(
+                        org_id=org_id,
+                        coding_system=rc.coding_system,
+                        coding_code=rc.coding_code,
+                        coding_display=rc.coding_display,
+                        text=rc.text,
+                    ))
+
+            # reasonReference
+            if payload.reason_reference:
+                for rr in payload.reason_reference:
+                    ref_type, ref_id = _parse_open_ref(rr.reference)
+                    appointment.reason_references.append(AppointmentReasonReference(
+                        org_id=org_id,
+                        reference_type=ref_type,
+                        reference_id=ref_id,
+                        reference_display=rr.reference_display,
+                    ))
+
+            # supportingInformation
+            if payload.supporting_information:
+                for si in payload.supporting_information:
+                    ref_type, ref_id = _parse_open_ref(si.reference)
+                    appointment.supporting_informations.append(AppointmentSupportingInformation(
+                        org_id=org_id,
+                        reference_type=ref_type,
+                        reference_id=ref_id,
+                        reference_display=si.reference_display,
+                    ))
+
+            # slot
+            if payload.slot:
+                for s in payload.slot:
+                    appointment.slots.append(AppointmentSlot(
+                        org_id=org_id,
+                        slot_id=s.slot_id,
+                        slot_display=s.slot_display,
+                    ))
+
+            # basedOn
+            if payload.based_on:
+                for b in payload.based_on:
+                    appointment.based_ons.append(AppointmentBasedOn(
+                        org_id=org_id,
+                        service_request_id=b.service_request_id,
+                        service_request_display=b.service_request_display,
+                    ))
 
             # participants
             for p in payload.participant:
-                actor_type, actor_id = parse_reference(p.actor, AppointmentParticipantActorType) if p.actor else (None, None)
-                appointment.participants.append(
-                    AppointmentParticipant(
-                        actor_reference_type=actor_type,
-                        actor_reference_id=actor_id,
-                        actor_display=p.actor_display,
-                        type_code=p.type_code,
-                        type_display=p.type_display,
-                        type_text=p.type_text,
-                        required=p.required,
-                        status=p.status,
-                        period_start=p.period_start,
-                        period_end=p.period_end,
-                    )
+                actor_type, actor_id = (
+                    parse_reference(p.actor, AppointmentParticipantActorType)
+                    if p.actor else (None, None)
                 )
+                participant = AppointmentParticipant(
+                    org_id=org_id,
+                    actor_type=actor_type,
+                    actor_id=actor_id,
+                    actor_display=p.actor_display,
+                    required=p.required.value if p.required else None,
+                    status=p.status.value if p.status else "needs-action",
+                    period_start=p.period_start,
+                    period_end=p.period_end,
+                )
+                if p.types:
+                    for t in p.types:
+                        participant.types.append(AppointmentParticipantType(
+                            org_id=org_id,
+                            coding_system=t.coding_system,
+                            coding_code=t.coding_code,
+                            coding_display=t.coding_display,
+                            text=t.text,
+                        ))
+                appointment.participants.append(participant)
+
+            # requestedPeriod
+            if payload.requested_period:
+                for rp in payload.requested_period:
+                    appointment.requested_periods.append(AppointmentRequestedPeriod(
+                        org_id=org_id,
+                        period_start=rp.period_start,
+                        period_end=rp.period_end,
+                    ))
 
             # recurrenceTemplate
             if payload.recurrence_template:
@@ -249,16 +383,16 @@ class AppointmentRepository:
         return await self.get_by_appointment_id(appointment.appointment_id)
 
     async def patch(
-        self, appointment_id: int, payload: AppointmentPatchSchema, updated_by: Optional[str] = None
+        self,
+        appointment_id: int,
+        payload: AppointmentPatchSchema,
+        updated_by: Optional[str] = None,
     ) -> Optional[AppointmentModel]:
-        """Partial update — only fields explicitly set in payload are written."""
         async with self.session_factory() as session:
-            stmt = select(AppointmentModel).where(
-                AppointmentModel.appointment_id == appointment_id
+            result = await session.execute(
+                select(AppointmentModel).where(AppointmentModel.appointment_id == appointment_id)
             )
-            result = await session.execute(stmt)
             appointment = result.scalars().first()
-
             if not appointment:
                 return None
 
@@ -279,12 +413,10 @@ class AppointmentRepository:
 
     async def delete(self, appointment_id: int) -> bool:
         async with self.session_factory() as session:
-            stmt = select(AppointmentModel).where(
-                AppointmentModel.appointment_id == appointment_id
+            result = await session.execute(
+                select(AppointmentModel).where(AppointmentModel.appointment_id == appointment_id)
             )
-            result = await session.execute(stmt)
             appointment = result.scalars().first()
-
             if not appointment:
                 return False
 

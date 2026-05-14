@@ -15,8 +15,6 @@ class EncounterService:
         self.repository = repository
         self.patient_service = patient_service
 
-    # ── Formatters (called by route layer after content negotiation) ──────
-
     def _to_fhir(self, encounter: EncounterModel) -> dict:
         return to_fhir_encounter(encounter)
 
@@ -25,10 +23,7 @@ class EncounterService:
 
     # ── Read ──────────────────────────────────────────────────────────────
 
-    async def get_raw_by_encounter_id(
-        self, encounter_id: int
-    ) -> Optional[EncounterModel]:
-        """Raw ORM model — used by the auth ownership dependency."""
+    async def get_raw_by_encounter_id(self, encounter_id: int) -> Optional[EncounterModel]:
         return await self.repository.get_by_encounter_id(encounter_id)
 
     async def get_encounter(self, encounter_id: int) -> Optional[EncounterModel]:

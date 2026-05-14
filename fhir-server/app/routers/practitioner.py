@@ -17,10 +17,13 @@ from app.schemas.fhir import (
 from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
+    PractitionerNameCreate,
     PractitionerIdentifierCreate,
     PractitionerTelecomCreate,
     PractitionerAddressCreate,
+    PractitionerPhotoCreate,
     PractitionerQualificationCreate,
+    PractitionerCommunicationCreate,
 )
 from app.services.practitioner_service import PractitionerService
 
@@ -38,7 +41,6 @@ _ERR_AUTH = {
 _ERR_NOT_FOUND = {404: {"description": "Practitioner not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
-# Pre-computed inline schemas (evaluated once at import time)
 _SINGLE_200 = {
     200: {
         "content": {
@@ -69,9 +71,10 @@ _LIST_200 = {
     operation_id="create_practitioner",
     summary="Create a new Practitioner resource",
     description=(
-        "Creates a Practitioner with core demographics (name, birth date, gender, active status, communication language). "
-        "The caller's `sub` claim (user ID) and `activeOrganizationId` from the JWT are automatically bound to the record. "
-        "Identifiers, telecom, addresses, and qualifications must be added after creation via the dedicated sub-resource endpoints. "
+        "Creates a Practitioner with core demographics (active status, gender, birth date, role, specialty). "
+        "The caller's `sub` claim and `activeOrganizationId` from the JWT are automatically bound to the record. "
+        "Names, identifiers, telecom, addresses, photos, qualifications, and communications must be added "
+        "via the dedicated sub-resource endpoints after creation. "
         + _CONTENT_NEG
     ),
     response_description="The newly created Practitioner resource",
@@ -138,16 +141,11 @@ async def get_my_practitioner_profile(
     summary="Retrieve a Practitioner resource by public practitioner_id",
     description=(
         "Fetches a single Practitioner by its public integer `practitioner_id`. "
-        "Access is subject to organization-scoped authorization — the practitioner must belong to the caller's active organization. "
+        "Access is subject to organization-scoped authorization. "
         + _CONTENT_NEG
     ),
     response_description="The requested Practitioner resource",
-    responses={
-        **_SINGLE_200,
-        **_ERR_AUTH,
-        403: {"description": "Forbidden — caller lacks `practitioner:read` permission or the practitioner belongs to a different organization"},
-        **_ERR_NOT_FOUND,
-    },
+    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def get_practitioner(
     request: Request,
@@ -171,12 +169,13 @@ async def get_practitioner(
     summary="Partially update a Practitioner resource",
     description=(
         "Only supplied fields are written; omitted fields are left unchanged. "
-        "Patchable fields include name, birth date, gender, active status, and communication language. "
-        "To modify identifiers, telecom, addresses, or qualifications use the dedicated sub-resource endpoints. "
+        "Patchable fields: active, gender, birth_date, deceased_boolean, deceased_datetime, role, specialty. "
+        "To modify names, identifiers, telecom, addresses, photos, qualifications, or communications, "
+        "use the dedicated sub-resource endpoints. "
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_practitioner(
     payload: PractitionerPatchSchema,
@@ -204,8 +203,9 @@ async def patch_practitioner(
     operation_id="list_practitioners",
     summary="List all Practitioner resources",
     description=(
-        "Returns a paginated list of Practitioner resources. "
-        "Filter by `family_name`, `given_name`, `role`, `active`, `user_id`, or `org_id`. "
+        "Returns a paginated list of Practitioners. "
+        "Filter by `family_name` or `given_name` (searches across the practitioner_name table), "
+        "`role`, `active`, `user_id`, or `org_id`. "
         "Use `limit` and `offset` for pagination. "
         + _CONTENT_NEG
     ),
@@ -214,12 +214,12 @@ async def patch_practitioner(
 )
 async def list_practitioners(
     request: Request,
-    family_name: Optional[str] = Query(None),
-    given_name: Optional[str] = Query(None),
-    role: Optional[str] = Query(None),
-    active: Optional[bool] = Query(None),
-    user_id: Optional[str] = Query(None),
-    org_id: Optional[str] = Query(None),
+    family_name: Optional[str] = Query(None, description="Filter by family (last) name — partial match, case-insensitive."),
+    given_name: Optional[str] = Query(None, description="Filter by given (first) name — partial match, case-insensitive."),
+    role: Optional[str] = Query(None, description="Filter by practitioner role (e.g. doctor, nurse)."),
+    active: Optional[bool] = Query(None, description="Filter by active status."),
+    user_id: Optional[str] = Query(None, description="Filter by user_id (JWT sub claim)."),
+    org_id: Optional[str] = Query(None, description="Filter by organization ID."),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
@@ -247,7 +247,7 @@ async def list_practitioners(
     summary="Delete a Practitioner resource",
     description=(
         "Permanently deletes the Practitioner and all associated sub-resources "
-        "(identifiers, telecom, addresses, qualifications). "
+        "(names, identifiers, telecom, addresses, photos, qualifications, communications). "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
@@ -260,6 +260,41 @@ async def delete_practitioner(
     return None
 
 
+# ── Sub-resource: Names ────────────────────────────────────────────────────
+
+
+@router.post(
+    "/{practitioner_id}/names",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+    operation_id="add_practitioner_name",
+    summary="Add a HumanName to a Practitioner",
+    description=(
+        "Appends a name to the Practitioner. "
+        "Supports `use` (usual | official | temp | nickname | anonymous | old | maiden), "
+        "`family`, `given[]`, `prefix[]`, `suffix[]`, `text`, and an optional validity `period`. "
+        "Returns the full updated Practitioner resource. "
+        + _CONTENT_NEG
+    ),
+    response_description="The updated Practitioner resource with the new name appended",
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def add_name(
+    payload: PractitionerNameCreate,
+    request: Request,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.add_name(practitioner.practitioner_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Practitioner not found")
+    return format_response(
+        practitioner_service._to_fhir(updated),
+        practitioner_service._to_plain(updated),
+        request,
+    )
+
+
 # ── Sub-resource: Identifiers ──────────────────────────────────────────────
 
 
@@ -268,12 +303,12 @@ async def delete_practitioner(
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_identifier",
-    summary="Add a business identifier to a Practitioner (e.g. NPI, license number)",
+    summary="Add a business identifier to a Practitioner (e.g. NPI, license, DEA)",
     description=(
-        "Appends a business identifier to the Practitioner, such as a National Provider Identifier (NPI), "
-        "state medical license, or DEA number. "
+        "Appends a business identifier to the Practitioner. "
         "`system` is a URI namespace (e.g. `http://hl7.org/fhir/sid/us-npi`); "
         "`value` is the identifier string within that namespace. "
+        "Optional `type_system`, `type_code`, `type_display`, `type_text` describe the identifier category. "
         "Returns the full updated Practitioner resource. "
         + _CONTENT_NEG
     ),
@@ -307,8 +342,8 @@ async def add_identifier(
     summary="Add a contact point (telecom) to a Practitioner",
     description=(
         "Appends a contact point to the Practitioner. "
-        "`system` values: `phone`, `fax`, `email`, `pager`, `url`, `sms`, `other`. "
-        "`use` values: `home`, `work`, `temp`, `old`, `mobile`. "
+        "`system`: phone | fax | email | pager | url | sms | other. "
+        "`use`: home | work | temp | old | mobile. "
         "Returns the full updated Practitioner resource. "
         + _CONTENT_NEG
     ),
@@ -342,8 +377,9 @@ async def add_telecom(
     summary="Add an address to a Practitioner",
     description=(
         "Appends a postal or physical address to the Practitioner. "
-        "`use` values: `home`, `work`, `temp`, `old`, `billing`. "
-        "`type` values: `postal`, `physical`, `both`. "
+        "`use`: home | work | temp | old | billing. "
+        "`type`: postal | physical | both. "
+        "`line` is an array of street address lines. "
         "Returns the full updated Practitioner resource. "
         + _CONTENT_NEG
     ),
@@ -366,6 +402,41 @@ async def add_address(
     )
 
 
+# ── Sub-resource: Photos ───────────────────────────────────────────────────
+
+
+@router.post(
+    "/{practitioner_id}/photos",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+    operation_id="add_practitioner_photo",
+    summary="Add a photo (Attachment) to a Practitioner",
+    description=(
+        "Appends a photo attachment to the Practitioner. "
+        "Provide `data` (base64-encoded image) or `url` pointing to the image, "
+        "plus `content_type` (MIME type, e.g. `image/png`). "
+        "Returns the full updated Practitioner resource. "
+        + _CONTENT_NEG
+    ),
+    response_description="The updated Practitioner resource with the new photo appended",
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def add_photo(
+    payload: PractitionerPhotoCreate,
+    request: Request,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.add_photo(practitioner.practitioner_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Practitioner not found")
+    return format_response(
+        practitioner_service._to_fhir(updated),
+        practitioner_service._to_plain(updated),
+        request,
+    )
+
+
 # ── Sub-resource: Qualifications ───────────────────────────────────────────
 
 
@@ -377,9 +448,9 @@ async def add_address(
     summary="Add a professional qualification to a Practitioner",
     description=(
         "Records a degree, certification, accreditation, or license held by the Practitioner "
-        "(e.g. MD, board certification, DEA number). "
-        "Provide a FHIR CodeableConcept `code` (system + code + display) identifying the qualification type, "
-        "an optional validity `period`, and an optional `issuer` organization name. "
+        "(e.g. MD, board certification, NPI, DEA number). "
+        "Provide `code_system`, `code_code`, `code_display` for the qualification type "
+        "(e.g. SNOMED CT code for MD), an optional validity `period`, and optional `issuer_id` / `issuer_display`. "
         "Returns the full updated Practitioner resource. "
         + _CONTENT_NEG
     ),
@@ -393,6 +464,41 @@ async def add_qualification(
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_qualification(practitioner.practitioner_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Practitioner not found")
+    return format_response(
+        practitioner_service._to_fhir(updated),
+        practitioner_service._to_plain(updated),
+        request,
+    )
+
+
+# ── Sub-resource: Communications ──────────────────────────────────────────
+
+
+@router.post(
+    "/{practitioner_id}/communications",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+    operation_id="add_practitioner_communication",
+    summary="Add a communication language to a Practitioner",
+    description=(
+        "Records a language the Practitioner can use in patient communication. "
+        "`language_code` is an ISO-639-1 code (e.g. `en`, `fr`, `de`). "
+        "Set `preferred: true` to mark this as the practitioner's preferred language. "
+        "Returns the full updated Practitioner resource. "
+        + _CONTENT_NEG
+    ),
+    response_description="The updated Practitioner resource with the new communication language appended",
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def add_communication(
+    payload: PractitionerCommunicationCreate,
+    request: Request,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.add_communication(practitioner.practitioner_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Practitioner not found")
     return format_response(

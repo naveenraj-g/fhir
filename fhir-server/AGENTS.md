@@ -78,8 +78,8 @@ Router  →  Service  →  Repository  →  ORM Model
 | Encounter | `encounter_id` | 20000 |
 | Practitioner | `practitioner_id` | 30000 |
 | Appointment | `appointment_id` | 40000 |
-| QuestionnaireResponse | `questionnaire_response_id` | 50000 |
-| Vitals | `vitals_id` | 60000 |
+| QuestionnaireResponse | `questionnaire_response_id` | 60000 |
+| Vitals | `vitals_id` | 70000 |
 
 ---
 
@@ -314,7 +314,7 @@ HTTP status mapping: 400 validation, 401 not authenticated, 403 forbidden, 404 n
 ## Checklist: Adding a New Resource
 
 1. `app/models/<resource>/` — ORM model (internal `id` + public `<resource>_id` via Sequence, `user_id`, `org_id`, audit fields, sub-resource relationships)
-2. `app/schemas/<resource>.py` — CreateSchema, PatchSchema (both `extra="forbid"`; Create includes `user_id`/`org_id` in example)
+2. `app/schemas/<resource>.py` (flat) or `app/schemas/<resource>/` (package) — CreateSchema, PatchSchema (both `extra="forbid"`; Create includes `user_id`/`org_id` in example). Use a package when the resource has recursive sub-schemas (e.g. QuestionnaireResponse with AnswerInput/ItemInput).
 3. `app/schemas/fhir/<resource>.py` — FHIR + plain + paginated schemas; export from `fhir/__init__.py`
 4. `app/fhir/mappers/<resource>.py` — `to_fhir_<resource>()` + `to_plain_<resource>()`
 5. `app/repository/<resource>_repository.py` — full CRUD, `_with_relationships()`, `_apply_list_filters()`, `get_me()` using filter helper

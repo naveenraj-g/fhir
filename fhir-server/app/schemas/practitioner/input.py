@@ -1,0 +1,144 @@
+from datetime import date, datetime
+from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.enums import (
+    AdministrativeGender,
+    ContactPointSystem,
+    ContactPointUse,
+    AddressUse,
+    AddressType,
+    IdentifierUse,
+)
+from app.models.practitioner.enums import PractitionerRole
+
+
+# ── Sub-resource create schemas ────────────────────────────────────────────────
+
+
+class PractitionerNameCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[str] = Field(None, description="usual|official|temp|nickname|anonymous|old|maiden")
+    text: Optional[str] = Field(None, description="Full name as a display string.")
+    family: Optional[str] = Field(None, description="Family (last) name.")
+    given: Optional[List[str]] = Field(None, description="Given (first/middle) names.")
+    prefix: Optional[List[str]] = Field(None, description="Name prefixes (Mr., Dr., etc.).")
+    suffix: Optional[List[str]] = Field(None, description="Name suffixes (Jr., MD, etc.).")
+    period_start: Optional[datetime] = Field(None, description="Start of period when this name was valid.")
+    period_end: Optional[datetime] = Field(None, description="End of period when this name was valid.")
+
+
+class PractitionerIdentifierCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[IdentifierUse] = Field(None, description="usual|official|temp|secondary|old")
+    type_system: Optional[str] = Field(None, description="Coding system for identifier type.")
+    type_code: Optional[str] = Field(None, description="Code for identifier type (e.g. NPI, DEA, license).")
+    type_display: Optional[str] = Field(None, description="Display for identifier type.")
+    type_text: Optional[str] = Field(None, description="Plain-text description of identifier type.")
+    system: Optional[str] = Field(None, description="URI of the identifier namespace (e.g. NPI system).")
+    value: str = Field(..., description="Identifier value (e.g. NPI number, license number).")
+    period_start: Optional[datetime] = Field(None, description="Start of identifier validity period.")
+    period_end: Optional[datetime] = Field(None, description="End of identifier validity period.")
+    assigner: Optional[str] = Field(None, description="Display name of the organization that issued the identifier.")
+
+
+class PractitionerTelecomCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    system: ContactPointSystem = Field(..., description="phone|fax|email|pager|url|sms|other")
+    value: str = Field(..., description="Contact value (phone number, email address, etc.).")
+    use: Optional[ContactPointUse] = Field(None, description="home|work|temp|old|mobile")
+    rank: Optional[int] = Field(None, ge=1, description="Preferred contact order (1 = most preferred).")
+    period_start: Optional[datetime] = Field(None, description="Start of period when this contact was valid.")
+    period_end: Optional[datetime] = Field(None, description="End of period when this contact was valid.")
+
+
+class PractitionerAddressCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[AddressUse] = Field(None, description="home|work|temp|old|billing")
+    type: Optional[AddressType] = Field(None, description="postal|physical|both")
+    text: Optional[str] = Field(None, description="Full address as plain text.")
+    line: Optional[List[str]] = Field(None, description="Street address lines.")
+    city: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    period_start: Optional[datetime] = Field(None, description="Start of period when this address was valid.")
+    period_end: Optional[datetime] = Field(None, description="End of period when this address was valid.")
+
+
+class PractitionerPhotoCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content_type: Optional[str] = Field(None, description="MIME type (e.g. image/png).")
+    language: Optional[str] = Field(None, description="BCP-47 language code.")
+    data: Optional[str] = Field(None, description="Base64-encoded image data.")
+    url: Optional[str] = Field(None, description="URL where the image can be retrieved.")
+    size: Optional[int] = Field(None, description="Size in bytes before base64 encoding.")
+    hash: Optional[str] = Field(None, description="Base64-encoded SHA-1 hash of the data.")
+    title: Optional[str] = Field(None, description="Label or display title.")
+    creation: Optional[datetime] = Field(None, description="When the image was created.")
+
+
+class PractitionerQualificationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    identifier_system: Optional[str] = Field(None, description="Namespace URI for the qualification identifier.")
+    identifier_value: Optional[str] = Field(None, description="Qualification or license number.")
+    code_system: Optional[str] = Field(None, description="Coding system for the qualification type (e.g. http://snomed.info/sct).")
+    code_code: Optional[str] = Field(None, description="Coded qualification type (e.g. '394814009').")
+    code_display: Optional[str] = Field(None, description="Display for the qualification code.")
+    code_text: Optional[str] = Field(None, description="Human-readable qualification type, e.g. 'MD - Doctor of Medicine'.")
+    period_start: Optional[datetime] = Field(None, description="Start of qualification validity period.")
+    period_end: Optional[datetime] = Field(None, description="End of qualification validity period (expiry).")
+    issuer_id: Optional[int] = Field(None, description="Public Organization ID that issued the qualification.")
+    issuer_display: Optional[str] = Field(None, description="Display name of the issuing organization.")
+
+
+class PractitionerCommunicationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    language_system: Optional[str] = Field(None, description="URI of the language code system.")
+    language_code: str = Field(..., description="ISO-639-1 language code (e.g. en, fr, de).")
+    language_display: Optional[str] = None
+    language_text: Optional[str] = None
+    preferred: Optional[bool] = Field(None, description="True if this is the practitioner's preferred language.")
+
+
+# ── Practitioner create / patch ────────────────────────────────────────────────
+
+
+class PractitionerCreateSchema(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "user_id": "user-uuid-123",
+                "org_id": "org-uuid-456",
+                "active": True,
+                "gender": "female",
+                "birth_date": "1978-03-15",
+                "role": "doctor",
+                "specialty": "Cardiology",
+            }
+        },
+    )
+
+    user_id: Optional[str] = None
+    org_id: Optional[str] = None
+    active: Optional[bool] = True
+    gender: Optional[AdministrativeGender] = None
+    birth_date: Optional[date] = None
+    deceased_boolean: Optional[bool] = None
+    deceased_datetime: Optional[datetime] = None
+    role: Optional[PractitionerRole] = None
+    specialty: Optional[str] = Field(None, max_length=200)
+
+
+class PractitionerPatchSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    active: Optional[bool] = None
+    gender: Optional[AdministrativeGender] = None
+    birth_date: Optional[date] = None
+    deceased_boolean: Optional[bool] = None
+    deceased_datetime: Optional[datetime] = None
+    role: Optional[PractitionerRole] = None
+    specialty: Optional[str] = Field(None, max_length=200)

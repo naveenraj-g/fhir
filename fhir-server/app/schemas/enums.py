@@ -123,6 +123,3 @@ class PatientLinkType(str, Enum):
     seealso = "seealso"
 
 
-class PractitionerRole(str, Enum):
-    doctor = "doctor"
-    nurse = "nurse"

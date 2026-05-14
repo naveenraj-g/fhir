@@ -5,10 +5,13 @@ from app.repository.practitioner_repository import PractitionerRepository
 from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
+    PractitionerNameCreate,
     PractitionerIdentifierCreate,
     PractitionerTelecomCreate,
     PractitionerAddressCreate,
+    PractitionerPhotoCreate,
     PractitionerQualificationCreate,
+    PractitionerCommunicationCreate,
 )
 from app.fhir.mappers.practitioner import to_fhir_practitioner, to_plain_practitioner
 
@@ -17,7 +20,7 @@ class PractitionerService:
     def __init__(self, repository: PractitionerRepository):
         self.repository = repository
 
-    # ── Formatters (called by route layer after content negotiation) ──────
+    # ── Formatters ────────────────────────────────────────────────────────
 
     def _to_fhir(self, practitioner: PractitionerModel) -> dict:
         return to_fhir_practitioner(practitioner)
@@ -28,7 +31,6 @@ class PractitionerService:
     # ── Read ──────────────────────────────────────────────────────────────
 
     async def get_raw_by_practitioner_id(self, practitioner_id: int) -> Optional[PractitionerModel]:
-        """Raw ORM model — used by the auth ownership dependency."""
         return await self.repository.get_by_practitioner_id(practitioner_id)
 
     async def get_raw_by_user_id(self, user_id: str) -> Optional[PractitionerModel]:
@@ -60,12 +62,19 @@ class PractitionerService:
     # ── Write ─────────────────────────────────────────────────────────────
 
     async def create_practitioner(
-        self, payload: PractitionerCreateSchema, user_id: Optional[str], org_id: Optional[str] = None, created_by: Optional[str] = None
+        self,
+        payload: PractitionerCreateSchema,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
     ) -> PractitionerModel:
         return await self.repository.create(payload, user_id, org_id, created_by)
 
     async def patch_practitioner(
-        self, practitioner_id: int, payload: PractitionerPatchSchema, updated_by: Optional[str] = None
+        self,
+        practitioner_id: int,
+        payload: PractitionerPatchSchema,
+        updated_by: Optional[str] = None,
     ) -> Optional[PractitionerModel]:
         return await self.repository.patch(practitioner_id, payload, updated_by)
 
@@ -73,6 +82,11 @@ class PractitionerService:
         return await self.repository.delete(practitioner_id)
 
     # ── Sub-resources ─────────────────────────────────────────────────────
+
+    async def add_name(
+        self, practitioner_id: int, payload: PractitionerNameCreate
+    ) -> Optional[PractitionerModel]:
+        return await self.repository.add_name(practitioner_id, payload)
 
     async def add_identifier(
         self, practitioner_id: int, payload: PractitionerIdentifierCreate
@@ -89,7 +103,17 @@ class PractitionerService:
     ) -> Optional[PractitionerModel]:
         return await self.repository.add_address(practitioner_id, payload)
 
+    async def add_photo(
+        self, practitioner_id: int, payload: PractitionerPhotoCreate
+    ) -> Optional[PractitionerModel]:
+        return await self.repository.add_photo(practitioner_id, payload)
+
     async def add_qualification(
         self, practitioner_id: int, payload: PractitionerQualificationCreate
     ) -> Optional[PractitionerModel]:
         return await self.repository.add_qualification(practitioner_id, payload)
+
+    async def add_communication(
+        self, practitioner_id: int, payload: PractitionerCommunicationCreate
+    ) -> Optional[PractitionerModel]:
+        return await self.repository.add_communication(practitioner_id, payload)

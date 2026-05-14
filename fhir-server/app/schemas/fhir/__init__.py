@@ -1,4 +1,4 @@
-from app.schemas.fhir.common import (
+from app.schemas.common.fhir import (
     FHIRAddress,
     FHIRBundle,
     FHIRBundleEntry,
@@ -14,50 +14,99 @@ from app.schemas.fhir.common import (
     PlainIdentifierType,
     PlainReasonCode,
 )
-from app.schemas.fhir.patient import (
+from app.schemas.patient.response import (
     FHIRPatientSchema, FHIRPatientBundle, PaginatedPatientResponse,
-    PlainPatientResponse, PlainPatientTelecom, PlainPatientAddress,
+    PlainPatientResponse, PlainPatientName, PlainPatientTelecom, PlainPatientAddress,
+    PlainPatientPhoto, PlainPatientContact, PlainPatientCommunication,
+    PlainPatientGeneralPractitioner, PlainPatientLink,
 )
-from app.schemas.fhir.practitioner import (
-    FHIRPractitionerSchema, FHIRPractitionerBundle, PaginatedPractitionerResponse,
-    PlainPractitionerResponse, PlainPractitionerTelecom, PlainPractitionerAddress, PlainQualification,
+from app.schemas.practitioner.response import (
+    FHIRPractitionerSchema, FHIRPractitionerBundle, FHIRPractitionerBundleEntry,
+    FHIRAttachment, FHIRQualification, FHIRCommunication,
+    PaginatedPractitionerResponse, PlainPractitionerResponse,
+    PlainPractitionerName, PlainPractitionerIdentifier,
+    PlainPractitionerTelecom, PlainPractitionerAddress,
+    PlainPractitionerPhoto, PlainQualification, PlainPractitionerCommunication,
 )
-from app.schemas.fhir.encounter import (
-    FHIREncounterSchema, FHIREncounterBundle, PaginatedEncounterResponse,
-    PlainEncounterResponse, PlainEncounterBasedOn, PlainEncounterType,
-    PlainEncounterParticipant, PlainEncounterDiagnosis, PlainEncounterLocation,
+from app.schemas.encounter.response import (
+    FHIREncounterSchema, FHIREncounterBundle, FHIREncounterBundleEntry,
+    FHIREncounterStatusHistory, FHIREncounterClassHistory,
+    FHIREncounterParticipant, FHIREncounterDiagnosis,
+    FHIREncounterHospitalization, FHIREncounterLocation,
+    PaginatedEncounterResponse, PlainEncounterResponse,
+    PlainEncounterIdentifier, PlainEncounterStatusHistory, PlainEncounterClassHistory,
+    PlainEncounterType, PlainEncounterEpisodeOfCare, PlainEncounterBasedOn,
+    PlainEncounterParticipantType, PlainEncounterParticipant, PlainEncounterAppointmentRef,
+    PlainEncounterReasonCode, PlainEncounterReasonReference, PlainEncounterDiagnosis,
+    PlainEncounterAccount, PlainEncounterHospitalization, PlainEncounterLocation,
+    PlainEncounterLength,
 )
-from app.schemas.fhir.appointment import (
-    FHIRAppointmentSchema, FHIRAppointmentBundle, PaginatedAppointmentResponse,
-    PlainAppointmentResponse, PlainAppointmentParticipant,
+from app.schemas.appointment.response import (
+    FHIRAppointmentSchema, FHIRAppointmentBundle, FHIRAppointmentBundleEntry,
+    FHIRAppointmentParticipant,
+    FHIRRecurrenceTemplate, FHIRRecurrenceWeeklyTemplate, FHIRRecurrenceMonthlyTemplate,
+    PaginatedAppointmentResponse, PlainAppointmentResponse,
+    PlainAppointmentIdentifier,
+    PlainAppointmentServiceCategory, PlainAppointmentServiceType, PlainAppointmentSpecialty,
+    PlainAppointmentReasonCode, PlainAppointmentReasonReference,
+    PlainAppointmentSupportingInformation, PlainAppointmentSlot, PlainAppointmentBasedOn,
+    PlainAppointmentParticipantType, PlainAppointmentParticipant, PlainAppointmentRequestedPeriod,
     PlainWeeklyTemplate, PlainMonthlyTemplate, PlainYearlyTemplate, PlainRecurrenceTemplate,
 )
-from app.schemas.fhir.questionnaire_response import (
-    FHIRQuestionnaireResponseSchema, FHIRQuestionnaireResponseBundle, PaginatedQuestionnaireResponseResponse,
-    PlainQuestionnaireResponse, PlainQRItem, PlainQRAnswer,
+from app.schemas.questionnaire_response.response import (
+    FHIRQuestionnaireResponseSchema, FHIRQuestionnaireResponseBundle,
+    FHIRQuestionnaireResponseBundleEntry, FHIRQRItem, FHIRAnswer,
+    FHIRAnswerCoding, FHIRAnswerQuantity, FHIRAnswerValueReference, FHIRAnswerAttachment,
+    PaginatedQuestionnaireResponseResponse, PlainQuestionnaireResponse,
+    PlainQRItem, PlainQRAnswer, PlainQRBasedOn, PlainQRPartOf,
+    PlainAnswerCoding, PlainAnswerQuantity, PlainAnswerAttachment,
 )
 
 __all__ = [
-    # FHIR common
+    # Common FHIR
     "FHIRAddress", "FHIRBundle", "FHIRBundleEntry", "FHIRCoding", "FHIRCodeableConcept",
     "FHIRContactPoint", "FHIRHumanName", "FHIRIdentifier", "FHIRPeriod", "FHIRReference",
-    # Plain common
     "PlainCoding", "PlainIdentifier", "PlainIdentifierType", "PlainReasonCode",
     # Patient
     "FHIRPatientSchema", "FHIRPatientBundle", "PaginatedPatientResponse",
-    "PlainPatientResponse", "PlainPatientTelecom", "PlainPatientAddress",
+    "PlainPatientResponse", "PlainPatientName", "PlainPatientTelecom", "PlainPatientAddress",
+    "PlainPatientPhoto", "PlainPatientContact", "PlainPatientCommunication",
+    "PlainPatientGeneralPractitioner", "PlainPatientLink",
     # Practitioner
-    "FHIRPractitionerSchema", "FHIRPractitionerBundle", "PaginatedPractitionerResponse",
-    "PlainPractitionerResponse", "PlainPractitionerTelecom", "PlainPractitionerAddress", "PlainQualification",
+    "FHIRPractitionerSchema", "FHIRPractitionerBundle", "FHIRPractitionerBundleEntry",
+    "FHIRAttachment", "FHIRQualification", "FHIRCommunication",
+    "PaginatedPractitionerResponse", "PlainPractitionerResponse",
+    "PlainPractitionerName", "PlainPractitionerIdentifier",
+    "PlainPractitionerTelecom", "PlainPractitionerAddress",
+    "PlainPractitionerPhoto", "PlainQualification", "PlainPractitionerCommunication",
     # Encounter
-    "FHIREncounterSchema", "FHIREncounterBundle", "PaginatedEncounterResponse",
-    "PlainEncounterResponse", "PlainEncounterBasedOn", "PlainEncounterType",
-    "PlainEncounterParticipant", "PlainEncounterDiagnosis", "PlainEncounterLocation",
+    "FHIREncounterSchema", "FHIREncounterBundle", "FHIREncounterBundleEntry",
+    "FHIREncounterStatusHistory", "FHIREncounterClassHistory",
+    "FHIREncounterParticipant", "FHIREncounterDiagnosis",
+    "FHIREncounterHospitalization", "FHIREncounterLocation",
+    "PaginatedEncounterResponse", "PlainEncounterResponse",
+    "PlainEncounterIdentifier", "PlainEncounterStatusHistory", "PlainEncounterClassHistory",
+    "PlainEncounterType", "PlainEncounterEpisodeOfCare", "PlainEncounterBasedOn",
+    "PlainEncounterParticipantType", "PlainEncounterParticipant", "PlainEncounterAppointmentRef",
+    "PlainEncounterReasonCode", "PlainEncounterReasonReference", "PlainEncounterDiagnosis",
+    "PlainEncounterAccount", "PlainEncounterHospitalization", "PlainEncounterLocation",
+    "PlainEncounterLength",
     # Appointment
-    "FHIRAppointmentSchema", "FHIRAppointmentBundle", "PaginatedAppointmentResponse",
-    "PlainAppointmentResponse", "PlainAppointmentParticipant",
+    "FHIRAppointmentSchema", "FHIRAppointmentBundle", "FHIRAppointmentBundleEntry",
+    "FHIRAppointmentParticipant",
+    "FHIRRecurrenceTemplate", "FHIRRecurrenceWeeklyTemplate", "FHIRRecurrenceMonthlyTemplate",
+    "PaginatedAppointmentResponse", "PlainAppointmentResponse",
+    "PlainAppointmentIdentifier",
+    "PlainAppointmentServiceCategory", "PlainAppointmentServiceType", "PlainAppointmentSpecialty",
+    "PlainAppointmentReasonCode", "PlainAppointmentReasonReference",
+    "PlainAppointmentSupportingInformation", "PlainAppointmentSlot", "PlainAppointmentBasedOn",
+    "PlainAppointmentParticipantType", "PlainAppointmentParticipant", "PlainAppointmentRequestedPeriod",
     "PlainWeeklyTemplate", "PlainMonthlyTemplate", "PlainYearlyTemplate", "PlainRecurrenceTemplate",
     # QuestionnaireResponse
-    "FHIRQuestionnaireResponseSchema", "FHIRQuestionnaireResponseBundle", "PaginatedQuestionnaireResponseResponse",
-    "PlainQuestionnaireResponse", "PlainQRItem", "PlainQRAnswer",
+    "FHIRQuestionnaireResponseSchema", "FHIRQuestionnaireResponseBundle",
+    "FHIRQuestionnaireResponseBundleEntry", "FHIRQRItem", "FHIRAnswer",
+    "FHIRAnswerCoding", "FHIRAnswerQuantity", "FHIRAnswerValueReference", "FHIRAnswerAttachment",
+    "PaginatedQuestionnaireResponseResponse", "PlainQuestionnaireResponse",
+    "PlainQRItem", "PlainQRAnswer", "PlainQRBasedOn", "PlainQRPartOf",
+    "PlainAnswerCoding", "PlainAnswerQuantity", "PlainAnswerAttachment",
 ]

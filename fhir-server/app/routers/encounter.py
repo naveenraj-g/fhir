@@ -32,7 +32,6 @@ _ERR_AUTH = {
 _ERR_NOT_FOUND = {404: {"description": "Encounter not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
-# Pre-computed inline schemas (evaluated once at import time)
 _SINGLE_200 = {
     200: {
         "content": {
@@ -63,11 +62,11 @@ _LIST_200 = {
     operation_id="create_encounter",
     summary="Create a new Encounter resource",
     description=(
-        "Creates an Encounter — a clinical interaction between a patient and one or more providers "
-        "(e.g. outpatient visit, inpatient admission, telehealth session, emergency visit). "
-        "All sub-resources (encounter types, participants, reason codes, diagnoses, locations) "
-        "are submitted as part of a single document in the request body. "
-        "References use public IDs: `Patient/10001`, `Practitioner/30001`. "
+        "Creates an Encounter — a clinical interaction between a patient and one or more providers. "
+        "All sub-resources (identifiers, status history, class history, types, episode-of-care references, "
+        "based-on references, participants, reason codes, reason references, diagnoses, accounts, "
+        "hospitalization, and locations) are submitted as part of a single document in the request body. "
+        "References use public IDs: `Patient/10001`, `Practitioner/30001`, `Condition/12345`. "
         "The caller's `sub` and `activeOrganizationId` JWT claims are automatically bound to the record. "
         + _CONTENT_NEG
     ),
@@ -100,7 +99,6 @@ async def create_encounter(
     description=(
         "Returns a paginated list of Encounter records linked to the authenticated user's `sub` claim "
         "and `activeOrganizationId`. "
-        "Includes encounters where the user is a subject (patient) or participant (practitioner). "
         + _CONTENT_NEG
     ),
     response_description="Paginated Encounter resources for the current user",
@@ -110,7 +108,7 @@ async def get_my_encounters(
     request: Request,
     enc_status: Optional[str] = Query(None, alias="status"),
     patient_id: Optional[int] = Query(None),
-    class_code: Optional[str] = Query(None),
+    class_code: Optional[str] = Query(None, description="Filter by class code, e.g. 'AMB', 'IMP', 'EMER'."),
     period_start_from: Optional[datetime] = Query(None),
     period_start_to: Optional[datetime] = Query(None),
     limit: int = Query(50, ge=1, le=200),
@@ -142,16 +140,10 @@ async def get_my_encounters(
     summary="Retrieve an Encounter resource by public encounter_id",
     description=(
         "Fetches a single Encounter by its public integer `encounter_id`. "
-        "Access is subject to organization-scoped authorization — the encounter must belong to the caller's active organization. "
         + _CONTENT_NEG
     ),
     response_description="The requested Encounter resource",
-    responses={
-        **_SINGLE_200,
-        **_ERR_AUTH,
-        403: {"description": "Forbidden — caller lacks `encounter:read` permission or the encounter belongs to a different organization"},
-        **_ERR_NOT_FOUND,
-    },
+    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def get_encounter(
     request: Request,
@@ -174,7 +166,7 @@ async def get_encounter(
     operation_id="patch_encounter",
     summary="Partially update an Encounter resource",
     description=(
-        "Only lifecycle fields are patchable: `status`, `period_end`, `priority`. "
+        "Patchable fields: `status`, `period_end`, `service_type_*`, `priority_*`. "
         "Structural data (subject, participants, types, diagnoses, locations) cannot be changed after creation — "
         "delete and re-create the Encounter to correct structural errors. "
         + _CONTENT_NEG
@@ -220,7 +212,7 @@ async def list_encounters(
     request: Request,
     enc_status: Optional[str] = Query(None, alias="status"),
     patient_id: Optional[int] = Query(None),
-    class_code: Optional[str] = Query(None),
+    class_code: Optional[str] = Query(None, description="Filter by class code, e.g. 'AMB', 'IMP', 'EMER'."),
     period_start_from: Optional[datetime] = Query(None),
     period_start_to: Optional[datetime] = Query(None),
     user_id: Optional[str] = Query(None),
@@ -251,8 +243,7 @@ async def list_encounters(
     operation_id="delete_encounter",
     summary="Delete an Encounter resource",
     description=(
-        "Permanently deletes the Encounter and all its sub-resources "
-        "(types, participants, reason codes, diagnoses, locations). "
+        "Permanently deletes the Encounter and all its sub-resources. "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},

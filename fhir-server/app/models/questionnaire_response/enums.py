@@ -19,9 +19,17 @@ class QuestionnaireResponseAuthorReferenceType(str, Enum):
 
 
 class QuestionnaireResponseSourceReferenceType(str, Enum):
-    DEVICE = "Device"
-    ORGANIZATION = "Organization"
     PATIENT = "Patient"
     PRACTITIONER = "Practitioner"
     PRACTITIONER_ROLE = "PractitionerRole"
     RELATED_PERSON = "RelatedPerson"
+
+
+class QRBasedOnReferenceType(str, Enum):
+    CARE_PLAN = "CarePlan"
+    SERVICE_REQUEST = "ServiceRequest"
+
+
+class QRPartOfReferenceType(str, Enum):
+    OBSERVATION = "Observation"
+    PROCEDURE = "Procedure"

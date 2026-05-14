@@ -7,14 +7,20 @@ from app.auth.patient_deps import get_authorized_patient
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.patient import get_patient_service
-from app.models.patient import PatientModel
+from app.models.patient.patient import PatientModel
 from app.schemas.fhir import FHIRPatientBundle, FHIRPatientSchema, PaginatedPatientResponse, PlainPatientResponse
 from app.schemas.resources import (
     PatientCreateSchema,
     PatientPatchSchema,
+    NameCreate,
     IdentifierCreate,
     TelecomCreate,
     AddressCreate,
+    PhotoCreate,
+    ContactCreate,
+    CommunicationCreate,
+    GeneralPractitionerCreate,
+    LinkCreate,
 )
 from app.services.patient_service import PatientService
 
@@ -32,7 +38,6 @@ _ERR_AUTH = {
 _ERR_NOT_FOUND = {404: {"description": "Patient not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
-# Pre-computed inline schemas (evaluated once at import time)
 _SINGLE_200 = {
     200: {
         "content": {
@@ -53,7 +58,7 @@ _LIST_200 = {
 }
 
 
-# ── Create Patient ─────────────────────────────────────────────────────────
+# ── Create ─────────────────────────────────────────────────────────────────────
 
 
 @router.post(
@@ -63,13 +68,12 @@ _LIST_200 = {
     operation_id="create_patient",
     summary="Create a new Patient resource",
     description=(
-        "Creates a Patient with core demographics (name, birth date, gender, active status). "
-        "Supply `user_id` and `org_id` in the payload to bind the record to a specific user and organisation; "
-        "omit them to create an unowned record. "
-        "Identifiers, telecom, and addresses must be added after creation via the dedicated sub-resource endpoints. "
+        "Creates a Patient with core demographic scalar fields (gender, birth date, active status, "
+        "marital status, deceased, managing organization). "
+        "Names, identifiers, telecom, addresses, photos, contacts, communications, "
+        "general practitioners, and links must be added via the dedicated sub-resource endpoints. "
         + _CONTENT_NEG
     ),
-    response_description="The newly created Patient resource",
     responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
 )
 async def create_patient(
@@ -79,15 +83,10 @@ async def create_patient(
 ):
     created_by: str = request.state.user.get("sub")
     patient = await patient_service.create_patient(payload, payload.user_id, payload.org_id, created_by)
-    return format_response(
-        patient_service._to_fhir(patient),
-        patient_service._to_plain(patient),
-        request,
-    )
+    return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
 
 
-# ── Get own Patient profile (/me) ──────────────────────────────────────────
-# Declared before /{patient_id} so "me" is not matched by the int path param.
+# ── Get own profile (/me) ──────────────────────────────────────────────────────
 
 
 @router.get(
@@ -96,16 +95,11 @@ async def create_patient(
     operation_id="get_my_patient_profile",
     summary="Get the Patient profile for the currently authenticated user",
     description=(
-        "Looks up the Patient record bound to the authenticated user's `sub` claim and `activeOrganizationId`. "
-        "Returns 404 if no Patient profile has been created for this user in the current organization. "
+        "Looks up the Patient record bound to the authenticated user's `sub` claim and "
+        "`activeOrganizationId`. Returns 404 if no Patient exists for this user in the current org. "
         + _CONTENT_NEG
     ),
-    response_description="The authenticated user's Patient resource",
-    responses={
-        **_SINGLE_200,
-        **_ERR_AUTH,
-        404: {"description": "No Patient profile found for the current authenticated user"},
-    },
+    responses={**_SINGLE_200, **_ERR_AUTH, 404: {"description": "No Patient profile found for current user"}},
 )
 async def get_my_patient_profile(
     request: Request,
@@ -116,14 +110,10 @@ async def get_my_patient_profile(
     patient = await patient_service.get_me(user_id, org_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient profile not found")
-    return format_response(
-        patient_service._to_fhir(patient),
-        patient_service._to_plain(patient),
-        request,
-    )
+    return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
 
 
-# ── Get Patient by public patient_id ──────────────────────────────────────
+# ── Get by ID ──────────────────────────────────────────────────────────────────
 
 
 @router.get(
@@ -131,32 +121,17 @@ async def get_my_patient_profile(
     dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="get_patient_by_id",
     summary="Retrieve a Patient resource by public patient_id",
-    description=(
-        "Fetches a single Patient by its public integer `patient_id`. "
-        "Access is subject to organization-scoped authorization — the patient must belong to the caller's active organization. "
-        + _CONTENT_NEG
-    ),
-    response_description="The requested Patient resource",
-    responses={
-        **_SINGLE_200,
-        **_ERR_AUTH,
-        403: {"description": "Forbidden — caller lacks `patient:read` permission or the patient belongs to a different organization"},
-        **_ERR_NOT_FOUND,
-    },
+    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def get_patient(
     request: Request,
     patient: PatientModel = Depends(get_authorized_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    return format_response(
-        patient_service._to_fhir(patient),
-        patient_service._to_plain(patient),
-        request,
-    )
+    return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
 
 
-# ── Patch Patient ──────────────────────────────────────────────────────────
+# ── Patch ──────────────────────────────────────────────────────────────────────
 
 
 @router.patch(
@@ -166,12 +141,12 @@ async def get_patient(
     summary="Partially update a Patient resource",
     description=(
         "Only supplied fields are written; omitted fields are left unchanged. "
-        "Patchable fields include name, birth date, gender, and active status. "
-        "To modify identifiers, telecom, or addresses use the dedicated sub-resource endpoints. "
+        "Patchable scalar fields: gender, birth_date, active, deceased, marital status, "
+        "multiple birth, managing organization. "
+        "To modify sub-resources (names, identifiers, etc.) use the dedicated endpoints. "
         + _CONTENT_NEG
     ),
-    response_description="The updated Patient resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_patient(
     payload: PatientPatchSchema,
@@ -183,14 +158,10 @@ async def patch_patient(
     updated = await patient_service.patch_patient(patient.patient_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(
-        patient_service._to_fhir(updated),
-        patient_service._to_plain(updated),
-        request,
-    )
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
 
 
-# ── List Patients ──────────────────────────────────────────────────────────
+# ── List ───────────────────────────────────────────────────────────────────────
 
 
 @router.get(
@@ -200,18 +171,17 @@ async def patch_patient(
     summary="List all Patient resources",
     description=(
         "Returns a paginated list of Patient resources. "
-        "Filter by `family_name`, `given_name`, `gender`, `active`, `user_id`, or `org_id`. "
-        "Use `limit` and `offset` for pagination. "
+        "Filter by `family_name` or `given_name` (searches across the patient_name table), "
+        "`gender`, `active`, `user_id`, or `org_id`. "
         + _CONTENT_NEG
     ),
-    response_description="Paginated Patient resources",
     responses={**_LIST_200, **_ERR_AUTH},
 )
 async def list_patients(
     request: Request,
-    family_name: Optional[str] = Query(None),
-    given_name: Optional[str] = Query(None),
-    gender: Optional[str] = Query(None),
+    family_name: Optional[str] = Query(None, description="Filter by family (last) name — partial match."),
+    given_name: Optional[str] = Query(None, description="Filter by given name — partial match."),
+    gender: Optional[str] = Query(None, description="male|female|other|unknown"),
     active: Optional[bool] = Query(None),
     user_id: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),
@@ -231,7 +201,7 @@ async def list_patients(
     )
 
 
-# ── Delete Patient ─────────────────────────────────────────────────────────
+# ── Delete ─────────────────────────────────────────────────────────────────────
 
 
 @router.delete(
@@ -240,10 +210,7 @@ async def list_patients(
     dependencies=[Depends(require_permission("patient", "delete"))],
     operation_id="delete_patient",
     summary="Delete a Patient resource",
-    description=(
-        "Permanently deletes the Patient and all associated sub-resources (identifiers, telecom, addresses). "
-        "This operation is irreversible. Returns 204 No Content on success."
-    ),
+    description="Permanently deletes the Patient and all associated sub-resources. Returns 204 on success.",
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_patient(
@@ -254,7 +221,36 @@ async def delete_patient(
     return None
 
 
-# ── Sub-resource: Identifiers ──────────────────────────────────────────────
+# ── Sub-resource: Names ────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/{patient_id}/names",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="add_patient_name",
+    summary="Add a name to a Patient",
+    description=(
+        "Appends a HumanName record to the Patient. "
+        "`use` values: usual|official|temp|nickname|anonymous|old|maiden. "
+        "`given`, `prefix`, `suffix` accept lists of strings. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def add_name(
+    payload: NameCreate,
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    updated = await patient_service.add_name(patient.patient_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+
+
+# ── Sub-resource: Identifiers ──────────────────────────────────────────────────
 
 
 @router.post(
@@ -264,13 +260,10 @@ async def delete_patient(
     operation_id="add_patient_identifier",
     summary="Add an identifier to a Patient",
     description=(
-        "Appends a business identifier to the Patient (e.g. MRN, SSN, passport number). "
-        "`system` is a URI namespace (e.g. `http://hl7.org/fhir/sid/us-ssn`); "
-        "`value` is the identifier string within that namespace. "
-        "Returns the full updated Patient resource. "
+        "Appends a business identifier (e.g. MRN, SSN, passport). "
+        "`system` is a URI namespace; `value` is the identifier string within that namespace. "
         + _CONTENT_NEG
     ),
-    response_description="The updated Patient resource with the new identifier appended",
     responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_identifier(
@@ -282,14 +275,10 @@ async def add_identifier(
     updated = await patient_service.add_identifier(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(
-        patient_service._to_fhir(updated),
-        patient_service._to_plain(updated),
-        request,
-    )
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
 
 
-# ── Sub-resource: Telecom ──────────────────────────────────────────────────
+# ── Sub-resource: Telecom ──────────────────────────────────────────────────────
 
 
 @router.post(
@@ -299,13 +288,10 @@ async def add_identifier(
     operation_id="add_patient_telecom",
     summary="Add a contact point (telecom) to a Patient",
     description=(
-        "Appends a contact point to the Patient. "
-        "`system` values: `phone`, `fax`, `email`, `pager`, `url`, `sms`, `other`. "
-        "`use` values: `home`, `work`, `temp`, `old`, `mobile`. "
-        "Returns the full updated Patient resource. "
+        "Appends a contact point. `system`: phone|fax|email|pager|url|sms|other. "
+        "`use`: home|work|temp|old|mobile. `rank`: preferred order (1 = highest). "
         + _CONTENT_NEG
     ),
-    response_description="The updated Patient resource with the new contact point appended",
     responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_telecom(
@@ -317,14 +303,10 @@ async def add_telecom(
     updated = await patient_service.add_telecom(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(
-        patient_service._to_fhir(updated),
-        patient_service._to_plain(updated),
-        request,
-    )
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
 
 
-# ── Sub-resource: Addresses ────────────────────────────────────────────────
+# ── Sub-resource: Addresses ────────────────────────────────────────────────────
 
 
 @router.post(
@@ -334,13 +316,10 @@ async def add_telecom(
     operation_id="add_patient_address",
     summary="Add an address to a Patient",
     description=(
-        "Appends a postal or physical address to the Patient. "
-        "`use` values: `home`, `work`, `temp`, `old`, `billing`. "
-        "`type` values: `postal`, `physical`, `both`. "
-        "Returns the full updated Patient resource. "
+        "Appends an address. `use`: home|work|temp|old|billing. `type`: postal|physical|both. "
+        "`line` accepts a list of address lines. "
         + _CONTENT_NEG
     ),
-    response_description="The updated Patient resource with the new address appended",
     responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_address(
@@ -352,8 +331,144 @@ async def add_address(
     updated = await patient_service.add_address(patient.patient_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return format_response(
-        patient_service._to_fhir(updated),
-        patient_service._to_plain(updated),
-        request,
-    )
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+
+
+# ── Sub-resource: Photos ───────────────────────────────────────────────────────
+
+
+@router.post(
+    "/{patient_id}/photos",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="add_patient_photo",
+    summary="Add a photo (Attachment) to a Patient",
+    description=(
+        "Appends a photo attachment. Provide either `url` (external link) or "
+        "`data` (base64-encoded binary). `content_type` is a MIME type (e.g. image/png). "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def add_photo(
+    payload: PhotoCreate,
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    updated = await patient_service.add_photo(patient.patient_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+
+
+# ── Sub-resource: Contacts ─────────────────────────────────────────────────────
+
+
+@router.post(
+    "/{patient_id}/contacts",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="add_patient_contact",
+    summary="Add a contact (next-of-kin / guardian) to a Patient",
+    description=(
+        "Appends a contact BackboneElement. Accepts flattened name and address fields, "
+        "plus nested `relationship[]` and `telecom[]` arrays. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def add_contact(
+    payload: ContactCreate,
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    updated = await patient_service.add_contact(patient.patient_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+
+
+# ── Sub-resource: Communications ──────────────────────────────────────────────
+
+
+@router.post(
+    "/{patient_id}/communications",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="add_patient_communication",
+    summary="Add a communication language to a Patient",
+    description=(
+        "Appends a preferred communication language. `language_code` is an ISO-639-1 code (e.g. en, fr). "
+        "Set `preferred: true` to mark this as the patient's primary language. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def add_communication(
+    payload: CommunicationCreate,
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    updated = await patient_service.add_communication(patient.patient_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+
+
+# ── Sub-resource: General Practitioners ───────────────────────────────────────
+
+
+@router.post(
+    "/{patient_id}/general-practitioners",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="add_patient_general_practitioner",
+    summary="Add a general practitioner reference to a Patient",
+    description=(
+        "Appends a reference to the patient's nominated primary care provider. "
+        "`reference_type`: Organization|Practitioner|PractitionerRole. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def add_general_practitioner(
+    payload: GeneralPractitionerCreate,
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    updated = await patient_service.add_general_practitioner(patient.patient_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+
+
+# ── Sub-resource: Links ────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/{patient_id}/links",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="add_patient_link",
+    summary="Add a link to a related Patient or RelatedPerson",
+    description=(
+        "`other_type`: Patient|RelatedPerson. "
+        "`type`: replaced-by|replaces|refer|seealso. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def add_link(
+    payload: LinkCreate,
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    updated = await patient_service.add_link(patient.patient_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)

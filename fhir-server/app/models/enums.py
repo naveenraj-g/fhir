@@ -2,41 +2,18 @@ from enum import Enum
 
 
 class SubjectReferenceType(str, Enum):
-    """FHIR subject reference types for Encounter.subject."""
+    """Shared subject reference types used across Encounter, Appointment, QuestionnaireResponse.
+    All three store this as DB type name 'subject_reference_type'."""
 
     PATIENT = "Patient"
     GROUP = "Group"
 
 
-class GenderType(str, Enum):
-    """
-    FHIR AdministrativeGender value set.
-
-    The gender of a person for administrative purposes.
-    """
-
-    male = "male"
-    female = "female"
-    other = "other"
-    unknown = "unknown"
-
-
 class IdentifierUse(str, Enum):
-    """
-    FHIR IdentifierUse value set.
+    """FHIR R4 IdentifierUse — used by any resource that stores an identifier.use column."""
 
-    Indicates the purpose of the identifier.
-    """
-
-    usual = "usual"  # The identifier the resource owner normally uses
-    official = (
-        "official"  # The identifier considered official for legal/administrative use
-    )
-    temp = "temp"  # Temporary identifier
-    secondary = "secondary"  # Additional identifier
-    old = "old"  # No longer valid identifier
-
-
-class PractitionerRole(str, Enum):
-    doctor = "doctor"
-    nurse = "nurse"
+    USUAL = "usual"
+    OFFICIAL = "official"
+    TEMP = "temp"
+    SECONDARY = "secondary"
+    OLD = "old"

@@ -13,12 +13,14 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import FHIRBase as Base
-from app.models.questionnaire_response.enums import QuestionnaireResponseStatus
-from app.models.enums import SubjectReferenceType
 from app.models.questionnaire_response.enums import (
+    QuestionnaireResponseStatus,
     QuestionnaireResponseAuthorReferenceType,
     QuestionnaireResponseSourceReferenceType,
+    QRBasedOnReferenceType,
+    QRPartOfReferenceType,
 )
+from app.models.enums import SubjectReferenceType, IdentifierUse
 
 questionnaire_response_id_seq = Sequence(
     "questionnaire_response_id_seq", start=60000, increment=1
@@ -46,9 +48,19 @@ class QuestionnaireResponseModel(Base):
 
     # Required
     questionnaire = Column(String, nullable=False)  # canonical URL
-    status = Column(
-        Enum(QuestionnaireResponseStatus), nullable=False
-    )  # in-progress | completed | amended | entered-in-error | stopped
+    status = Column(Enum(QuestionnaireResponseStatus), nullable=False)
+
+    # identifier (0..1 in R4 — flat columns)
+    identifier_use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
+    identifier_type_system = Column(String, nullable=True)
+    identifier_type_code = Column(String, nullable=True)
+    identifier_type_display = Column(String, nullable=True)
+    identifier_type_text = Column(String, nullable=True)
+    identifier_system = Column(String, nullable=True)
+    identifier_value = Column(String, nullable=True)
+    identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    identifier_assigner = Column(String, nullable=True)
 
     # Subject reference — stored as type enum + integer ID
     subject_type = Column(
@@ -58,7 +70,7 @@ class QuestionnaireResponseModel(Base):
     subject_id = Column(Integer, nullable=True)
     subject_display = Column(String, nullable=True)
 
-    # Encounter reference — the encounter this questionnaire response belongs to
+    # Encounter reference
     encounter_id = Column(
         Integer, ForeignKey("encounter.id"), nullable=True, index=True
     )
@@ -91,7 +103,55 @@ class QuestionnaireResponseModel(Base):
         cascade="all, delete-orphan",
         foreign_keys="QuestionnaireResponseItemModel.response_id",
     )
+    based_ons = relationship(
+        "QuestionnaireResponseBasedOn",
+        back_populates="response",
+        cascade="all, delete-orphan",
+    )
+    part_ofs = relationship(
+        "QuestionnaireResponsePartOf",
+        back_populates="response",
+        cascade="all, delete-orphan",
+    )
     encounter = relationship("EncounterModel", back_populates="questionnaire_responses")
+
+
+class QuestionnaireResponseBasedOn(Base):
+    """basedOn (0..*) — Reference(CarePlan | ServiceRequest)."""
+
+    __tablename__ = "questionnaire_response_based_on"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    response_id = Column(
+        Integer, ForeignKey("questionnaire_response.id"), nullable=False, index=True
+    )
+    org_id = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(QRBasedOnReferenceType, name="qr_based_on_reference_type"), nullable=True
+    )
+    reference_id = Column(Integer, nullable=True)
+    reference_display = Column(String, nullable=True)
+
+    response = relationship("QuestionnaireResponseModel", back_populates="based_ons")
+
+
+class QuestionnaireResponsePartOf(Base):
+    """partOf (0..*) — Reference(Observation | Procedure)."""
+
+    __tablename__ = "questionnaire_response_part_of"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    response_id = Column(
+        Integer, ForeignKey("questionnaire_response.id"), nullable=False, index=True
+    )
+    org_id = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(QRPartOfReferenceType, name="qr_part_of_reference_type"), nullable=True
+    )
+    reference_id = Column(Integer, nullable=True)
+    reference_display = Column(String, nullable=True)
+
+    response = relationship("QuestionnaireResponseModel", back_populates="part_ofs")
 
 
 class QuestionnaireResponseItemModel(Base):
@@ -143,13 +203,11 @@ class QuestionnaireResponseAnswerModel(Base):
     value_type = Column(String, nullable=False)
 
     # Scalar values
-    value_string = Column(
-        Text, nullable=True
-    )  # valueString, valueUri, valueTime, valueDate
-    value_boolean = Column(Boolean, nullable=True)  # valueBoolean
-    value_integer = Column(Integer, nullable=True)  # valueInteger
-    value_decimal = Column(Float, nullable=True)  # valueDecimal
-    value_datetime = Column(DateTime(timezone=True), nullable=True)  # valueDateTime
+    value_string = Column(Text, nullable=True)  # valueString, valueUri, valueTime, valueDate
+    value_boolean = Column(Boolean, nullable=True)
+    value_integer = Column(Integer, nullable=True)
+    value_decimal = Column(Float, nullable=True)
+    value_datetime = Column(DateTime(timezone=True), nullable=True)
 
     # valueCoding
     value_coding_system = Column(String, nullable=True)
@@ -165,5 +223,15 @@ class QuestionnaireResponseAnswerModel(Base):
     value_quantity_unit = Column(String, nullable=True)
     value_quantity_system = Column(String, nullable=True)
     value_quantity_code = Column(String, nullable=True)
+
+    # valueAttachment
+    value_attachment_content_type = Column(String, nullable=True)
+    value_attachment_language = Column(String, nullable=True)
+    value_attachment_data = Column(Text, nullable=True)   # base64Binary
+    value_attachment_url = Column(String, nullable=True)
+    value_attachment_size = Column(Integer, nullable=True)   # unsignedInt in R4
+    value_attachment_hash = Column(String, nullable=True)    # base64Binary sha1
+    value_attachment_title = Column(String, nullable=True)
+    value_attachment_creation = Column(DateTime(timezone=True), nullable=True)
 
     item = relationship("QuestionnaireResponseItemModel", back_populates="answers")

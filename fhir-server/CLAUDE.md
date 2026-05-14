@@ -84,7 +84,8 @@ app/
 │   │   └── enums.py
 │   ├── questionnaire_response/
 │   │   ├── questionnaire_response.py  # QRModel, QRItemModel, QRAnswerModel
-│   │   └── enums.py
+│   │   ├── enums.py
+│   │   └── __init__.py
 │   └── vitals/
 │       └── vitals.py                # VitalsModel (non-FHIR wearable data)
 ├── fhir/
@@ -121,7 +122,10 @@ app/
 │   ├── appointment.py
 │   ├── encounter.py
 │   ├── practitioner.py
-│   ├── questionnaire_response.py    # Includes recursive AnswerInput, ItemInput
+│   ├── questionnaire_response/      # Package — complex recursive schemas
+│   │   ├── __init__.py              # Re-exports all QR input + response types
+│   │   ├── input.py                 # CreateSchema, PatchSchema, AnswerInput, ItemInput (recursive)
+│   │   └── response.py              # FHIR + plain response schemas
 │   ├── vitals.py                    # VitalsCreateSchema, VitalsPatchSchema, PaginatedVitalsResponse
 │   └── fhir/
 │       ├── __init__.py              # Re-exports all FHIR + plain response schemas
@@ -433,7 +437,7 @@ async def list(self, ...) -> Tuple[List[AppointmentModel], int]:
 ## Pydantic Schema Conventions
 
 ### Input schemas (request bodies)
-Located in `app/schemas/<resource>.py`. Three schema types per resource:
+Located in `app/schemas/<resource>.py` (flat file) or `app/schemas/<resource>/` (package for complex resources like QuestionnaireResponse that have recursive sub-schemas). Three schema types per resource:
 
 1. **CreateSchema** — all optional fields except required ones; includes `user_id`, `org_id`, `pseudo_id`/`pseudo_id2` (identity); has `json_schema_extra` with a complete example including `user_id` and `org_id`
 2. **PatchSchema** — same fields but all optional; excludes identity fields that cannot change (`user_id`, `org_id`, `recorded_at` for vitals)
