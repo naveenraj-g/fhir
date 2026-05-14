@@ -1,4 +1,5 @@
-from typing import Optional, List
+from datetime import datetime
+from typing import Optional, List, Tuple
 
 from app.models.questionnaire_response.questionnaire_response import (
     QuestionnaireResponseModel,
@@ -42,16 +43,41 @@ class QuestionnaireResponseService:
         return await self.repository.get_by_qr_id(questionnaire_response_id)
 
     async def get_me(
-        self, user_id: str, org_id: str
-    ) -> List[QuestionnaireResponseModel]:
-        return await self.repository.get_me(user_id, org_id)
+        self,
+        user_id: str,
+        org_id: str,
+        status: Optional[str] = None,
+        patient_id: Optional[int] = None,
+        questionnaire: Optional[str] = None,
+        authored_from: Optional[datetime] = None,
+        authored_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[QuestionnaireResponseModel], int]:
+        return await self.repository.get_me(
+            user_id, org_id,
+            status=status, patient_id=patient_id, questionnaire=questionnaire,
+            authored_from=authored_from, authored_to=authored_to,
+            limit=limit, offset=offset,
+        )
 
     async def list_questionnaire_responses(
         self,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        status: Optional[str] = None,
         patient_id: Optional[int] = None,
-        encounter_id: Optional[int] = None,
-    ) -> List[QuestionnaireResponseModel]:
-        return await self.repository.list(patient_id=patient_id, encounter_id=encounter_id)
+        questionnaire: Optional[str] = None,
+        authored_from: Optional[datetime] = None,
+        authored_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[QuestionnaireResponseModel], int]:
+        return await self.repository.list(
+            user_id=user_id, org_id=org_id, status=status, patient_id=patient_id,
+            questionnaire=questionnaire, authored_from=authored_from,
+            authored_to=authored_to, limit=limit, offset=offset,
+        )
 
     # ── Write ─────────────────────────────────────────────────────────────
 

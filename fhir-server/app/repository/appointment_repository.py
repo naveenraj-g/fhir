@@ -1,5 +1,7 @@
-from typing import Optional, List
+from datetime import datetime
+from typing import Optional, List, Tuple
 
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -71,48 +73,75 @@ class AppointmentRepository:
             result = await session.execute(stmt)
             return result.scalars().first()
 
-    async def get_me(self, user_id: str, org_id: str) -> List[AppointmentModel]:
-        """Fetch all appointments owned by user_id within org_id."""
+    async def get_me(
+        self,
+        user_id: str,
+        org_id: str,
+        status: Optional[str] = None,
+        patient_id: Optional[int] = None,
+        start_from: Optional[datetime] = None,
+        start_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[AppointmentModel], int]:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(AppointmentModel).where(
-                    AppointmentModel.user_id == user_id,
-                    AppointmentModel.org_id == org_id,
-                )
+            base = self._apply_list_filters(
+                _with_relationships(select(AppointmentModel)),
+                user_id, org_id, status, patient_id, start_from, start_to,
             )
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
+            count_base = self._apply_list_filters(
+                select(func.count()).select_from(AppointmentModel),
+                user_id, org_id, status, patient_id, start_from, start_to,
+            )
+            total = (await session.execute(count_base)).scalar_one()
+            rows = list((await session.execute(
+                base.order_by(AppointmentModel.start.desc()).offset(offset).limit(limit)
+            )).scalars().all())
+        return rows, total
+
+    def _apply_list_filters(self, stmt, user_id, org_id, status, patient_id, start_from, start_to):
+        if user_id:
+            stmt = stmt.where(AppointmentModel.user_id == user_id)
+        if org_id:
+            stmt = stmt.where(AppointmentModel.org_id == org_id)
+        if status:
+            stmt = stmt.where(AppointmentModel.status == status)
+        if patient_id is not None:
+            stmt = stmt.where(
+                AppointmentModel.subject_type == SubjectReferenceType.PATIENT,
+                AppointmentModel.subject_id == patient_id,
+            )
+        if start_from is not None:
+            stmt = stmt.where(AppointmentModel.start >= start_from)
+        if start_to is not None:
+            stmt = stmt.where(AppointmentModel.start <= start_to)
+        return stmt
 
     async def list(
         self,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        status: Optional[str] = None,
         patient_id: Optional[int] = None,
-        encounter_id: Optional[int] = None,
-    ) -> List[AppointmentModel]:
-        """List appointments, optionally filtered by public patient_id or encounter_id."""
+        start_from: Optional[datetime] = None,
+        start_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[AppointmentModel], int]:
         async with self.session_factory() as session:
-            stmt = _with_relationships(select(AppointmentModel))
-
-            if patient_id is not None:
-                stmt = stmt.where(
-                    AppointmentModel.subject_type == SubjectReferenceType.PATIENT,
-                    AppointmentModel.subject_id == patient_id,
-                )
-
-            if encounter_id is not None:
-                # Resolve public encounter_id → internal encounter PK
-                enc_result = await session.execute(
-                    select(EncounterModel.id).where(
-                        EncounterModel.encounter_id == encounter_id
-                    )
-                )
-                internal_enc_id = enc_result.scalar_one_or_none()
-                if internal_enc_id is not None:
-                    stmt = stmt.where(AppointmentModel.encounter_id == internal_enc_id)
-                else:
-                    return []
-
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
+            base = self._apply_list_filters(
+                _with_relationships(select(AppointmentModel)),
+                user_id, org_id, status, patient_id, start_from, start_to,
+            )
+            count_base = self._apply_list_filters(
+                select(func.count()).select_from(AppointmentModel),
+                user_id, org_id, status, patient_id, start_from, start_to,
+            )
+            total = (await session.execute(count_base)).scalar_one()
+            rows = list((await session.execute(
+                base.order_by(AppointmentModel.start.desc()).offset(offset).limit(limit)
+            )).scalars().all())
+        return rows, total
 
     # ── Write ─────────────────────────────────────────────────────────────
 

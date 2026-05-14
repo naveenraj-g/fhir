@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional, Tuple
 
 from app.models.practitioner import PractitionerModel
 from app.repository.practitioner_repository import PractitionerRepository
@@ -40,8 +40,22 @@ class PractitionerService:
     async def get_me(self, user_id: str, org_id: str) -> Optional[PractitionerModel]:
         return await self.repository.get_me(user_id, org_id)
 
-    async def list_practitioners(self) -> list[PractitionerModel]:
-        return await self.repository.list()
+    async def list_practitioners(
+        self,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        family_name: Optional[str] = None,
+        given_name: Optional[str] = None,
+        role: Optional[str] = None,
+        active: Optional[bool] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[PractitionerModel], int]:
+        return await self.repository.list(
+            user_id=user_id, org_id=org_id, family_name=family_name,
+            given_name=given_name, role=role, active=active,
+            limit=limit, offset=offset,
+        )
 
     # ── Write ─────────────────────────────────────────────────────────────
 

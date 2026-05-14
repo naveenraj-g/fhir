@@ -1,14 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.auth.dependencies import require_permission
 from app.auth.patient_deps import get_authorized_patient
-from app.core.content_negotiation import format_response, format_list_response
+from app.core.content_negotiation import format_response, format_paginated_response
+from app.core.schema_utils import inline_schema
 from app.di.dependencies.patient import get_patient_service
 from app.models.patient import PatientModel
+from app.schemas.fhir import FHIRPatientBundle, FHIRPatientSchema, PaginatedPatientResponse, PlainPatientResponse
 from app.schemas.resources import (
     PatientCreateSchema,
     PatientPatchSchema,
-    PatientResponseSchema,
     IdentifierCreate,
     TelecomCreate,
     AddressCreate,
@@ -29,26 +32,45 @@ _ERR_AUTH = {
 _ERR_NOT_FOUND = {404: {"description": "Patient not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
+# Pre-computed inline schemas (evaluated once at import time)
+_SINGLE_200 = {
+    200: {
+        "content": {
+            "application/json": {"schema": inline_schema(PlainPatientResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIRPatientSchema.model_json_schema())},
+        }
+    }
+}
+_SINGLE_201 = {201: _SINGLE_200[200]}
+_LIST_200 = {
+    200: {
+        "description": "Paginated list of patients",
+        "content": {
+            "application/json": {"schema": inline_schema(PaginatedPatientResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIRPatientBundle.model_json_schema())},
+        },
+    }
+}
+
 
 # ── Create Patient ─────────────────────────────────────────────────────────
 
 
 @router.post(
     "/",
-    response_model=PatientResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("patient", "create"))],
     operation_id="create_patient",
     summary="Create a new Patient resource",
     description=(
-        "Creates a Patient with core demographics (name, birth date, gender, preferred language, active status). "
-        "The caller's `sub` claim (user ID) and `activeOrganizationId` from the JWT are automatically bound to the record. "
+        "Creates a Patient with core demographics (name, birth date, gender, active status). "
+        "Supply `user_id` and `org_id` in the payload to bind the record to a specific user and organisation; "
+        "omit them to create an unowned record. "
         "Identifiers, telecom, and addresses must be added after creation via the dedicated sub-resource endpoints. "
         + _CONTENT_NEG
     ),
     response_description="The newly created Patient resource",
-    responses={**_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
 )
 async def create_patient(
     payload: PatientCreateSchema,
@@ -70,8 +92,6 @@ async def create_patient(
 
 @router.get(
     "/me",
-    response_model=PatientResponseSchema,
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="get_my_patient_profile",
     summary="Get the Patient profile for the currently authenticated user",
@@ -82,6 +102,7 @@ async def create_patient(
     ),
     response_description="The authenticated user's Patient resource",
     responses={
+        **_SINGLE_200,
         **_ERR_AUTH,
         404: {"description": "No Patient profile found for the current authenticated user"},
     },
@@ -107,8 +128,6 @@ async def get_my_patient_profile(
 
 @router.get(
     "/{patient_id}",
-    response_model=PatientResponseSchema,
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="get_patient_by_id",
     summary="Retrieve a Patient resource by public patient_id",
@@ -119,6 +138,7 @@ async def get_my_patient_profile(
     ),
     response_description="The requested Patient resource",
     responses={
+        **_SINGLE_200,
         **_ERR_AUTH,
         403: {"description": "Forbidden — caller lacks `patient:read` permission or the patient belongs to a different organization"},
         **_ERR_NOT_FOUND,
@@ -141,19 +161,17 @@ async def get_patient(
 
 @router.patch(
     "/{patient_id}",
-    response_model=PatientResponseSchema,
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="patch_patient",
     summary="Partially update a Patient resource",
     description=(
         "Only supplied fields are written; omitted fields are left unchanged. "
-        "Patchable fields include name, birth date, gender, active status, and preferred language. "
+        "Patchable fields include name, birth date, gender, and active status. "
         "To modify identifiers, telecom, or addresses use the dedicated sub-resource endpoints. "
         + _CONTENT_NEG
     ),
     response_description="The updated Patient resource",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_patient(
     payload: PatientPatchSchema,
@@ -177,28 +195,39 @@ async def patch_patient(
 
 @router.get(
     "/",
-    response_model=list[PatientResponseSchema],
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patients",
     summary="List all Patient resources",
     description=(
-        "Returns all Patient resources accessible to the caller. "
-        "Results are scoped to the caller's active organization. "
+        "Returns a paginated list of Patient resources. "
+        "Filter by `family_name`, `given_name`, `gender`, `active`, `user_id`, or `org_id`. "
+        "Use `limit` and `offset` for pagination. "
         + _CONTENT_NEG
     ),
-    response_description="Array of Patient resources",
-    responses={**_ERR_AUTH},
+    response_description="Paginated Patient resources",
+    responses={**_LIST_200, **_ERR_AUTH},
 )
 async def list_patients(
     request: Request,
+    family_name: Optional[str] = Query(None),
+    given_name: Optional[str] = Query(None),
+    gender: Optional[str] = Query(None),
+    active: Optional[bool] = Query(None),
+    user_id: Optional[str] = Query(None),
+    org_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    patients = await patient_service.list_patients()
-    return format_list_response(
+    patients, total = await patient_service.list_patients(
+        user_id=user_id, org_id=org_id, family_name=family_name,
+        given_name=given_name, gender=gender, active=active,
+        limit=limit, offset=offset,
+    )
+    return format_paginated_response(
         [patient_service._to_fhir(p) for p in patients],
         [patient_service._to_plain(p) for p in patients],
-        request,
+        total, limit, offset, request,
     )
 
 
@@ -230,8 +259,6 @@ async def delete_patient(
 
 @router.post(
     "/{patient_id}/identifiers",
-    response_model=PatientResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_identifier",
@@ -244,7 +271,7 @@ async def delete_patient(
         + _CONTENT_NEG
     ),
     response_description="The updated Patient resource with the new identifier appended",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_identifier(
     payload: IdentifierCreate,
@@ -267,8 +294,6 @@ async def add_identifier(
 
 @router.post(
     "/{patient_id}/telecom",
-    response_model=PatientResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_telecom",
@@ -281,7 +306,7 @@ async def add_identifier(
         + _CONTENT_NEG
     ),
     response_description="The updated Patient resource with the new contact point appended",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_telecom(
     payload: TelecomCreate,
@@ -304,8 +329,6 @@ async def add_telecom(
 
 @router.post(
     "/{patient_id}/addresses",
-    response_model=PatientResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_address",
@@ -318,7 +341,7 @@ async def add_telecom(
         + _CONTENT_NEG
     ),
     response_description="The updated Patient resource with the new address appended",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_address(
     payload: AddressCreate,

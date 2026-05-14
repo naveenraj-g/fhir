@@ -1,5 +1,7 @@
-from typing import Optional, List
+from datetime import datetime
+from typing import Optional, List, Tuple
 
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -170,50 +172,78 @@ class QuestionnaireResponseRepository:
             return result.scalars().first()
 
     async def get_me(
-        self, user_id: str, org_id: str
-    ) -> List[QuestionnaireResponseModel]:
-        """Fetch all QuestionnaireResponses owned by user_id within org_id."""
+        self,
+        user_id: str,
+        org_id: str,
+        status: Optional[str] = None,
+        patient_id: Optional[int] = None,
+        questionnaire: Optional[str] = None,
+        authored_from: Optional[datetime] = None,
+        authored_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[QuestionnaireResponseModel], int]:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(QuestionnaireResponseModel).where(
-                    QuestionnaireResponseModel.user_id == user_id,
-                    QuestionnaireResponseModel.org_id == org_id,
-                )
+            base = self._apply_list_filters(
+                _with_relationships(select(QuestionnaireResponseModel)),
+                user_id, org_id, status, patient_id, questionnaire, authored_from, authored_to,
             )
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
+            count_base = self._apply_list_filters(
+                select(func.count()).select_from(QuestionnaireResponseModel),
+                user_id, org_id, status, patient_id, questionnaire, authored_from, authored_to,
+            )
+            total = (await session.execute(count_base)).scalar_one()
+            rows = list((await session.execute(
+                base.order_by(QuestionnaireResponseModel.authored.desc()).offset(offset).limit(limit)
+            )).scalars().all())
+        return rows, total
+
+    def _apply_list_filters(self, stmt, user_id, org_id, status, patient_id, questionnaire, authored_from, authored_to):
+        if user_id:
+            stmt = stmt.where(QuestionnaireResponseModel.user_id == user_id)
+        if org_id:
+            stmt = stmt.where(QuestionnaireResponseModel.org_id == org_id)
+        if status:
+            stmt = stmt.where(QuestionnaireResponseModel.status == status)
+        if patient_id is not None:
+            stmt = stmt.where(
+                QuestionnaireResponseModel.subject_type == SubjectReferenceType.PATIENT,
+                QuestionnaireResponseModel.subject_id == patient_id,
+            )
+        if questionnaire:
+            stmt = stmt.where(QuestionnaireResponseModel.questionnaire == questionnaire)
+        if authored_from is not None:
+            stmt = stmt.where(QuestionnaireResponseModel.authored >= authored_from)
+        if authored_to is not None:
+            stmt = stmt.where(QuestionnaireResponseModel.authored <= authored_to)
+        return stmt
 
     async def list(
         self,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        status: Optional[str] = None,
         patient_id: Optional[int] = None,
-        encounter_id: Optional[int] = None,
-    ) -> List[QuestionnaireResponseModel]:
-        """List responses, optionally filtered by public patient_id or encounter_id."""
+        questionnaire: Optional[str] = None,
+        authored_from: Optional[datetime] = None,
+        authored_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[QuestionnaireResponseModel], int]:
         async with self.session_factory() as session:
-            stmt = _with_relationships(select(QuestionnaireResponseModel))
-
-            if patient_id is not None:
-                stmt = stmt.where(
-                    QuestionnaireResponseModel.subject_type == SubjectReferenceType.PATIENT,
-                    QuestionnaireResponseModel.subject_id == patient_id,
-                )
-
-            if encounter_id is not None:
-                enc_result = await session.execute(
-                    select(EncounterModel.id).where(
-                        EncounterModel.encounter_id == encounter_id
-                    )
-                )
-                internal_enc_id = enc_result.scalar_one_or_none()
-                if internal_enc_id is not None:
-                    stmt = stmt.where(
-                        QuestionnaireResponseModel.encounter_id == internal_enc_id
-                    )
-                else:
-                    return []
-
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
+            base = self._apply_list_filters(
+                _with_relationships(select(QuestionnaireResponseModel)),
+                user_id, org_id, status, patient_id, questionnaire, authored_from, authored_to,
+            )
+            count_base = self._apply_list_filters(
+                select(func.count()).select_from(QuestionnaireResponseModel),
+                user_id, org_id, status, patient_id, questionnaire, authored_from, authored_to,
+            )
+            total = (await session.execute(count_base)).scalar_one()
+            rows = list((await session.execute(
+                base.order_by(QuestionnaireResponseModel.authored.desc()).offset(offset).limit(limit)
+            )).scalars().all())
+        return rows, total
 
     # ── Write ─────────────────────────────────────────────────────────────
 

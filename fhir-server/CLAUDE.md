@@ -1,1 +1,660 @@
-questionary response - https://www.hl7.org/fhir/questionnaireresponse.html
+# FHIR Server — Architecture & Agent Guide
+
+## FHIR References
+- QuestionnaireResponse spec: https://www.hl7.org/fhir/questionnaireresponse.html
+- FHIR R4 base spec: https://www.hl7.org/fhir/R4/
+
+---
+
+## Project Overview
+
+A **FHIR R4-compliant REST API server** built with FastAPI and PostgreSQL. It manages six healthcare resources: `Patient`, `Practitioner`, `Encounter`, `Appointment`, `QuestionnaireResponse`, and `Vitals` (non-FHIR, wearable data). Every endpoint supports dual-format responses: full FHIR R4 JSON (`application/fhir+json`) and a simplified snake_case JSON (`application/json`), selected via the `Accept` header.
+
+---
+
+## Tech Stack
+
+| Concern | Library |
+|---|---|
+| Web framework | FastAPI + Uvicorn |
+| Database | PostgreSQL 15 (async via asyncpg) |
+| ORM | SQLAlchemy 2.0+ (async) |
+| Auth | PyJWT + PyJWKClient (JWKS endpoint) |
+| Sessions | Redis 7 (server-side) |
+| DI container | dependency-injector |
+| FHIR validation | fhir-resources 8.x |
+| Config | pydantic-settings (.env) |
+| Package manager | uv |
+| Python | 3.12+ |
+
+---
+
+## Directory Structure
+
+```
+app/
+├── main.py                          # FastAPI app, lifespan, middleware, router mount
+├── core/
+│   ├── config.py                    # Pydantic Settings — reads .env
+│   ├── database.py                  # SQLAlchemy async engine + session_maker
+│   ├── logging.py                   # JSON structured logging
+│   ├── redis.py                     # Redis async client singleton
+│   ├── session.py                   # Redis-backed server-side session manager
+│   ├── request_context.py           # ContextVar for request_id + middleware
+│   ├── content_negotiation.py       # format_response() / format_paginated_response()
+│   ├── references.py                # parse_reference(), resolve_subject()
+│   ├── schema_utils.py              # inline_schema() — inlines $ref/$defs for OpenAPI
+│   └── keycloak.py                  # Optional Keycloak OIDC integration
+├── auth/
+│   ├── dependencies.py              # get_current_user(), require_permission(), decode_token()
+│   ├── patient_deps.py              # get_authorized_patient() — ownership check
+│   ├── appointment_deps.py          # get_authorized_appointment()
+│   ├── encounter_deps.py            # get_authorized_encounter()
+│   ├── practitioner_deps.py         # get_authorized_practitioner()
+│   ├── vitals_deps.py               # get_authorized_vitals()
+│   └── questionnaire_response_deps.py
+├── di/
+│   ├── container.py                 # Main DI container wiring all modules
+│   ├── core.py                      # CoreContainer — Database singleton
+│   ├── modules/                     # Per-resource DI modules (repository + service)
+│   │   ├── patient.py
+│   │   ├── appointment.py
+│   │   ├── encounter.py
+│   │   ├── practitioner.py
+│   │   ├── questionnaire_response.py
+│   │   └── vitals.py
+│   └── dependencies/                # FastAPI @Depends wrappers that call DI container
+│       ├── patient.py               # get_patient_service()
+│       ├── appointment.py
+│       ├── encounter.py
+│       ├── practitioner.py
+│       ├── questionnaire_response.py
+│       └── vitals.py
+├── models/
+│   ├── enums.py                     # SubjectReferenceType, GenderType, IdentifierUse, etc.
+│   ├── datatypes.py                 # CodeableConceptModel, CodingModel (shared)
+│   ├── patient.py                   # PatientModel, PatientIdentifier, PatientTelecom, PatientAddress
+│   ├── practitioner.py              # PractitionerModel + sub-resources
+│   ├── appointment/
+│   │   ├── appointment.py           # AppointmentModel, AppointmentParticipant,
+│   │   │                            # AppointmentReasonCode, AppointmentRecurrenceTemplate
+│   │   └── enums.py                 # AppointmentStatus, ParticipantStatus, ActorType
+│   ├── encounter/
+│   │   ├── encounter.py             # EncounterModel + sub-resources
+│   │   └── enums.py
+│   ├── questionnaire_response/
+│   │   ├── questionnaire_response.py  # QRModel, QRItemModel, QRAnswerModel
+│   │   └── enums.py
+│   └── vitals/
+│       └── vitals.py                # VitalsModel (non-FHIR wearable data)
+├── fhir/
+│   └── mappers/                     # ORM model → FHIR dict and plain dict
+│       ├── patient.py               # to_fhir_patient(), to_plain_patient()
+│       ├── appointment.py           # to_fhir_appointment(), to_plain_appointment()
+│       ├── encounter.py
+│       ├── practitioner.py
+│       └── questionnaire_response.py
+├── repository/
+│   ├── patient_repository.py        # PatientRepository — CRUD + filters + sub-resources
+│   ├── appointment_repository.py
+│   ├── encounter_repository.py
+│   ├── practitioner_repository.py
+│   ├── questionnaire_response_repository.py
+│   └── vitals_repository.py
+├── services/
+│   ├── patient_service.py           # PatientService — thin orchestration layer
+│   ├── appointment_service.py
+│   ├── encounter_service.py
+│   ├── practitioner_service.py
+│   ├── questionnaire_response_service.py
+│   └── vitals_service.py
+├── routers/
+│   ├── __init__.py                  # Assembles api_router from all sub-routers
+│   ├── patient.py                   # POST/GET/PATCH/DELETE + sub-resource POSTs
+│   ├── appointment.py
+│   ├── encounter.py
+│   ├── practitioner.py
+│   ├── questionnaire_response.py
+│   └── vitals.py                    # Non-FHIR; uses JSONResponse directly
+├── schemas/
+│   ├── patient.py                   # PatientCreateSchema, PatientPatchSchema
+│   ├── appointment.py
+│   ├── encounter.py
+│   ├── practitioner.py
+│   ├── questionnaire_response.py    # Includes recursive AnswerInput, ItemInput
+│   ├── vitals.py                    # VitalsCreateSchema, VitalsPatchSchema, PaginatedVitalsResponse
+│   └── fhir/
+│       ├── __init__.py              # Re-exports all FHIR + plain response schemas
+│       ├── common.py                # FHIRBundle, FHIRReference, FHIRCoding
+│       ├── patient.py               # FHIRPatientSchema, PlainPatientResponse, PaginatedPatientResponse
+│       ├── appointment.py
+│       ├── encounter.py
+│       ├── practitioner.py
+│       └── questionnaire_response.py
+└── errors/
+    ├── base.py                      # ApplicationError base class
+    ├── handlers.py                  # Global exception handlers → FHIR OperationOutcome
+    ├── auth.py / authorization.py / validation.py / infrastructure.py / domain.py
+    └── validator/validate_model.py
+```
+
+---
+
+## Layered Architecture
+
+Every FHIR resource follows the same strict 4-layer flow:
+
+```
+HTTP Request
+    │
+    ▼
+Router (app/routers/<resource>.py)
+  - Validates request body via Pydantic schema
+  - Extracts JWT claims from request.state.user
+  - Calls service methods
+  - Calls format_response() / format_paginated_response()
+    │
+    ▼
+Service (app/services/<resource>_service.py)
+  - Thin orchestration: delegates to repository
+  - Hosts _to_fhir() and _to_plain() mapper wrappers
+  - May contain cross-entity logic (e.g., patient_id resolution in VitalsService)
+    │
+    ▼
+Repository (app/repository/<resource>_repository.py)
+  - All database I/O via async SQLAlchemy
+  - Session-per-operation pattern (async with self.session_factory() as session)
+  - _with_relationships() helper for eager-loading sub-resources
+  - _apply_list_filters() for reusable WHERE clauses
+    │
+    ▼
+SQLAlchemy ORM Models (app/models/)
+  - Declarative, async-compatible
+  - Internal PK (id) + public sequence-based ID (patient_id, etc.)
+```
+
+---
+
+## Public vs. Internal IDs
+
+Every resource has **two IDs**:
+
+| Column | Description | Exposed? |
+|---|---|---|
+| `id` | Auto-increment internal PK | Never — DB-internal only |
+| `<resource>_id` | Sequence-based public ID starting at 10000+ | Yes — used in all APIs, FHIR references |
+
+Sequences start at: Patient=10000, Practitioner=30000, Encounter=20000, Appointment=40000, QR=50000, Vitals=60000.
+
+**Why:** Prevents enumeration, allows ID spaces to not collide, allows remapping.
+
+```python
+# Example from models/patient.py
+patient_id_seq = Sequence("patient_id_seq", start=10000, increment=1)
+
+class PatientModel(Base):
+    __tablename__ = "patient"
+    id = Column(Integer, primary_key=True)  # never exposed
+    patient_id = Column(Integer, unique=True, server_default=patient_id_seq.next_value())
+```
+
+---
+
+## Multi-Tenancy & Ownership
+
+Every resource row stores:
+- `user_id` — the JWT `sub` claim of the creating user
+- `org_id` — the JWT `activeOrganizationId` claim
+
+**Ownership enforcement** happens in `app/auth/<resource>_deps.py` via FastAPI path dependencies:
+
+```python
+# Pattern: get_authorized_<resource>()
+async def get_authorized_vitals(
+    vitals_id: int = Path(...),
+    request: Request,
+    vitals_service: VitalsService = Depends(get_vitals_service),
+) -> VitalsModel:
+    user_id = request.state.user.get("sub")
+    vitals = await vitals_service.get_raw_by_vitals_id(vitals_id)
+    if not vitals or vitals.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return vitals
+```
+
+Used as `Depends(get_authorized_vitals)` in route function signatures — the loaded model is passed directly to the handler.
+
+---
+
+## JWT Authentication
+
+All routes are protected by `get_current_user` from `app/auth/dependencies.py`, mounted globally on the API router in `main.py`.
+
+```python
+# main.py
+app.include_router(api_router, prefix="/api/fhir/v1", dependencies=[Depends(get_current_user)])
+app.include_router(vitals_router, prefix="/api/v1/vitals", dependencies=[Depends(get_current_user)])
+```
+
+`get_current_user` decodes the JWT using JWKS endpoint, validates expiry + audience, and stores claims in `request.state.user`. Routes read:
+
+```python
+user_id: str = request.state.user.get("sub")           # Used as created_by / user identity
+org_id: str = request.state.user.get("activeOrganizationId")
+```
+
+**Permission checks** (for FHIR resources except vitals) use `require_permission`:
+
+```python
+dependencies=[Depends(require_permission("appointment", "create"))]
+```
+
+**Vitals** does NOT use `require_permission` — it uses `get_authorized_vitals` in function params instead.
+
+---
+
+## Content Negotiation
+
+All FHIR resource routes return either FHIR JSON or plain JSON based on the `Accept` header. The decision is made by `format_response()` in `app/core/content_negotiation.py`:
+
+```python
+# Single resource
+return format_response(
+    service._to_fhir(model),   # dict with FHIR camelCase keys
+    service._to_plain(model),  # dict with snake_case keys
+    request,
+)
+
+# Paginated list
+return format_paginated_response(
+    [service._to_fhir(m) for m in models],
+    [service._to_plain(m) for m in models],
+    total, limit, offset, request,
+)
+```
+
+- `Accept: application/fhir+json` → FHIR R4 format (resourceType, camelCase, FHIR Bundle for lists)
+- `Accept: application/json` or absent → plain snake_case JSON, `{total, limit, offset, data[]}` for lists
+
+**Vitals** does NOT use content negotiation — it returns only plain JSON via `JSONResponse` + `jsonable_encoder`.
+
+---
+
+## OpenAPI Response Schema Pattern
+
+All routes define response schemas inline to avoid `$ref` resolution issues with Pydantic v2 complex models.
+
+```python
+# Module-level pre-computed constants (evaluated once at import)
+_SINGLE_200 = {
+    200: {
+        "content": {
+            "application/json": {"schema": inline_schema(PlainEncounterResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIREncounterSchema.model_json_schema())},
+        }
+    }
+}
+_SINGLE_201 = {201: _SINGLE_200[200]}   # Same content, correct status code for POST
+_LIST_200 = {
+    200: {
+        "description": "Paginated list of encounters",
+        "content": {
+            "application/json": {"schema": inline_schema(PaginatedEncounterResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIREncounterBundle.model_json_schema())},
+        },
+    }
+}
+
+# Usage in routes
+@router.post("/", status_code=201, responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION})
+@router.get("/{id}", responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND})
+@router.get("/", responses={**_LIST_200, **_ERR_AUTH})
+```
+
+**Vitals** only uses `application/json` (no FHIR dual-format) in its schema constants.
+
+`inline_schema()` in `app/core/schema_utils.py` resolves `$defs` and `$ref` pointers so the emitted OpenAPI has no external references.
+
+---
+
+## Repository Pattern Details
+
+### Session-per-operation
+```python
+async def get_by_encounter_id(self, encounter_id: int) -> Optional[EncounterModel]:
+    async with self.session_factory() as session:   # opens + auto-closes
+        stmt = _with_relationships(
+            select(EncounterModel).where(EncounterModel.encounter_id == encounter_id)
+        )
+        result = await session.execute(stmt)
+        return result.scalars().first()
+```
+
+### Eager-loading sub-resources (avoids N+1)
+```python
+def _with_relationships(stmt):
+    return stmt.options(
+        selectinload(EncounterModel.participants),
+        selectinload(EncounterModel.diagnoses),
+        selectinload(EncounterModel.locations),
+        # ...
+    )
+```
+Always use `_with_relationships()` when loading a model that will be serialized.
+
+### Reusable filter helper
+```python
+def _apply_list_filters(self, stmt, user_id, org_id, status, patient_id, ...):
+    if user_id:
+        stmt = stmt.where(AppointmentModel.user_id == user_id)
+    if status:
+        stmt = stmt.where(AppointmentModel.status == status)
+    # ... each filter is conditional
+    return stmt
+
+async def list(self, ...) -> Tuple[List[AppointmentModel], int]:
+    async with self.session_factory() as session:
+        base = self._apply_list_filters(_with_relationships(select(AppointmentModel)), ...)
+        count_base = self._apply_list_filters(select(func.count()).select_from(AppointmentModel), ...)
+        total = (await session.execute(count_base)).scalar_one()
+        rows = list((await session.execute(base.order_by(...).offset(offset).limit(limit))).scalars().all())
+    return rows, total
+```
+
+`get_me()` reuses `_apply_list_filters()` with `user_id`/`org_id` always non-None, plus the same optional resource filters as `list()`.
+
+---
+
+## Pydantic Schema Conventions
+
+### Input schemas (request bodies)
+Located in `app/schemas/<resource>.py`. Three schema types per resource:
+
+1. **CreateSchema** — all optional fields except required ones; includes `user_id`, `org_id`, `pseudo_id`/`pseudo_id2` (identity); has `json_schema_extra` with a complete example including `user_id` and `org_id`
+2. **PatchSchema** — same fields but all optional; excludes identity fields that cannot change (`user_id`, `org_id`, `recorded_at` for vitals)
+3. **ResponseSchema** — all fields the API returns; includes `id` (public), `created_at`, `updated_at`
+
+All schemas use `model_config = ConfigDict(extra="forbid")` to reject unknown fields.
+
+### FHIR response schemas
+Located in `app/schemas/fhir/`. Two variants per resource:
+- `FHIRXxxSchema` — FHIR R4 camelCase structure, `resourceType` field
+- `PlainXxxResponse` — snake_case flat structure
+- `PaginatedXxxResponse` — wraps `List[PlainXxxResponse]` with `total`, `limit`, `offset`
+- `FHIRXxxBundle` — FHIR Bundle with `entry[]`
+
+### Recursive schemas (QuestionnaireResponse)
+`AnswerInput` and `ItemInput` self-reference (items can contain items). Must call `model_rebuild()` after class definition:
+```python
+AnswerInput.model_rebuild()
+ItemInput.model_rebuild()
+```
+
+---
+
+## FHIR Mapper Pattern
+
+Located in `app/fhir/mappers/<resource>.py`. Each file has two public functions:
+
+```python
+def to_fhir_<resource>(model: XxxModel) -> dict:
+    """Returns FHIR R4 dict with camelCase keys and resourceType."""
+    result = {
+        "resourceType": "Appointment",
+        "id": str(model.appointment_id),   # always string in FHIR
+        "status": model.status,
+    }
+    # References reconstructed from stored enum + id
+    if model.subject_type and model.subject_id:
+        result["subject"] = {
+            "reference": f"{model.subject_type.value}/{model.subject_id}",
+            "display": model.subject_display,
+        }
+    # Strip None values at end
+    return {k: v for k, v in result.items() if v is not None}
+
+def to_plain_<resource>(model: XxxModel) -> dict:
+    """Returns flat snake_case dict."""
+    return {
+        "id": model.appointment_id,        # int in plain JSON
+        "status": model.status,
+        "subject": f"{model.subject_type.value}/{model.subject_id}" if model.subject_type else None,
+        # ...
+    }
+```
+
+References stored in DB as `(subject_type: Enum, subject_id: int)` → reconstructed as `"Patient/10001"` strings in output.
+
+---
+
+## Audit Fields
+
+All resources track:
+- `created_at` — DB server default (`func.now()`)
+- `updated_at` — DB `onupdate=func.now()`
+- `created_by` — set from `request.state.user.get("sub")` in POST routes
+- `updated_by` — set from `request.state.user.get("sub")` in PATCH routes
+
+```python
+# Route handler pattern
+async def create_encounter(payload, request, encounter_service):
+    created_by: str = request.state.user.get("sub")
+    encounter = await encounter_service.create_encounter(payload, payload.user_id, payload.org_id, created_by)
+
+async def patch_encounter(payload, request, encounter, encounter_service):
+    updated_by: str = request.state.user.get("sub")
+    updated = await encounter_service.patch_encounter(encounter.encounter_id, payload, updated_by=updated_by)
+```
+
+---
+
+## Paginated Response Structure
+
+All list endpoints return:
+```json
+{
+    "total": 150,
+    "limit": 50,
+    "offset": 0,
+    "data": [...]
+}
+```
+
+FHIR Bundle format (when `Accept: application/fhir+json`):
+```json
+{
+    "resourceType": "Bundle",
+    "type": "searchset",
+    "total": 150,
+    "entry": [{"resource": {...}}]
+}
+```
+
+Pagination query params on all list + `/me` routes:
+- `limit: int = Query(50, ge=1, le=200)`
+- `offset: int = Query(0, ge=0)`
+
+---
+
+## `/me` Route Pattern
+
+Each resource has a `GET /me` route that scopes results to the authenticated user's `sub` and `activeOrganizationId`. These routes support the same filters as `GET /` (minus `user_id`/`org_id` which come from the JWT).
+
+```
+GET /api/fhir/v1/appointments/me?status=booked&start_from=2026-01-01
+GET /api/fhir/v1/encounters/me?status=finished&class_code=AMB
+GET /api/fhir/v1/questionnaire-responses/me?questionnaire=http://loinc.org/phq-9
+GET /api/v1/vitals/me?date=2026-05-01
+```
+
+Route ordering: `/me` must be declared **before** `/{id}` in the router file to avoid FastAPI treating `me` as a path parameter.
+
+---
+
+## Error Handling
+
+All errors return FHIR OperationOutcome format:
+
+```json
+{
+    "resourceType": "OperationOutcome",
+    "issue": [
+        {
+            "severity": "error",
+            "code": "invalid",
+            "diagnostics": "Field body.status — field required",
+            "expression": ["status"]
+        }
+    ]
+}
+```
+
+Registered handlers in `app/errors/handlers.py`:
+- `ApplicationError` (400/401/403/404/500 depending on subclass)
+- `RequestValidationError` (422 — Pydantic body validation)
+- `HTTPException` (FastAPI standard)
+- `Exception` (catch-all 500)
+
+---
+
+## Dependency Injection Setup
+
+The DI container uses `dependency-injector`. Pattern for every resource:
+
+```python
+# di/modules/appointment.py
+class AppointmentContainer(containers.DeclarativeContainer):
+    core = providers.DependenciesContainer()
+
+    appointment_repository = providers.Factory(
+        AppointmentRepository,
+        session_factory=core.database.provided.session,
+    )
+    appointment_service = providers.Factory(
+        AppointmentService,
+        repository=appointment_repository,
+    )
+
+# di/dependencies/appointment.py
+@inject
+def get_appointment_service(
+    service: AppointmentService = Depends(Provide[Container.appointment.appointment_service]),
+) -> AppointmentService:
+    return service
+
+# In route handler
+async def create_appointment(
+    ...,
+    appointment_service: AppointmentService = Depends(get_appointment_service),
+):
+    ...
+```
+
+---
+
+## Environment Configuration
+
+Required `.env` variables (see `.env.example`):
+
+```
+ENVIRONMENT=development
+FHIR_DATABASE_URL=postgresql+asyncpg://user:password@localhost/fhir-server
+REDIS_URL=redis://localhost:6379
+IAM_ISSUER=https://your-iam-provider/issuer
+IAM_JWKS_URL=https://your-iam-provider/.well-known/jwks.json
+# Optional Keycloak integration:
+KEYCLOAK_URL=http://localhost:8080
+KEYCLOAK_REALM_NAME=your-realm
+KEYCLOAK_CLIENT_ID=your-client-id
+KEYCLOAK_CLIENT_SECRET=your-secret
+```
+
+---
+
+## Running the Project
+
+```bash
+# Install dependencies
+uv sync
+
+# Start dev server (auto-reload)
+uv run fastapi dev app/main.py
+
+# OpenAPI docs
+http://localhost:8000/docs
+
+# Docker (includes postgres + redis)
+docker compose up --build
+```
+
+---
+
+## Adding a New FHIR Resource — Checklist
+
+When adding a new resource (e.g. `Observation`), follow this order:
+
+1. **Model** — `app/models/observation/observation.py`
+   - Internal `id` PK + public `observation_id` via Sequence (pick a new start number)
+   - `user_id`, `org_id`, `created_by`, `updated_by`, `created_at`, `updated_at`
+   - Sub-resource tables as needed with `cascade="all, delete-orphan"`
+
+2. **Enums** — `app/models/observation/enums.py` (if needed)
+
+3. **Input Schemas** — `app/schemas/observation.py`
+   - `ObservationCreateSchema(BaseModel)` — `extra="forbid"`, includes `user_id`, `org_id`, `json_schema_extra` with full example
+   - `ObservationPatchSchema(BaseModel)` — patchable fields only
+   - `ObservationResponseSchema(BaseModel)` — for non-FHIR resources (like vitals); or use FHIR schemas
+
+4. **FHIR Response Schemas** — `app/schemas/fhir/observation.py`
+   - `FHIRObservationSchema`, `PlainObservationResponse`, `PaginatedObservationResponse`, `FHIRObservationBundle`
+   - Export from `app/schemas/fhir/__init__.py`
+
+5. **Mappers** — `app/fhir/mappers/observation.py`
+   - `to_fhir_observation(model) -> dict`
+   - `to_plain_observation(model) -> dict`
+
+6. **Repository** — `app/repository/observation_repository.py`
+   - `_with_relationships()`, `_apply_list_filters()`
+   - `get_by_observation_id()`, `get_me()`, `list()`, `create()`, `patch()`, `delete()`
+   - `get_me()` must reuse `_apply_list_filters()` with `user_id`/`org_id` always set
+
+7. **Service** — `app/services/observation_service.py`
+   - `_to_fhir()`, `_to_plain()` wrappers
+   - `get_raw_by_observation_id()` — for auth dep
+   - `get_me()`, `list_observations()`, `create_observation()`, `patch_observation()`, `delete_observation()`
+
+8. **DI Module** — `app/di/modules/observation.py`
+   - `ObservationContainer` with `observation_repository` + `observation_service`
+
+9. **DI Dependency** — `app/di/dependencies/observation.py`
+   - `get_observation_service()` with `@inject` + `Provide[Container.observation.observation_service]`
+
+10. **Wire container** — `app/di/container.py`
+    - Add `observation = providers.Container(ObservationContainer, core=core)`
+
+11. **Auth dep** — `app/auth/observation_deps.py`
+    - `get_authorized_observation()` — loads + checks `user_id` ownership
+
+12. **Router** — `app/routers/observation.py`
+    - Module-level `_SINGLE_200`, `_SINGLE_201`, `_LIST_200` constants using `inline_schema()`
+    - Routes in order: POST /, GET /me, GET /{id}, PATCH /{id}, GET /, DELETE /{id}
+    - All POST → `_SINGLE_201`, all GET single/patch → `_SINGLE_200`, all list → `_LIST_200`
+    - Use `require_permission("observation", "create|read|update|delete")` as dependency
+    - `status` query param → rename to `obs_status` with `alias="status"` to avoid shadowing `fastapi.status`
+
+13. **Register router** — `app/routers/__init__.py`
+    - `api_router.include_router(observation_router, prefix="/observations", tags=["Observations"])`
+
+---
+
+## Common Pitfalls & Rules
+
+- **Never use `response_model=`** on routes — use inline `responses=` with `inline_schema()` instead; avoids double-serialization and `$ref` problems
+- **`/me` before `/{id}`** — route declaration order matters in FastAPI; `/me` must come first
+- **`status` parameter shadowing** — if a route has a `status` query param, name it `enc_status`/`appt_status`/`qr_status` with `alias="status"` to avoid shadowing `from fastapi import status`
+- **Always eager-load relationships** — use `_with_relationships()` on every query that returns a model for serialization; otherwise lazy-load will fail in async context
+- **Session-per-operation** — do not hold sessions across multiple operations; each repository method opens its own `async with self.session_factory() as session`
+- **`model_dump(exclude_unset=True)`** — use this in PATCH handlers to only apply fields the caller explicitly provided
+- **`created_by` / `updated_by`** — always pass from `request.state.user.get("sub")`; never hardcode or skip
+- **`user_id` / `org_id` in example** — `json_schema_extra` examples on CreateSchemas must include `user_id` and `org_id` fields at the top
+- **`inline_schema()` at module level** — call once at import time, not inside route handlers; prevents repeated computation

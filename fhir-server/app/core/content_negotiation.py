@@ -1,3 +1,5 @@
+from typing import List
+
 from fastapi import Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -38,3 +40,36 @@ def format_list_response(
             media_type=FHIR_MEDIA_TYPE,
         )
     return JSONResponse(content=jsonable_encoder(plain_list))
+
+
+def format_paginated_response(
+    fhir_list: List[dict],
+    plain_list: List[dict],
+    total: int,
+    limit: int,
+    offset: int,
+    request: Request,
+) -> JSONResponse:
+    """
+    Return a paginated response in either plain-JSON or FHIR Bundle format.
+
+    Plain JSON envelope:  { total, limit, offset, data: [...] }
+    FHIR Bundle:          { resourceType: "Bundle", type: "searchset", total, entry: [{ resource: ... }] }
+    """
+    if wants_fhir(request):
+        bundle = {
+            "resourceType": "Bundle",
+            "type": "searchset",
+            "total": total,
+            "entry": [{"resource": r} for r in fhir_list],
+        }
+        return JSONResponse(
+            content=jsonable_encoder(bundle),
+            media_type=FHIR_MEDIA_TYPE,
+        )
+    return JSONResponse(content=jsonable_encoder({
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "data": plain_list,
+    }))

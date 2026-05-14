@@ -28,8 +28,8 @@ class AnswerQuantityInput(BaseModel):
 
 class AnswerInput(BaseModel):
     """
-    A single answer value within a QuestionnaireResponse item.
-    Set exactly one value_ field.
+    A single answer within a QuestionnaireResponse item.
+    Set exactly one value field to match the question type.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -48,7 +48,6 @@ class AnswerInput(BaseModel):
         None,
         description="Reference answer using the public resource ID, e.g. 'Patient/10001'.",
     )
-    # Nested items within an answer (for conditional groups)
     item: Optional[List["ItemInput"]] = None
 
 
@@ -67,7 +66,7 @@ class ItemInput(BaseModel):
     definition: Optional[str] = None
     text: Optional[str] = Field(None, description="Question text or group name.", examples=["What is your date of birth?"])
     answer: Optional[List[AnswerInput]] = None
-    item: Optional[List["ItemInput"]] = None  # nested group items
+    item: Optional[List["ItemInput"]] = None
 
 
 AnswerInput.model_rebuild()
@@ -84,12 +83,17 @@ class QuestionnaireResponseCreateSchema(BaseModel):
     A QuestionnaireResponse is a completed or in-progress set of answers to
     questions from a Questionnaire. References use public IDs
     (e.g. Patient/10001, Encounter/20001, Practitioner/30001).
+    Supply user_id and org_id to bind the record to a specific user and
+    organisation; omit them to create an unowned record.
+    The caller's sub JWT claim is recorded as created_by.
     """
 
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={
             "example": {
+                "user_id": "user-uuid-123",
+                "org_id": "org-uuid-456",
                 "questionnaire": "http://example.org/fhir/Questionnaire/phq-9",
                 "status": "completed",
                 "subject": "Patient/10001",
@@ -170,110 +174,3 @@ class QuestionnaireResponsePatchSchema(BaseModel):
 
     status: Optional[QuestionnaireResponseStatus] = None
     authored: Optional[datetime] = None
-
-
-# ── FHIR response fragments (read-only) ───────────────────────────────────
-
-
-class FHIRCoding(BaseModel):
-    system: Optional[str] = None
-    code: Optional[str] = None
-    display: Optional[str] = None
-
-
-class FHIRQuantity(BaseModel):
-    value: Optional[float] = None
-    unit: Optional[str] = None
-    system: Optional[str] = None
-    code: Optional[str] = None
-
-
-class FHIRReference(BaseModel):
-    reference: Optional[str] = None
-    display: Optional[str] = None
-
-
-class FHIRAnswerSchema(BaseModel):
-    valueBoolean: Optional[bool] = None
-    valueDecimal: Optional[float] = None
-    valueInteger: Optional[int] = None
-    valueDate: Optional[str] = None
-    valueDateTime: Optional[datetime] = None
-    valueTime: Optional[str] = None
-    valueString: Optional[str] = None
-    valueUri: Optional[str] = None
-    valueCoding: Optional[FHIRCoding] = None
-    valueQuantity: Optional[FHIRQuantity] = None
-    valueReference: Optional[FHIRReference] = None
-    item: Optional[List["FHIRItemSchema"]] = None
-
-
-class FHIRItemSchema(BaseModel):
-    linkId: str
-    definition: Optional[str] = None
-    text: Optional[str] = None
-    answer: Optional[List[FHIRAnswerSchema]] = None
-    item: Optional[List["FHIRItemSchema"]] = None
-
-
-FHIRAnswerSchema.model_rebuild()
-FHIRItemSchema.model_rebuild()
-
-
-# ── Plain response sub-schemas ─────────────────────────────────────────────
-
-
-class QRAnswerSchema(BaseModel):
-    value_type: str
-    value_boolean: Optional[bool] = None
-    value_decimal: Optional[float] = None
-    value_integer: Optional[int] = None
-    value_string: Optional[str] = None
-    value_datetime: Optional[datetime] = None
-    value_coding: Optional[dict] = None
-    value_quantity: Optional[dict] = None
-    value_reference: Optional[str] = None
-    value_reference_display: Optional[str] = None
-
-
-class QRItemSchema(BaseModel):
-    link_id: str
-    text: Optional[str] = None
-    definition: Optional[str] = None
-    answer: Optional[List[QRAnswerSchema]] = None
-    item: Optional[List["QRItemSchema"]] = None
-
-
-QRItemSchema.model_rebuild()
-
-
-# ── Response schema ────────────────────────────────────────────────────────
-
-
-class QuestionnaireResponseResponseSchema(BaseModel):
-    """
-    Plain snake_case QuestionnaireResponse resource returned by all read/write endpoints.
-
-    - `id` is the PUBLIC questionnaire_response_id (e.g. 60001) — never the internal PK.
-    - References are split into _type and _id fields (no FHIR reference strings).
-    """
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    id: int
-    user_id: Optional[str] = None
-    org_id: Optional[str] = None
-    questionnaire: str
-    status: str
-    subject_type: Optional[str] = None
-    subject_id: Optional[int] = None
-    subject_display: Optional[str] = None
-    encounter_id: Optional[int] = None
-    authored: Optional[datetime] = None
-    author_type: Optional[str] = None
-    author_id: Optional[int] = None
-    author_display: Optional[str] = None
-    source_type: Optional[str] = None
-    source_id: Optional[int] = None
-    source_display: Optional[str] = None
-    item: Optional[List[QRItemSchema]] = None

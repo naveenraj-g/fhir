@@ -1,4 +1,5 @@
-from typing import Optional, List
+from typing import List, Optional, Tuple
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -57,11 +58,46 @@ class PractitionerRepository:
             result = await session.execute(stmt)
             return result.scalars().first()
 
-    async def list(self) -> List[PractitionerModel]:
+    def _apply_list_filters(self, stmt, user_id, org_id, family_name, given_name, role, active):
+        if user_id:
+            stmt = stmt.where(PractitionerModel.user_id == user_id)
+        if org_id:
+            stmt = stmt.where(PractitionerModel.org_id == org_id)
+        if family_name:
+            stmt = stmt.where(PractitionerModel.family_name.ilike(f"%{family_name}%"))
+        if given_name:
+            stmt = stmt.where(PractitionerModel.given_name.ilike(f"%{given_name}%"))
+        if role is not None:
+            stmt = stmt.where(PractitionerModel.role == role)
+        if active is not None:
+            stmt = stmt.where(PractitionerModel.active == active)
+        return stmt
+
+    async def list(
+        self,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        family_name: Optional[str] = None,
+        given_name: Optional[str] = None,
+        role: Optional[str] = None,
+        active: Optional[bool] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[PractitionerModel], int]:
         async with self.session_factory() as session:
-            stmt = _with_relationships(select(PractitionerModel))
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
+            base = self._apply_list_filters(
+                _with_relationships(select(PractitionerModel)),
+                user_id, org_id, family_name, given_name, role, active,
+            )
+            count_base = self._apply_list_filters(
+                select(func.count()).select_from(PractitionerModel),
+                user_id, org_id, family_name, given_name, role, active,
+            )
+            total = (await session.execute(count_base)).scalar_one()
+            rows = list((await session.execute(
+                base.order_by(PractitionerModel.practitioner_id.desc()).offset(offset).limit(limit)
+            )).scalars().all())
+        return rows, total
 
     # ── Write ─────────────────────────────────────────────────────────────
 

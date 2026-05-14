@@ -1,5 +1,7 @@
-from typing import Optional, List
+from datetime import datetime
+from typing import List, Optional, Tuple
 
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -90,29 +92,79 @@ class EncounterRepository:
             result = await session.execute(stmt)
             return result.scalars().first()
 
-    async def get_me(self, user_id: str, org_id: str) -> List[EncounterModel]:
-        """Fetch all encounters owned by user_id within org_id."""
+    async def get_me(
+        self,
+        user_id: str,
+        org_id: str,
+        status: Optional[str] = None,
+        patient_id: Optional[int] = None,
+        class_code: Optional[str] = None,
+        period_start_from: Optional[datetime] = None,
+        period_start_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[EncounterModel], int]:
         async with self.session_factory() as session:
-            stmt = _with_relationships(
-                select(EncounterModel).where(
-                    EncounterModel.user_id == user_id,
-                    EncounterModel.org_id == org_id,
-                )
+            base = self._apply_list_filters(
+                _with_relationships(select(EncounterModel)),
+                user_id, org_id, status, patient_id, class_code, period_start_from, period_start_to,
             )
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
+            count_base = self._apply_list_filters(
+                select(func.count()).select_from(EncounterModel),
+                user_id, org_id, status, patient_id, class_code, period_start_from, period_start_to,
+            )
+            total = (await session.execute(count_base)).scalar_one()
+            rows = list((await session.execute(
+                base.order_by(EncounterModel.period_start.desc()).offset(offset).limit(limit)
+            )).scalars().all())
+        return rows, total
 
-    async def list(self, patient_id: Optional[int] = None) -> List[EncounterModel]:
-        """List encounters, optionally filtered by public patient_id."""
+    def _apply_list_filters(self, stmt, user_id, org_id, status, patient_id, class_code, period_start_from, period_start_to):
+        if user_id:
+            stmt = stmt.where(EncounterModel.user_id == user_id)
+        if org_id:
+            stmt = stmt.where(EncounterModel.org_id == org_id)
+        if status:
+            stmt = stmt.where(EncounterModel.status == status)
+        if patient_id is not None:
+            stmt = stmt.where(
+                EncounterModel.subject_type == SubjectReferenceType.PATIENT,
+                EncounterModel.subject_id == patient_id,
+            )
+        if class_code:
+            stmt = stmt.where(EncounterModel.class_code == class_code)
+        if period_start_from is not None:
+            stmt = stmt.where(EncounterModel.period_start >= period_start_from)
+        if period_start_to is not None:
+            stmt = stmt.where(EncounterModel.period_start <= period_start_to)
+        return stmt
+
+    async def list(
+        self,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        status: Optional[str] = None,
+        patient_id: Optional[int] = None,
+        class_code: Optional[str] = None,
+        period_start_from: Optional[datetime] = None,
+        period_start_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[EncounterModel], int]:
         async with self.session_factory() as session:
-            stmt = _with_relationships(select(EncounterModel))
-            if patient_id is not None:
-                stmt = stmt.where(
-                    EncounterModel.subject_type == SubjectReferenceType.PATIENT,
-                    EncounterModel.subject_id == patient_id,
-                )
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
+            base = self._apply_list_filters(
+                _with_relationships(select(EncounterModel)),
+                user_id, org_id, status, patient_id, class_code, period_start_from, period_start_to,
+            )
+            count_base = self._apply_list_filters(
+                select(func.count()).select_from(EncounterModel),
+                user_id, org_id, status, patient_id, class_code, period_start_from, period_start_to,
+            )
+            total = (await session.execute(count_base)).scalar_one()
+            rows = list((await session.execute(
+                base.order_by(EncounterModel.period_start.desc()).offset(offset).limit(limit)
+            )).scalars().all())
+        return rows, total
 
     # ── Write ─────────────────────────────────────────────────────────────
 

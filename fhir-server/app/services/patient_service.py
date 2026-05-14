@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional, Tuple
 
 from app.models.patient import PatientModel
 from app.repository.patient_repository import PatientRepository
@@ -44,8 +44,22 @@ class PatientService:
     async def get_me(self, user_id: str, org_id: str) -> Optional[PatientModel]:
         return await self.repository.get_me(user_id, org_id)
 
-    async def list_patients(self) -> list[PatientModel]:
-        return await self.repository.list()
+    async def list_patients(
+        self,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        family_name: Optional[str] = None,
+        given_name: Optional[str] = None,
+        gender: Optional[str] = None,
+        active: Optional[bool] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[PatientModel], int]:
+        return await self.repository.list(
+            user_id=user_id, org_id=org_id, family_name=family_name,
+            given_name=given_name, gender=gender, active=active,
+            limit=limit, offset=offset,
+        )
 
     # ── Write ─────────────────────────────────────────────────────────────
 

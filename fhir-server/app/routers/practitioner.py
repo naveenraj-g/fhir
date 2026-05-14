@@ -1,14 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.auth.dependencies import require_permission
 from app.auth.practitioner_deps import get_authorized_practitioner
-from app.core.content_negotiation import format_response, format_list_response
+from app.core.content_negotiation import format_response, format_paginated_response
+from app.core.schema_utils import inline_schema
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.models.practitioner import PractitionerModel
+from app.schemas.fhir import (
+    FHIRPractitionerSchema,
+    FHIRPractitionerBundle,
+    PaginatedPractitionerResponse,
+    PlainPractitionerResponse,
+)
 from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
-    PractitionerResponseSchema,
     PractitionerIdentifierCreate,
     PractitionerTelecomCreate,
     PractitionerAddressCreate,
@@ -30,14 +38,32 @@ _ERR_AUTH = {
 _ERR_NOT_FOUND = {404: {"description": "Practitioner not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
+# Pre-computed inline schemas (evaluated once at import time)
+_SINGLE_200 = {
+    200: {
+        "content": {
+            "application/json": {"schema": inline_schema(PlainPractitionerResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIRPractitionerSchema.model_json_schema())},
+        }
+    }
+}
+_SINGLE_201 = {201: _SINGLE_200[200]}
+_LIST_200 = {
+    200: {
+        "description": "Paginated list of practitioners",
+        "content": {
+            "application/json": {"schema": inline_schema(PaginatedPractitionerResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIRPractitionerBundle.model_json_schema())},
+        },
+    }
+}
+
 
 # ── Create Practitioner ────────────────────────────────────────────────────
 
 
 @router.post(
     "/",
-    response_model=PractitionerResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("practitioner", "create"))],
     operation_id="create_practitioner",
@@ -49,7 +75,7 @@ _ERR_VALIDATION = {422: {"description": "Validation error — request body faile
         + _CONTENT_NEG
     ),
     response_description="The newly created Practitioner resource",
-    responses={**_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
 )
 async def create_practitioner(
     payload: PractitionerCreateSchema,
@@ -71,8 +97,6 @@ async def create_practitioner(
 
 @router.get(
     "/me",
-    response_model=PractitionerResponseSchema,
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="get_my_practitioner_profile",
     summary="Get the Practitioner profile for the currently authenticated user",
@@ -83,6 +107,7 @@ async def create_practitioner(
     ),
     response_description="The authenticated user's Practitioner resource",
     responses={
+        **_SINGLE_200,
         **_ERR_AUTH,
         404: {"description": "No Practitioner profile found for the current authenticated user"},
     },
@@ -108,8 +133,6 @@ async def get_my_practitioner_profile(
 
 @router.get(
     "/{practitioner_id}",
-    response_model=PractitionerResponseSchema,
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="get_practitioner_by_id",
     summary="Retrieve a Practitioner resource by public practitioner_id",
@@ -120,6 +143,7 @@ async def get_my_practitioner_profile(
     ),
     response_description="The requested Practitioner resource",
     responses={
+        **_SINGLE_200,
         **_ERR_AUTH,
         403: {"description": "Forbidden — caller lacks `practitioner:read` permission or the practitioner belongs to a different organization"},
         **_ERR_NOT_FOUND,
@@ -142,8 +166,6 @@ async def get_practitioner(
 
 @router.patch(
     "/{practitioner_id}",
-    response_model=PractitionerResponseSchema,
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="patch_practitioner",
     summary="Partially update a Practitioner resource",
@@ -154,7 +176,7 @@ async def get_practitioner(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_practitioner(
     payload: PractitionerPatchSchema,
@@ -178,28 +200,39 @@ async def patch_practitioner(
 
 @router.get(
     "/",
-    response_model=list[PractitionerResponseSchema],
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="list_practitioners",
     summary="List all Practitioner resources",
     description=(
-        "Returns all Practitioner resources accessible to the caller. "
-        "Results are scoped to the caller's active organization. "
+        "Returns a paginated list of Practitioner resources. "
+        "Filter by `family_name`, `given_name`, `role`, `active`, `user_id`, or `org_id`. "
+        "Use `limit` and `offset` for pagination. "
         + _CONTENT_NEG
     ),
-    response_description="Array of Practitioner resources",
-    responses={**_ERR_AUTH},
+    response_description="Paginated Practitioner resources",
+    responses={**_LIST_200, **_ERR_AUTH},
 )
 async def list_practitioners(
     request: Request,
+    family_name: Optional[str] = Query(None),
+    given_name: Optional[str] = Query(None),
+    role: Optional[str] = Query(None),
+    active: Optional[bool] = Query(None),
+    user_id: Optional[str] = Query(None),
+    org_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
-    practitioners = await practitioner_service.list_practitioners()
-    return format_list_response(
+    practitioners, total = await practitioner_service.list_practitioners(
+        user_id=user_id, org_id=org_id, family_name=family_name,
+        given_name=given_name, role=role, active=active,
+        limit=limit, offset=offset,
+    )
+    return format_paginated_response(
         [practitioner_service._to_fhir(p) for p in practitioners],
         [practitioner_service._to_plain(p) for p in practitioners],
-        request,
+        total, limit, offset, request,
     )
 
 
@@ -232,8 +265,6 @@ async def delete_practitioner(
 
 @router.post(
     "/{practitioner_id}/identifiers",
-    response_model=PractitionerResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_identifier",
@@ -247,7 +278,7 @@ async def delete_practitioner(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new identifier appended",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_identifier(
     payload: PractitionerIdentifierCreate,
@@ -270,8 +301,6 @@ async def add_identifier(
 
 @router.post(
     "/{practitioner_id}/telecom",
-    response_model=PractitionerResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_telecom",
@@ -284,7 +313,7 @@ async def add_identifier(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new contact point appended",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_telecom(
     payload: PractitionerTelecomCreate,
@@ -307,8 +336,6 @@ async def add_telecom(
 
 @router.post(
     "/{practitioner_id}/addresses",
-    response_model=PractitionerResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_address",
@@ -321,7 +348,7 @@ async def add_telecom(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new address appended",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_address(
     payload: PractitionerAddressCreate,
@@ -344,8 +371,6 @@ async def add_address(
 
 @router.post(
     "/{practitioner_id}/qualifications",
-    response_model=PractitionerResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_qualification",
@@ -359,7 +384,7 @@ async def add_address(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new qualification appended",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_qualification(
     payload: PractitionerQualificationCreate,

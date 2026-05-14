@@ -1,4 +1,5 @@
-from typing import Optional, List
+from datetime import datetime
+from typing import Optional, List, Tuple
 
 from app.core.references import parse_reference, resolve_subject
 from app.models.encounter.encounter import EncounterModel
@@ -33,13 +34,42 @@ class EncounterService:
     async def get_encounter(self, encounter_id: int) -> Optional[EncounterModel]:
         return await self.repository.get_by_encounter_id(encounter_id)
 
-    async def get_me(self, user_id: str, org_id: str) -> List[EncounterModel]:
-        return await self.repository.get_me(user_id, org_id)
+    async def get_me(
+        self,
+        user_id: str,
+        org_id: str,
+        status: Optional[str] = None,
+        patient_id: Optional[int] = None,
+        class_code: Optional[str] = None,
+        period_start_from: Optional[datetime] = None,
+        period_start_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[EncounterModel], int]:
+        return await self.repository.get_me(
+            user_id, org_id,
+            status=status, patient_id=patient_id, class_code=class_code,
+            period_start_from=period_start_from, period_start_to=period_start_to,
+            limit=limit, offset=offset,
+        )
 
     async def list_encounters(
-        self, patient_id: Optional[int] = None
-    ) -> List[EncounterModel]:
-        return await self.repository.list(patient_id=patient_id)
+        self,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        status: Optional[str] = None,
+        patient_id: Optional[int] = None,
+        class_code: Optional[str] = None,
+        period_start_from: Optional[datetime] = None,
+        period_start_to: Optional[datetime] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[EncounterModel], int]:
+        return await self.repository.list(
+            user_id=user_id, org_id=org_id, status=status, patient_id=patient_id,
+            class_code=class_code, period_start_from=period_start_from,
+            period_start_to=period_start_to, limit=limit, offset=offset,
+        )
 
     # ── Write ─────────────────────────────────────────────────────────────
 

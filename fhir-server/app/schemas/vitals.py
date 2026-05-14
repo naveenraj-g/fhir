@@ -1,6 +1,6 @@
 from datetime import date as _Date
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,6 +10,8 @@ class VitalsCreateSchema(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
+                "user_id": "user-uuid-123",
+                "org_id": "org-uuid-456",
                 "pseudo_id": "user_12345",
                 "pseudo_id2": "device_fitbit_67890",
                 # Core Activity
@@ -221,3 +223,10 @@ class VitalsResponseSchema(BaseModel):
 
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+
+class PaginatedVitalsResponse(BaseModel):
+    total: int = Field(..., description="Total number of matching vitals entries.")
+    limit: int = Field(..., description="Page size requested.")
+    offset: int = Field(..., description="Number of records skipped.")
+    data: List[VitalsResponseSchema] = Field(..., description="Array of vitals entries.")

@@ -6,14 +6,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from app.auth.dependencies import require_permission
 from app.auth.vitals_deps import get_authorized_vitals
+from app.core.schema_utils import inline_schema
 from app.di.dependencies.vitals import get_vitals_service
 from app.models.vitals.vitals import VitalsModel
 from app.schemas.vitals import (
     VitalsCreateSchema,
     VitalsPatchSchema,
     VitalsResponseSchema,
+    PaginatedVitalsResponse,
 )
 from app.services.vitals_service import VitalsService
 
@@ -25,6 +26,23 @@ _ERR_AUTH = {
 }
 _ERR_NOT_FOUND = {404: {"description": "Vitals entry not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+
+_SINGLE_200 = {
+    200: {
+        "content": {
+            "application/json": {"schema": inline_schema(VitalsResponseSchema.model_json_schema())}
+        }
+    }
+}
+_SINGLE_201 = {201: _SINGLE_200[200]}
+_LIST_200 = {
+    200: {
+        "description": "Paginated list of vitals entries",
+        "content": {
+            "application/json": {"schema": inline_schema(PaginatedVitalsResponse.model_json_schema())}
+        },
+    }
+}
 
 
 def _serialize(vitals: VitalsModel) -> dict:
@@ -75,8 +93,6 @@ def _serialize(vitals: VitalsModel) -> dict:
 
 @router.post(
     "/",
-    response_model=VitalsResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     operation_id="create_vitals",
     summary="Record a new vitals entry",
@@ -87,11 +103,12 @@ def _serialize(vitals: VitalsModel) -> dict:
         "blood pressure (systolic, diastolic), "
         "sleep (total, REM, deep, light, awake minutes; bed/wake times; stage percentages), "
         "and body metrics (weight, height, age, gender). "
-        "The caller's `sub` and `activeOrganizationId` JWT claims are bound to the record automatically. "
-        "The linked patient is resolved from the user's `sub` claim if not explicitly provided."
+        "Supply `user_id` and `org_id` in the payload to bind the record; omit to use JWT claims. "
+        "The caller's `sub` JWT claim is recorded as `created_by`. "
+        "The linked patient is resolved from the user's `sub` claim if `patient_id` is not provided."
     ),
     response_description="The newly created vitals entry",
-    responses={**_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
 )
 async def create_vitals(
     payload: VitalsCreateSchema,
@@ -114,11 +131,10 @@ async def create_vitals(
         "Returns a paginated list of vitals entries for the authenticated user "
         "(identified by `sub` and `activeOrganizationId`). "
         "Optionally filter by exact `date` (YYYY-MM-DD) or a `recorded_at` datetime range. "
-        "Results are ordered by `recorded_at` descending (newest first). "
-        "Response envelope: `{ total, limit, offset, data: [...] }`."
+        "Results are ordered by `recorded_at` descending (newest first)."
     ),
-    response_description="Paginated vitals list: `{ total, limit, offset, data }`",
-    responses={**_ERR_AUTH},
+    response_description="Paginated vitals entries",
+    responses={**_LIST_200, **_ERR_AUTH},
 )
 async def get_my_vitals(
     request: Request,
@@ -150,8 +166,6 @@ async def get_my_vitals(
 
 @router.get(
     "/{vitals_id}",
-    response_model=VitalsResponseSchema,
-    response_model_exclude_none=True,
     operation_id="get_vitals_by_id",
     summary="Retrieve a vitals entry by public vitals_id",
     description=(
@@ -160,6 +174,7 @@ async def get_my_vitals(
     ),
     response_description="The requested vitals entry",
     responses={
+        **_SINGLE_200,
         **_ERR_AUTH,
         403: {"description": "Forbidden — caller lacks permission or the entry belongs to a different organization"},
         **_ERR_NOT_FOUND,
@@ -175,17 +190,16 @@ async def get_vitals(
 
 @router.patch(
     "/{vitals_id}",
-    response_model=VitalsResponseSchema,
-    response_model_exclude_none=True,
     operation_id="patch_vitals",
     summary="Partially update a vitals entry",
     description=(
         "Only supplied metric fields are written; omitted fields are left unchanged. "
         "All metric fields in VitalsCreateSchema are patchable. "
-        "`user_id`, `patient_id`, `org_id`, and `recorded_at` cannot be changed after creation."
+        "`user_id`, `patient_id`, `org_id`, and `recorded_at` cannot be changed after creation. "
+        "The caller's `sub` JWT claim is recorded as `updated_by`."
     ),
     response_description="The updated vitals entry",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_vitals(
     payload: VitalsPatchSchema,
@@ -206,13 +220,12 @@ async def patch_vitals(
     summary="List vitals entries with optional filters",
     description=(
         "Returns a paginated list of vitals entries accessible to the caller. "
-        "Optionally filter by `user_id`, `patient_id`, `org_id`, exact `date` (YYYY-MM-DD), "
+        "Filter by `user_id`, `patient_id`, `org_id`, exact `date` (YYYY-MM-DD), "
         "or a `recorded_at` datetime range (`recorded_at_from` / `recorded_at_to`). "
-        "Results are ordered by `recorded_at` descending (newest first). "
-        "Response envelope: `{ total, limit, offset, data: [...] }`."
+        "Results are ordered by `recorded_at` descending (newest first)."
     ),
-    response_description="Paginated vitals list: `{ total, limit, offset, data }`",
-    responses={**_ERR_AUTH},
+    response_description="Paginated vitals entries",
+    responses={**_LIST_200, **_ERR_AUTH},
 )
 async def list_vitals(
     request: Request,

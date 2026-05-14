@@ -1,16 +1,20 @@
+from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.auth.dependencies import require_permission
 from app.auth.encounter_deps import get_authorized_encounter
-from app.core.content_negotiation import format_response, format_list_response
+from app.core.content_negotiation import format_response, format_paginated_response
+from app.core.schema_utils import inline_schema
 from app.di.dependencies.encounter import get_encounter_service
 from app.models.encounter.encounter import EncounterModel
-from app.schemas.encounter import (
-    EncounterCreateSchema,
-    EncounterPatchSchema,
-    EncounterResponseSchema,
+from app.schemas.encounter import EncounterCreateSchema, EncounterPatchSchema
+from app.schemas.fhir import (
+    FHIREncounterSchema,
+    FHIREncounterBundle,
+    PaginatedEncounterResponse,
+    PlainEncounterResponse,
 )
 from app.services.encounter_service import EncounterService
 
@@ -28,14 +32,32 @@ _ERR_AUTH = {
 _ERR_NOT_FOUND = {404: {"description": "Encounter not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
+# Pre-computed inline schemas (evaluated once at import time)
+_SINGLE_200 = {
+    200: {
+        "content": {
+            "application/json": {"schema": inline_schema(PlainEncounterResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIREncounterSchema.model_json_schema())},
+        }
+    }
+}
+_SINGLE_201 = {201: _SINGLE_200[200]}
+_LIST_200 = {
+    200: {
+        "description": "Paginated list of encounters",
+        "content": {
+            "application/json": {"schema": inline_schema(PaginatedEncounterResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIREncounterBundle.model_json_schema())},
+        },
+    }
+}
+
 
 # ── Create Encounter ───────────────────────────────────────────────────────
 
 
 @router.post(
     "/",
-    response_model=EncounterResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("encounter", "create"))],
     operation_id="create_encounter",
@@ -50,7 +72,7 @@ _ERR_VALIDATION = {422: {"description": "Validation error — request body faile
         + _CONTENT_NEG
     ),
     response_description="The newly created Encounter resource",
-    responses={**_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
 )
 async def create_encounter(
     payload: EncounterCreateSchema,
@@ -72,31 +94,41 @@ async def create_encounter(
 
 @router.get(
     "/me",
-    response_model=list[EncounterResponseSchema],
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("encounter", "read"))],
     operation_id="get_my_encounters",
-    summary="List all Encounter resources for the currently authenticated user",
+    summary="List Encounter resources for the currently authenticated user",
     description=(
-        "Returns all Encounter records linked to the authenticated user's `sub` claim "
+        "Returns a paginated list of Encounter records linked to the authenticated user's `sub` claim "
         "and `activeOrganizationId`. "
         "Includes encounters where the user is a subject (patient) or participant (practitioner). "
         + _CONTENT_NEG
     ),
-    response_description="Array of Encounter resources for the current user",
-    responses={**_ERR_AUTH},
+    response_description="Paginated Encounter resources for the current user",
+    responses={**_LIST_200, **_ERR_AUTH},
 )
 async def get_my_encounters(
     request: Request,
+    enc_status: Optional[str] = Query(None, alias="status"),
+    patient_id: Optional[int] = Query(None),
+    class_code: Optional[str] = Query(None),
+    period_start_from: Optional[datetime] = Query(None),
+    period_start_to: Optional[datetime] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     encounter_service: EncounterService = Depends(get_encounter_service),
 ):
     user_id: str = request.state.user.get("sub")
     org_id: str = request.state.user.get("activeOrganizationId")
-    encounters = await encounter_service.get_me(user_id, org_id)
-    return format_list_response(
+    encounters, total = await encounter_service.get_me(
+        user_id, org_id,
+        status=enc_status, patient_id=patient_id, class_code=class_code,
+        period_start_from=period_start_from, period_start_to=period_start_to,
+        limit=limit, offset=offset,
+    )
+    return format_paginated_response(
         [encounter_service._to_fhir(e) for e in encounters],
         [encounter_service._to_plain(e) for e in encounters],
-        request,
+        total, limit, offset, request,
     )
 
 
@@ -105,8 +137,6 @@ async def get_my_encounters(
 
 @router.get(
     "/{encounter_id}",
-    response_model=EncounterResponseSchema,
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("encounter", "read"))],
     operation_id="get_encounter_by_id",
     summary="Retrieve an Encounter resource by public encounter_id",
@@ -117,6 +147,7 @@ async def get_my_encounters(
     ),
     response_description="The requested Encounter resource",
     responses={
+        **_SINGLE_200,
         **_ERR_AUTH,
         403: {"description": "Forbidden — caller lacks `encounter:read` permission or the encounter belongs to a different organization"},
         **_ERR_NOT_FOUND,
@@ -139,8 +170,6 @@ async def get_encounter(
 
 @router.patch(
     "/{encounter_id}",
-    response_model=EncounterResponseSchema,
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("encounter", "update"))],
     operation_id="patch_encounter",
     summary="Partially update an Encounter resource",
@@ -151,7 +180,7 @@ async def get_encounter(
         + _CONTENT_NEG
     ),
     response_description="The updated Encounter resource",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_encounter(
     payload: EncounterPatchSchema,
@@ -175,30 +204,40 @@ async def patch_encounter(
 
 @router.get(
     "/",
-    response_model=list[EncounterResponseSchema],
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("encounter", "read"))],
     operation_id="list_encounters",
     summary="List all Encounter resources",
     description=(
-        "Returns all Encounter resources accessible to the caller. "
-        "Optionally filter by subject patient using `?patient_id={patient_id}` (public integer patient_id). "
-        "Results are scoped to the caller's active organization. "
+        "Returns a paginated list of Encounter resources. "
+        "Filter by `status`, `patient_id`, `class_code`, `period_start_from`, `period_start_to`, `user_id`, or `org_id`. "
+        "Use `limit` and `offset` for pagination. "
         + _CONTENT_NEG
     ),
-    response_description="Array of Encounter resources",
-    responses={**_ERR_AUTH},
+    response_description="Paginated Encounter resources",
+    responses={**_LIST_200, **_ERR_AUTH},
 )
 async def list_encounters(
     request: Request,
-    patient_id: Optional[int] = None,
+    enc_status: Optional[str] = Query(None, alias="status"),
+    patient_id: Optional[int] = Query(None),
+    class_code: Optional[str] = Query(None),
+    period_start_from: Optional[datetime] = Query(None),
+    period_start_to: Optional[datetime] = Query(None),
+    user_id: Optional[str] = Query(None),
+    org_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     encounter_service: EncounterService = Depends(get_encounter_service),
 ):
-    encounters = await encounter_service.list_encounters(patient_id=patient_id)
-    return format_list_response(
+    encounters, total = await encounter_service.list_encounters(
+        user_id=user_id, org_id=org_id, status=enc_status, patient_id=patient_id,
+        class_code=class_code, period_start_from=period_start_from,
+        period_start_to=period_start_to, limit=limit, offset=offset,
+    )
+    return format_paginated_response(
         [encounter_service._to_fhir(e) for e in encounters],
         [encounter_service._to_plain(e) for e in encounters],
-        request,
+        total, limit, offset, request,
     )
 
 

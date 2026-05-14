@@ -1,16 +1,20 @@
+from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.auth.dependencies import require_permission
 from app.auth.appointment_deps import get_authorized_appointment
-from app.core.content_negotiation import format_response, format_list_response
+from app.core.content_negotiation import format_response, format_paginated_response
+from app.core.schema_utils import inline_schema
 from app.di.dependencies.appointment import get_appointment_service
 from app.models.appointment.appointment import AppointmentModel
-from app.schemas.appointment import (
-    AppointmentCreateSchema,
-    AppointmentPatchSchema,
-    AppointmentResponseSchema,
+from app.schemas.appointment import AppointmentCreateSchema, AppointmentPatchSchema
+from app.schemas.fhir import (
+    FHIRAppointmentSchema,
+    FHIRAppointmentBundle,
+    PaginatedAppointmentResponse,
+    PlainAppointmentResponse,
 )
 from app.services.appointment_service import AppointmentService
 
@@ -28,14 +32,32 @@ _ERR_AUTH = {
 _ERR_NOT_FOUND = {404: {"description": "Appointment not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
+# Pre-computed inline schemas (evaluated once at import time)
+_SINGLE_200 = {
+    200: {
+        "content": {
+            "application/json": {"schema": inline_schema(PlainAppointmentResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIRAppointmentSchema.model_json_schema())},
+        }
+    }
+}
+_SINGLE_201 = {201: _SINGLE_200[200]}
+_LIST_200 = {
+    200: {
+        "description": "Paginated list of appointments",
+        "content": {
+            "application/json": {"schema": inline_schema(PaginatedAppointmentResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIRAppointmentBundle.model_json_schema())},
+        },
+    }
+}
+
 
 # ── Create Appointment ─────────────────────────────────────────────────────
 
 
 @router.post(
     "/",
-    response_model=AppointmentResponseSchema,
-    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("appointment", "create"))],
     operation_id="create_appointment",
@@ -49,7 +71,7 @@ _ERR_VALIDATION = {422: {"description": "Validation error — request body faile
         + _CONTENT_NEG
     ),
     response_description="The newly created Appointment resource",
-    responses={**_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
 )
 async def create_appointment(
     payload: AppointmentCreateSchema,
@@ -71,30 +93,40 @@ async def create_appointment(
 
 @router.get(
     "/me",
-    response_model=list[AppointmentResponseSchema],
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("appointment", "read"))],
     operation_id="get_my_appointments",
-    summary="List all Appointment resources for the currently authenticated user",
+    summary="List Appointment resources for the currently authenticated user",
     description=(
-        "Returns all Appointment records where the authenticated user (identified by `sub` and `activeOrganizationId`) "
-        "is a participant — either as the patient or as a practitioner. "
+        "Returns a paginated list of Appointment records where the authenticated user "
+        "(identified by `sub` and `activeOrganizationId`) is a participant — "
+        "either as the patient or as a practitioner. "
         + _CONTENT_NEG
     ),
-    response_description="Array of Appointment resources for the current user",
-    responses={**_ERR_AUTH},
+    response_description="Paginated Appointment resources for the current user",
+    responses={**_LIST_200, **_ERR_AUTH},
 )
 async def get_my_appointments(
     request: Request,
+    appt_status: Optional[str] = Query(None, alias="status"),
+    patient_id: Optional[int] = Query(None),
+    start_from: Optional[datetime] = Query(None),
+    start_to: Optional[datetime] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ):
     user_id: str = request.state.user.get("sub")
     org_id: str = request.state.user.get("activeOrganizationId")
-    appointments = await appointment_service.get_me(user_id, org_id)
-    return format_list_response(
+    appointments, total = await appointment_service.get_me(
+        user_id, org_id,
+        status=appt_status, patient_id=patient_id,
+        start_from=start_from, start_to=start_to,
+        limit=limit, offset=offset,
+    )
+    return format_paginated_response(
         [appointment_service._to_fhir(a) for a in appointments],
         [appointment_service._to_plain(a) for a in appointments],
-        request,
+        total, limit, offset, request,
     )
 
 
@@ -103,8 +135,6 @@ async def get_my_appointments(
 
 @router.get(
     "/{appointment_id}",
-    response_model=AppointmentResponseSchema,
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("appointment", "read"))],
     operation_id="get_appointment_by_id",
     summary="Retrieve an Appointment resource by public appointment_id",
@@ -115,6 +145,7 @@ async def get_my_appointments(
     ),
     response_description="The requested Appointment resource",
     responses={
+        **_SINGLE_200,
         **_ERR_AUTH,
         403: {"description": "Forbidden — caller lacks `appointment:read` permission or the appointment belongs to a different organization"},
         **_ERR_NOT_FOUND,
@@ -137,8 +168,6 @@ async def get_appointment(
 
 @router.patch(
     "/{appointment_id}",
-    response_model=AppointmentResponseSchema,
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("appointment", "update"))],
     operation_id="patch_appointment",
     summary="Partially update an Appointment resource",
@@ -150,7 +179,7 @@ async def get_appointment(
         + _CONTENT_NEG
     ),
     response_description="The updated Appointment resource",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_appointment(
     payload: AppointmentPatchSchema,
@@ -176,33 +205,38 @@ async def patch_appointment(
 
 @router.get(
     "/",
-    response_model=list[AppointmentResponseSchema],
-    response_model_exclude_none=True,
     dependencies=[Depends(require_permission("appointment", "read"))],
     operation_id="list_appointments",
     summary="List all Appointment resources",
     description=(
-        "Returns all Appointment resources accessible to the caller. "
-        "Optionally filter by `?patient_id={patient_id}` or `?encounter_id={encounter_id}` (public integer IDs). "
-        "Results are scoped to the caller's active organization. "
+        "Returns a paginated list of Appointment resources. "
+        "Filter by `status`, `patient_id`, `start_from`, `start_to`, `user_id`, or `org_id`. "
+        "Use `limit` and `offset` for pagination. "
         + _CONTENT_NEG
     ),
-    response_description="Array of Appointment resources",
-    responses={**_ERR_AUTH},
+    response_description="Paginated Appointment resources",
+    responses={**_LIST_200, **_ERR_AUTH},
 )
 async def list_appointments(
     request: Request,
-    patient_id: Optional[int] = None,
-    encounter_id: Optional[int] = None,
+    appt_status: Optional[str] = Query(None, alias="status"),
+    patient_id: Optional[int] = Query(None),
+    start_from: Optional[datetime] = Query(None),
+    start_to: Optional[datetime] = Query(None),
+    user_id: Optional[str] = Query(None),
+    org_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ):
-    appointments = await appointment_service.list_appointments(
-        patient_id=patient_id, encounter_id=encounter_id
+    appointments, total = await appointment_service.list_appointments(
+        user_id=user_id, org_id=org_id, status=appt_status, patient_id=patient_id,
+        start_from=start_from, start_to=start_to, limit=limit, offset=offset,
     )
-    return format_list_response(
+    return format_paginated_response(
         [appointment_service._to_fhir(a) for a in appointments],
         [appointment_service._to_plain(a) for a in appointments],
-        request,
+        total, limit, offset, request,
     )
 
 
