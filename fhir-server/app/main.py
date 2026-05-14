@@ -2,7 +2,8 @@ from contextlib import asynccontextmanager
 from typing import Any, cast
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
+from sqlalchemy import text
 
 from app.auth.dependencies import get_current_user
 from app.core.config import settings
@@ -24,7 +25,6 @@ from app.middleware import (
     RateLimitMiddleware,
 )
 from app.routers import api_router
-from app.schemas.base import HealthResponseSchema
 
 setup_logging()
 logger = get_logger(__name__)
@@ -124,20 +124,67 @@ app.include_router(
 
 @app.get(
     "/health",
-    response_model=HealthResponseSchema,
     operation_id="health_check",
-    summary="Health check",
+    summary="Liveness probe",
     description=(
-        "Returns the liveness status of the server. "
-        "Use this endpoint to verify the API is reachable and running. "
-        "No authentication required. Returns `req_id` for request tracing."
+        "Returns 200 if the process is running. "
+        "Use for liveness probes — does not check DB or Redis. "
+        "No authentication required."
     ),
-    response_description="Server is healthy",
+    response_description="Process is alive",
     tags=["Health"],
-    responses={503: {"description": "Service unavailable — server is starting up or shutting down"}},
 )
 async def health_check(request: Request):
-    return {"status": "ok", "req_id": request.state.request_id}
+    return JSONResponse(content={"status": "ok", "req_id": request.state.request_id})
+
+
+@app.get(
+    "/health/ready",
+    operation_id="readiness_check",
+    summary="Readiness probe",
+    description=(
+        "Returns 200 only when the database and Redis are reachable. "
+        "Use for readiness probes — orchestrators should stop routing traffic "
+        "to this instance when it returns 503. No authentication required."
+    ),
+    response_description="All dependencies are reachable",
+    tags=["Health"],
+    responses={503: {"description": "One or more dependencies are unavailable"}},
+)
+async def readiness_check(request: Request):
+    checks: dict[str, str] = {}
+    healthy = True
+
+    # Database check
+    try:
+        async with db.session() as session:
+            await session.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:
+        logger.error("Readiness: database check failed", exc_info=exc)
+        checks["database"] = "unavailable"
+        healthy = False
+
+    # Redis check
+    redis = getattr(request.app.state, "redis", None)
+    if redis is not None:
+        try:
+            await redis.ping()
+            checks["redis"] = "ok"
+        except Exception as exc:
+            logger.error("Readiness: Redis check failed", exc_info=exc)
+            checks["redis"] = "unavailable"
+            healthy = False
+    else:
+        checks["redis"] = "unavailable"
+        healthy = False
+
+    payload = {
+        "status": "ok" if healthy else "degraded",
+        "req_id": request.state.request_id,
+        "checks": checks,
+    }
+    return JSONResponse(content=payload, status_code=200 if healthy else 503)
 
 
 @app.get("/favicon.ico", include_in_schema=False)

@@ -1,3 +1,4 @@
+from typing import Dict
 from pydantic import BaseModel, ConfigDict
 
 
@@ -12,3 +13,9 @@ class FHIRBaseModel(BaseModel):
 class HealthResponseSchema(BaseModel):
     status: str
     req_id: str
+
+
+class ReadinessResponseSchema(BaseModel):
+    status: str
+    req_id: str
+    checks: Dict[str, str]
