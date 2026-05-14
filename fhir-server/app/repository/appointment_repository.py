@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional, List, Tuple
 
+from fastapi import HTTPException, status as http_status
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.future import select
@@ -16,6 +17,7 @@ from app.models.appointment.enums import AppointmentParticipantActorType
 from app.models.encounter.encounter import EncounterModel
 from app.models.enums import SubjectReferenceType
 from app.schemas.appointment import AppointmentCreateSchema, AppointmentPatchSchema
+from app.core.references import parse_reference
 
 
 def _with_relationships(stmt):
@@ -26,32 +28,6 @@ def _with_relationships(stmt):
         selectinload(AppointmentModel.reason_codes),
         selectinload(AppointmentModel.recurrence_template),
     )
-
-
-def _parse_subject(subject_str: Optional[str]):
-    """Parse 'Patient/10001' → (SubjectReferenceType.PATIENT, 10001)."""
-    if not subject_str:
-        return None, None
-    parts = subject_str.split("/")
-    if len(parts) != 2:
-        return None, None
-    try:
-        return SubjectReferenceType(parts[0]), int(parts[1])
-    except (ValueError, KeyError):
-        return None, None
-
-
-def _parse_actor(actor_str: Optional[str]):
-    """Parse 'Practitioner/30001' → (AppointmentParticipantActorType.PRACTITIONER, 30001)."""
-    if not actor_str:
-        return None, None
-    parts = actor_str.split("/")
-    if len(parts) != 2:
-        return None, None
-    try:
-        return AppointmentParticipantActorType(parts[0]), int(parts[1])
-    except (ValueError, KeyError):
-        return None, None
 
 
 class AppointmentRepository:
@@ -152,7 +128,7 @@ class AppointmentRepository:
         org_id: Optional[str] = None,
         created_by: Optional[str] = None,
     ) -> AppointmentModel:
-        subject_type, subject_id = _parse_subject(payload.subject)
+        subject_type, subject_id = parse_reference(payload.subject, SubjectReferenceType) if payload.subject else (None, None)
 
         async with self.session_factory() as session:
             # Resolve public encounter_id → internal encounter PK
@@ -164,6 +140,11 @@ class AppointmentRepository:
                     )
                 )
                 internal_encounter_id = enc_result.scalar_one_or_none()
+                if internal_encounter_id is None:
+                    raise HTTPException(
+                        status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail=f"Encounter/{payload.encounter_id} not found.",
+                    )
 
             appointment = AppointmentModel(
                 user_id=user_id,
@@ -210,7 +191,7 @@ class AppointmentRepository:
 
             # participants
             for p in payload.participant:
-                actor_type, actor_id = _parse_actor(p.actor)
+                actor_type, actor_id = parse_reference(p.actor, AppointmentParticipantActorType) if p.actor else (None, None)
                 appointment.participants.append(
                     AppointmentParticipant(
                         actor_reference_type=actor_type,

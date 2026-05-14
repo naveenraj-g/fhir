@@ -69,7 +69,7 @@ async def resolve_subject(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="patient_service is required to resolve a Patient subject.",
             )
-        patient = await patient_service.get_patient(subject_id)
+        patient = await patient_service.get_patient_in_org(subject_id, user_id, org_id)
         if not patient:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
