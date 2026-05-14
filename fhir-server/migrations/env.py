@@ -1,5 +1,9 @@
 import asyncio
+import os
+import sys
 from logging.config import fileConfig
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -16,6 +20,12 @@ import app.models.encounter.encounter  # noqa: F401
 import app.models.appointment.appointment  # noqa: F401
 import app.models.questionnaire_response.questionnaire_response  # noqa: F401
 import app.models.vitals.vitals  # noqa: F401
+import app.models.service_request.service_request  # noqa: F401
+import app.models.medication_request.medication_request  # noqa: F401
+import app.models.procedure.procedure  # noqa: F401
+import app.models.diagnostic_report.diagnostic_report  # noqa: F401
+import app.models.condition.condition  # noqa: F401
+import app.models.device_request.device_request  # noqa: F401
 
 # Read alembic.ini logging config
 config = context.config

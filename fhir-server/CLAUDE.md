@@ -654,6 +654,119 @@ docker compose up --build
 
 ---
 
+## FHIR Model Design Rules
+
+### Always read the full spec before modeling
+
+When given a FHIR resource URL (e.g. `https://www.hl7.org/fhir/procedure.html`), **do not model from memory or assumption**. Fetch and read:
+
+1. **The resource page itself** — full element definition table, every field, cardinality, type, and allowed codes.
+2. **Every named datatype used in that resource** — follow each type link and read its own spec page. Common ones that have non-obvious internal structure:
+
+| Datatype | Spec URL | Key structure to read |
+|---|---|---|
+| `Annotation` | `.../datatypes.html#Annotation` | `text` is **1..1 required**; `author[x]` is string OR Reference; `time` is dateTime |
+| `Timing` | `.../datatypes.html#Timing` | Has nested `repeat` BackboneElement with 15+ fields |
+| `Dosage` | `.../datatypes.html#Dosage` | Has `doseAndRate[]` (0..*) and `additionalInstruction[]` (0..*) — both need child tables |
+| `Identifier` | `.../datatypes.html#Identifier` | Has `type` (CodeableConcept), `period` (Period), `assigner` (Reference) |
+| `CodeableConcept` | `.../datatypes.html#CodeableConcept` | Has `coding[]` (0..*) and `text` (0..1) |
+| `Quantity / SimpleQuantity / Duration / Age` | `.../datatypes.html#Quantity` | Quantity has `comparator`; SimpleQuantity does not |
+| `Range` | `.../datatypes.html#Range` | `low` and `high` are SimpleQuantity |
+| `Ratio` | `.../datatypes.html#Ratio` | `numerator` is Quantity; `denominator` is SimpleQuantity |
+| `Period` | `.../datatypes.html#Period` | `start` and `end` are dateTime |
+
+3. **Every BackboneElement** in the resource — these have their own sub-fields that must be read, not assumed. Backbone elements with `0..*` cardinality become child tables; their internal `0..*` sub-fields become grandchild tables.
+
+4. **Verify R4 vs R5** — the spec site may serve R5 content. Check for known R4→R5 differences:
+   - Merged fields: R5 often collapses `reasonCode[]` + `reasonReference[]` into a single `reason[]` CodeableReference — keep them **separate** in R4
+   - Same for `complication[]`/`complicationDetail[]`, `usedReference[]`/`usedCode[]`
+   - `category` is often **0..1** in R4 but **0..*` in R5
+   - Choice types (`performed[x]`, `medication[x]`, `reported[x]`) may differ between versions
+   - Extra R5-only fields: `focus`, `recorded`, `supportingInfo`, `informationSource`, `device`, `renderedDosageInstruction`, `statusChanged`
+
+**The rule:** if a field's type is a named FHIR datatype (not a primitive like `string`, `boolean`, `dateTime`, `integer`), fetch its spec page before deciding how to store it. Never assume structure from the type name alone.
+
+---
+
+### Cardinality → storage mapping
+
+The cardinality in the FHIR spec directly determines where a field lives in the DB:
+
+| FHIR cardinality | Storage |
+|---|---|
+| `1..1` or `0..1` | Flat column(s) on the main model table |
+| `0..*` | Separate child table + one-to-many relationship |
+
+**Never put a repeating (0..*) field in a single column** (e.g. comma-separated text). Each array element needs its own row so it can be queried, filtered, and individually deleted. The only allowed exception is `instantiatesCanonical[]` / `instantiatesUri[]` — simple URI lists that are never filtered — stored as comma-separated `Text`.
+
+```python
+# ✓ 0..1  →  flat columns on main table
+code_system  = Column(String, nullable=True)
+code_code    = Column(String, nullable=True)
+code_display = Column(String, nullable=True)
+
+# ✓ 0..*  →  child table
+class ServiceRequestCategory(Base):
+    __tablename__ = "service_request_category"
+    id                 = Column(Integer, primary_key=True, autoincrement=True)
+    service_request_id = Column(Integer, ForeignKey("service_request.id"), nullable=False, index=True)
+    coding_system      = Column(String, nullable=True)
+    coding_code        = Column(String, nullable=True)
+    coding_display     = Column(String, nullable=True)
+    text               = Column(String, nullable=True)
+    service_request    = relationship("ServiceRequestModel", back_populates="categories")
+```
+
+### CodeableConcept flattening
+
+A single `CodeableConcept` (0..1) is flattened to `<field>_system`, `<field>_code`, `<field>_display`, `<field>_text` on the main table.
+A repeated `CodeableConcept[]` (0..*) gets a child table with columns `coding_system`, `coding_code`, `coding_display`, `text`.
+
+### Reference flattening
+
+A reference (0..1) is stored as two or three columns on the main table:
+```python
+subject_type    = Column(Enum(SubjectReferenceType), nullable=True)  # "Patient" | "Group"
+subject_id      = Column(Integer, nullable=True)                      # public resource id
+subject_display = Column(String, nullable=True)                       # optional human label
+```
+A repeated reference (0..*) gets a child table with `reference_type`, `reference_id`, `reference_display`.
+
+Use an **Enum** for `reference_type` when the allowed resource types are a closed, known set (e.g. subject can only be Patient or Group). Use a plain **String** when the type is open (e.g. `supportingInfo[]` allows any resource type).
+
+### Child table conventions
+
+Every child table must have:
+- `id` — auto-increment PK
+- `<parent>_id` — FK to `<parent>.id` (internal PK), indexed, `nullable=False`
+- `org_id` — nullable String (for future tenant-scoped sub-resource queries)
+- A `relationship()` back to the parent with no `cascade` on the child side
+
+The parent model declares the relationship with `cascade="all, delete-orphan"`.
+
+### Sequence allocation
+
+Each new resource picks a start value that does not collide with existing sequences:
+
+| Resource | sequence start |
+|---|---|
+| Patient | 10000 |
+| Encounter | 20000 |
+| Practitioner | 30000 |
+| Appointment | 40000 |
+| QuestionnaireResponse | 60000 |
+| Vitals | 70000 |
+| ServiceRequest | 80000 |
+| MedicationRequest | 90000 |
+| Procedure | 100000 |
+| DiagnosticReport | 110000 |
+| Condition | 120000 |
+| DeviceRequest | 130000 |
+
+Pick the next available block of 10000 for any new resource.
+
+---
+
 ## Adding a New FHIR Resource — Checklist
 
 When adding a new resource (e.g. `Observation`), follow this order:

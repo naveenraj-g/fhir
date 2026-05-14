@@ -1,403 +1,312 @@
-# Production Readiness Assessment
+# Production Readiness Reassessment
 
 Date: 2026-05-14
 Project: FHIR Server (`FastAPI` + `PostgreSQL` + `Redis`)
-Scope: Repository review only. No runtime traffic, penetration testing, infrastructure audit, or live dependency verification was performed.
+Scope: Repository-only reassessment after recent project updates.
+
+Note: JWT/token-depth review is intentionally excluded per request. Unused DB models are also intentionally ignored.
 
 ## Executive Summary
 
-This codebase is **not production ready for healthcare use** in its current state.
+The project has improved materially since the last review, but it is still **not production ready for healthcare use**.
 
-The strongest positives are:
+The biggest improvements are real:
 
-- The project has a mostly consistent router → service → repository layering model.
-- Error responses are normalized toward FHIR `OperationOutcome`.
-- Resource modeling is reasonably structured and public IDs are separated from internal primary keys.
+- startup no longer creates tables directly
+- Alembic migration scaffolding now exists
+- a readiness endpoint was added
+- Docker packaging is much better: multi-stage build, non-root runtime, healthcheck
+- appointment reference parsing is now strict
+- vitals validation is stronger, and `recorded_at` is no longer patchable
 
-The main blockers are:
+The biggest remaining blockers are:
 
-1. **Access control and tenant isolation are not strict enough for PHI.**
-2. **The API trusts caller-supplied ownership fields (`user_id`, `org_id`) in multiple create/list paths.**
-3. **Reference integrity and domain validation are incomplete, allowing silent bad data.**
-4. **Database lifecycle, deployment, and secrets handling are not hardened for regulated production.**
-5. **There is no executable automated test suite covering security, correctness, and regressions.**
+1. **Object-level authorization is still unsafe, and in some places is now weaker than before.**
+2. **Protected resources still trust caller-supplied `user_id` and `org_id`.**
+3. **List/query paths still allow broad tenant/user filtering from request parameters.**
+4. **There is still no executable automated test suite or CI gate.**
+5. **Operational hardening is incomplete for a PHI system.**
 
-If this were handling real patient data, I would classify the current risk as **high** for privacy breach, cross-tenant data exposure, and unsafe operational failures.
-
-## Production Readiness Verdict
+## Current Verdict
 
 - Overall: **Fail**
-- Healthcare / PHI readiness: **Fail**
-- Security readiness: **Fail**
-- Operational readiness: **Fail**
-- Test / release readiness: **Fail**
+- Access control / PHI segregation: **Fail**
+- Data integrity: **Partial**
+- Operational readiness: **Partial**
+- Release confidence: **Fail**
 
-## Critical Findings
+## What Improved
 
-### 1. Caller-controlled ownership and tenancy
+These earlier findings should be considered substantially improved or closed:
 
-The application repeatedly accepts `user_id` and `org_id` from the request body or query string instead of deriving them from the authenticated JWT.
+### 1. Database lifecycle is improved
 
 Evidence:
 
-- [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:67) explicitly instructs clients to supply `user_id` and `org_id`.
-- [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:81) passes `payload.user_id` and `payload.org_id` into creation.
-- [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:216) and [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:217) expose `user_id` and `org_id` as list filters.
-- The same pattern exists in appointments, encounters, practitioners, questionnaire responses, and vitals via repository/service signatures shown by `rg`.
+- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:36) no longer creates tables on startup.
+- [app/core/database.py](/E:/work/code/fhir/fhir-server/app/core/database.py:14) no longer exposes the earlier `create_all`/`reset` pattern.
+- [justfile](/E:/work/code/fhir/fhir-server/justfile:9) now contains real Alembic commands.
+- `migrations/` now exists with an environment file and an initial migration.
 
-Why this is dangerous:
+Assessment:
 
-- A caller with valid credentials and broad read/create permissions can create or query records under another user or organization unless every route adds separate enforcement.
-- In healthcare, this is a direct PHI segregation failure.
+- This is a meaningful production-readiness improvement.
+- What is still missing is proof that migrations are tested and part of CI/CD, but the earlier “no migration path” finding should be downgraded.
+
+### 2. Health/readiness handling improved
+
+Evidence:
+
+- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:125) exposes `/health` as a liveness probe.
+- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:141) exposes `/health/ready` as a readiness probe.
+- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:158) checks the database.
+- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:168) checks Redis.
+
+Assessment:
+
+- This closes the earlier “liveness only” finding.
+- The implementation is directionally correct.
+
+### 3. Container hardening improved
+
+Evidence:
+
+- [Dockerfile](/E:/work/code/fhir/fhir-server/Dockerfile:2) uses a multi-stage build.
+- [Dockerfile](/E:/work/code/fhir/fhir-server/Dockerfile:17) creates a non-root runtime user.
+- [Dockerfile](/E:/work/code/fhir/fhir-server/Dockerfile:41) adds a container healthcheck.
+- [docker-compose.yml](/E:/work/code/fhir/fhir-server/docker-compose.yml:13) now waits on healthy dependencies.
+
+Assessment:
+
+- This is a solid improvement over the prior image/runtime posture.
+- It is still not enough for regulated production by itself, but the previous finding should be narrowed.
+
+### 4. Appointment reference validation improved
+
+Evidence:
+
+- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:20) now imports the shared strict parser.
+- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:131) uses `parse_reference(...)` for appointment subject.
+- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:194) uses `parse_reference(...)` for participant actors.
+- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:143) now rejects unknown encounter references with `422`.
+
+Assessment:
+
+- This closes two earlier integrity findings: silent malformed reference acceptance and silent `encounter_id` degradation.
+
+### 5. Subject resolution is now tenant-aware
+
+Evidence:
+
+- [app/core/references.py](/E:/work/code/fhir/fhir-server/app/core/references.py:53) still accepts `user_id` and `org_id`.
+- [app/core/references.py](/E:/work/code/fhir/fhir-server/app/core/references.py:72) now calls `patient_service.get_patient_in_org(...)`.
+
+Assessment:
+
+- This is a real fix for the earlier cross-tenant subject-resolution concern.
+
+### 6. Vitals domain validation improved
+
+Evidence:
+
+- [app/schemas/vitals.py](/E:/work/code/fhir/fhir-server/app/schemas/vitals.py:68) onward now applies ranges to many numeric fields.
+- [app/schemas/vitals.py](/E:/work/code/fhir/fhir-server/app/schemas/vitals.py:162) makes `recorded_at` non-patchable.
+
+Assessment:
+
+- The vitals schema is materially safer than before.
+- This finding should be downgraded from a major blocker to a narrower validation/completeness concern.
+
+## Remaining Critical Findings
+
+### 1. “Authorized” dependencies no longer authorize anything
+
+This is the most serious remaining problem, and it is worse than the previous implementation.
+
+Evidence:
+
+- [app/auth/patient_deps.py](/E:/work/code/fhir/fhir-server/app/auth/patient_deps.py:7) now only loads the patient by ID and returns it.
+- [app/auth/appointment_deps.py](/E:/work/code/fhir/fhir-server/app/auth/appointment_deps.py:8) does the same for appointments.
+- [app/auth/encounter_deps.py](/E:/work/code/fhir/fhir-server/app/auth/encounter_deps.py:8) does the same for encounters.
+- [app/auth/practitioner_deps.py](/E:/work/code/fhir/fhir-server/app/auth/practitioner_deps.py:7) does the same for practitioners.
+- [app/auth/questionnaire_response_deps.py](/E:/work/code/fhir/fhir-server/app/auth/questionnaire_response_deps.py:12) does the same for questionnaire responses.
+- [app/auth/vitals_deps.py](/E:/work/code/fhir/fhir-server/app/auth/vitals_deps.py:8) does the same for vitals.
+
+Why this matters:
+
+- Any caller with route-level permission can fetch, patch, or delete any record by public ID unless a deeper layer blocks it.
+- The route descriptions still claim organization-scoped access, but the dependency now enforces only existence.
 
 Required fix:
 
-- Remove `user_id` and `org_id` from externally writable create schemas for protected resources.
-- Bind ownership only from `request.state.user["sub"]` and `request.state.user["activeOrganizationId"]`.
-- Restrict list endpoints to the caller’s tenant unless an explicit admin-only pathway exists.
+- Reintroduce object-level authorization.
+- At minimum, enforce `sub` and `activeOrganizationId` checks in the dependency or in a shared authorization service.
+- If some routes are intentionally admin/global, those paths should be explicit and separate.
 
-### 2. Authorization checks validate `user_id` only, not `org_id`
+### 2. Protected resources still accept caller-controlled `user_id` and `org_id`
 
-Resource ownership dependencies claim organization-scoped authorization, but the actual checks only compare `patient.user_id == sub`.
+This issue is still open across create and list paths.
 
 Evidence:
 
-- [app/auth/patient_deps.py](/E:/work/code/fhir/fhir-server/app/auth/patient_deps.py:39) loads `sub`.
-- [app/auth/patient_deps.py](/E:/work/code/fhir/fhir-server/app/auth/patient_deps.py:45) only checks `patient.user_id != user_id`.
-- [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:136) claims org-scoped authorization, which is not what the dependency enforces.
-- The same pattern exists in `appointment_deps.py`, `encounter_deps.py`, `practitioner_deps.py`, `questionnaire_response_deps.py`, and `vitals_deps.py`.
+- [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:67) still instructs callers to supply `user_id` and `org_id`.
+- [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:81) still passes `payload.user_id` and `payload.org_id`.
+- [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:216) and [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:217) still expose `user_id` and `org_id` query filters.
+- [app/routers/vitals.py](/E:/work/code/fhir/fhir-server/app/routers/vitals.py:106) still documents caller-supplied binding.
+- [app/routers/vitals.py](/E:/work/code/fhir/fhir-server/app/routers/vitals.py:119) still passes `payload.user_id` and `payload.org_id`.
+- The same pattern still exists in appointments, encounters, practitioners, and questionnaire responses.
 
-Why this is dangerous:
+Why this matters:
 
-- If the same identity exists across multiple organizations, cross-organization access is possible.
-- The documentation and actual security model diverge, which is especially risky during audits.
+- Ownership is still partly defined by untrusted client input.
+- In a healthcare API, identity and tenancy must come from the auth context, not the request body.
 
 Required fix:
 
-- All ownership dependencies must check both `sub` and `activeOrganizationId`.
-- Repository lookups for auth paths should be tenant-scoped, not global.
+- Remove `user_id` and `org_id` from create payloads for protected resources.
+- Derive ownership from JWT context in the router/service layer.
+- If admin impersonation is required, implement an explicit privileged pathway with separate policy and audit logging.
 
-### 3. Subject/reference resolution is not tenant-scoped
-
-Reference resolution can read patient data without scoping to the authenticated organization.
+### 3. Broad list filtering still creates a tenant exposure surface
 
 Evidence:
 
-- [app/core/references.py](/E:/work/code/fhir/fhir-server/app/core/references.py:53) accepts `user_id` and `org_id`.
-- [app/core/references.py](/E:/work/code/fhir/fhir-server/app/core/references.py:72) ignores them and calls `patient_service.get_patient(subject_id)`.
-- [app/repository/patient_repository.py](/E:/work/code/fhir/fhir-server/app/repository/patient_repository.py:29) `get_by_patient_id()` is a global fetch.
+- [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:203) documents filtering by `user_id` and `org_id`.
+- [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:216) and [app/routers/patient.py](/E:/work/code/fhir/fhir-server/app/routers/patient.py:217) still accept them.
+- [app/routers/vitals.py](/E:/work/code/fhir/fhir-server/app/routers/vitals.py:223) documents filtering by `user_id`, `patient_id`, and `org_id`.
+- [app/routers/vitals.py](/E:/work/code/fhir/fhir-server/app/routers/vitals.py:232) and [app/routers/vitals.py](/E:/work/code/fhir/fhir-server/app/routers/vitals.py:234) still accept them directly.
 
-Why this is dangerous:
+Why this matters:
 
-- A caller may be able to discover whether another tenant’s patient exists and derive identifying display text.
-- This leaks metadata even if later writes are denied.
+- Even if coarse RBAC is intentional, this is still too open for healthcare unless the role model is very tightly controlled and audited.
+- It is safer to default list endpoints to the caller’s tenant and expose broader search only to explicit admin/support roles.
 
 Required fix:
 
-- Resolve all references with tenant-aware repository methods.
-- Reject references to resources outside the active organization with `403` or `404`.
+- Split “self/tenant-scoped” and “administrative/global” query surfaces.
+- Make the tenant-safe path the default.
 
-### 4. Invalid references are silently accepted instead of rejected
+## High-Priority Remaining Findings
 
-Appointment repository parsing functions return `(None, None)` for malformed references rather than raising validation errors.
-
-Evidence:
-
-- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:31) `_parse_subject()`
-- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:37) returns `None, None` on bad format.
-- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:44) `_parse_actor()`
-- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:50) returns `None, None` on bad format.
-
-Why this is dangerous:
-
-- The server can persist structurally invalid appointments with missing or corrupted participant references.
-- Silent acceptance of bad clinical linkage data is unacceptable in healthcare workflows.
-
-Required fix:
-
-- Reuse strict parsing helpers like `parse_reference()` for all FHIR references.
-- Fail fast with precise 4xx validation errors.
-
-### 5. Broken foreign references can degrade silently
-
-Appointment creation resolves public `encounter_id` to internal PK, but if no match is found the code stores `None` rather than rejecting the request.
+### 4. There is still no executable automated test suite
 
 Evidence:
 
-- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:160) checks `payload.encounter_id`.
-- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:166) uses `scalar_one_or_none()`.
-- [app/repository/appointment_repository.py](/E:/work/code/fhir/fhir-server/app/repository/appointment_repository.py:176) writes `encounter_id=internal_encounter_id` without validation.
-
-Why this is dangerous:
-
-- Client intent and persisted record can diverge without an error.
-- Downstream scheduling, billing, or clinical navigation may operate on incomplete relationships.
-
-Required fix:
-
-- Reject unknown encounter references.
-- Add integrity tests for every cross-resource reference.
-
-## High-Priority Findings
-
-### 6. No executable test suite
-
-The repository contains payload samples but no real automated tests.
-
-Evidence:
-
-- `tests/` contains data files and [tests/api.http](/E:/work/code/fhir/fhir-server/tests/api.http:1).
-- `pyproject.toml` has runtime dependencies only and no test tooling.
+- `tests/` still appears to contain sample payloads and [tests/api.http](/E:/work/code/fhir/fhir-server/tests/api.http:1), not runnable test modules.
+- [pyproject.toml](/E:/work/code/fhir/fhir-server/pyproject.toml:8) still contains runtime dependencies only; there is no visible `pytest` or equivalent test stack.
 
 Impact:
 
-- No regression safety for auth, FHIR mapping, serialization, pagination, or error behavior.
-- No evidence for healthcare-grade validation or release confidence.
+- No evidence-backed protection against auth regressions, migration breakage, serialization bugs, or PHI boundary failures.
 
 Required fix:
 
-- Add `pytest`, async test support, API tests, repository tests, contract tests, and auth/tenant isolation tests.
-- Make CI block merges on test, lint, and type-check failures.
+- Add automated API, repository, migration, and authorization tests.
+- Add CI to block merges on failures.
 
-### 7. Database lifecycle is still development-grade
+### 5. Rate limiting still fails open when Redis is unavailable
 
-The application creates tables on startup in development and includes a destructive reset helper.
+This issue still matters even though readiness is better.
 
 Evidence:
 
-- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:40) comments that startup table creation is for demo purposes.
-- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:42) calls `db.connect()` in development.
-- [app/core/database.py](/E:/work/code/fhir/fhir-server/app/core/database.py:26) runs `metadata.create_all`.
-- [app/core/database.py](/E:/work/code/fhir/fhir-server/app/core/database.py:31) exposes `reset()`.
-- `justfile` references Alembic, but no Alembic migration tree is present in the repository.
+- `app.main` now marks Redis unavailable in app state when connection fails.
+- `RateLimitMiddleware` is still present in [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:110).
+- The earlier logic pattern of skipping protection when Redis is absent still appears to be the intended operational model.
 
 Impact:
 
-- Schema drift and non-reproducible environments.
-- Unsafe operational behavior during deployments.
+- Protective controls degrade during a dependency incident.
 
 Required fix:
 
-- Add real Alembic migrations and remove schema creation from app startup.
-- Separate app startup from migration execution.
+- Decide whether sensitive routes should fail closed, use a fallback limiter, or explicitly degrade with alerting.
 
-### 8. Deployment artifacts are not hardened
+### 6. Compose/runtime posture is still not healthcare-grade
 
-The container and compose setup are suitable for local development, not regulated production.
+The deployment posture is better, but still not production-grade for PHI.
 
 Evidence:
 
-- [Dockerfile](/E:/work/code/fhir/fhir-server/Dockerfile:1) uses a single-stage image with build tooling installed in the final runtime.
-- [Dockerfile](/E:/work/code/fhir/fhir-server/Dockerfile:22) runs plain `uvicorn`, not a production process model.
-- [docker-compose.yml](/E:/work/code/fhir/fhir-server/docker-compose.yml:22) and [docker-compose.yml](/E:/work/code/fhir/fhir-server/docker-compose.yml:23) hard-code database credentials.
-- [docker-compose.yml](/E:/work/code/fhir/fhir-server/docker-compose.yml:36) enables Redis AOF, but there is no authentication or TLS shown.
+- [docker-compose.yml](/E:/work/code/fhir/fhir-server/docker-compose.yml:31) now externalizes Postgres credentials, which is good.
+- [docker-compose.yml](/E:/work/code/fhir/fhir-server/docker-compose.yml:51) still runs Redis without visible auth or TLS.
+- [Dockerfile](/E:/work/code/fhir/fhir-server/Dockerfile:5) copies `uv` from `ghcr.io/astral-sh/uv:latest`, which is still an unpinned moving dependency.
 
 Impact:
 
-- Larger attack surface, weaker runtime isolation, and poor secret hygiene.
-- No evidence of readiness for HA, graceful rollout, or node failure.
+- Better than before, but still not a high-assurance production posture.
 
 Required fix:
 
-- Use a multi-stage image, non-root user, pinned OS packages, healthchecks, and a production server/process strategy.
-- Remove hard-coded secrets and use a secret manager or orchestrator-managed secret injection.
-- Put Postgres and Redis behind authenticated, encrypted channels.
+- Pin base/runtime dependency sources.
+- Add a production deployment story for secret management, network isolation, TLS, and authenticated Redis/Postgres connections.
 
-### 9. Health endpoint is liveness-only, not readiness
-
-The health route always returns `ok` and does not verify critical dependencies.
+### 7. Observability and auditability are still incomplete
 
 Evidence:
 
-- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:141) defines `/health`.
-- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:155) returns a static status payload.
-- Redis connection failures are logged and then tolerated by setting `app.state.redis = None` at [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:60).
+- Basic structured logging exists.
+- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:195) still contains placeholder commentary about metrics/traces rather than implementation.
 
 Impact:
 
-- Orchestrators may route traffic to an instance that has degraded protections or broken dependencies.
-- Rate limiting can silently disappear if Redis is down.
+- Hard to support healthcare audit, incident response, and anomaly detection requirements.
 
 Required fix:
 
-- Split liveness and readiness.
-- Readiness must fail when DB, Redis, or key identity dependencies are unavailable, according to service policy.
+- Add metrics, tracing, explicit audit events, and operational alerting.
 
-### 10. Rate limiting fails open
+## Medium-Priority Remaining Findings
 
-If Redis is unavailable, requests proceed without rate limiting.
+### 8. Vitals validation is better, but still not clinically complete
+
+What improved:
+
+- Numeric range checks are now present for many fields.
+
+What remains:
+
+- No visible cross-field validation for impossible combinations.
+- No visible strict format validation for `bed_time` / `wake_up_time`.
+- No visible consistency rules such as stage totals or date/time alignment.
+
+Required fix:
+
+- Add cross-field validators and domain consistency checks.
+
+### 9. Contract drift still exists
 
 Evidence:
 
-- [app/middleware/rate_limit.py](/E:/work/code/fhir/fhir-server/app/middleware/rate_limit.py:36) checks Redis availability.
-- [app/middleware/rate_limit.py](/E:/work/code/fhir/fhir-server/app/middleware/rate_limit.py:37) logs and skips rate limiting.
+- AGENTS says vitals IDs start at `60000`, but [app/models/vitals/vitals.py](/E:/work/code/fhir/fhir-server/app/models/vitals/vitals.py:6) still starts at `70000`.
+- Several route descriptions still claim organization-scoped authorization, but current auth dependencies do not enforce it.
 
 Impact:
 
-- Brute force, scraping, or noisy-client protection disappears during a dependency incident.
-- For a healthcare API, degraded protective controls should be explicitly decided, monitored, and documented.
+- Internal docs and actual runtime behavior are still out of sync.
 
 Required fix:
 
-- Decide whether rate limiting should fail closed for sensitive routes, or add secondary local throttling.
-- Emit alerts when protective controls are degraded.
+- Reconcile AGENTS, route descriptions, and real enforcement logic.
 
-### 11. JWT handling is too thin for a high-assurance system
+## Recommended Next Actions
 
-The token path verifies signature, issuer, and audience, but there is no evidence of stronger validation such as required claims, token type enforcement, clock skew configuration, or scoped error telemetry.
+### Immediate
 
-Evidence:
+1. Restore real object-level authorization in every `get_authorized_*` dependency or centralize it in a shared authorization layer.
+2. Remove caller control over `user_id` and `org_id` for protected resources.
+3. Lock list endpoints to tenant-safe defaults.
+4. Add auth regression tests before any more security-adjacent refactors.
 
-- [app/auth/dependencies.py](/E:/work/code/fhir/fhir-server/app/auth/dependencies.py:10) performs decode via `PyJWKClient`.
-- [app/auth/dependencies.py](/E:/work/code/fhir/fhir-server/app/auth/dependencies.py:16) uses `IAM_ISSUER` as audience.
-- [app/auth/dependencies.py](/E:/work/code/fhir/fhir-server/app/auth/dependencies.py:41) collapses all other exceptions into a generic token failure.
+### Near-term
 
-Impact:
-
-- Harder to reason about accepted token shapes and failure cases.
-- Potential mismatch with the identity provider’s actual audience model.
-
-Required fix:
-
-- Enforce required claims and token type.
-- Add explicit config for expected audience(s), clock skew, and JWKS/network failure behavior.
-- Add authentication integration tests with valid, expired, wrong-issuer, wrong-audience, and revoked-key scenarios.
-
-## Medium-Priority Findings
-
-### 12. Domain validation is too shallow for clinical and wearable data
-
-Many healthcare-sensitive numeric fields are effectively unconstrained.
-
-Evidence:
-
-- [app/schemas/vitals.py](/E:/work/code/fhir/fhir-server/app/schemas/vitals.py:67) onward defines many physiological values with no min/max constraints.
-- [app/schemas/vitals.py](/E:/work/code/fhir/fhir-server/app/schemas/vitals.py:163) still allows `recorded_at` in patch despite route documentation saying it cannot change.
-
-Impact:
-
-- Impossible values can be stored and later consumed as trusted health data.
-
-Required fix:
-
-- Add physiological bounds, required-field rules, unit policy, and timestamp consistency checks.
-- Make immutable fields structurally unpatchable.
-
-### 13. Schema/contract drift already exists
-
-The repository’s own instructions and the code are not fully aligned.
-
-Evidence:
-
-- AGENTS says vitals IDs start at `60000`, but [app/models/vitals/vitals.py](/E:/work/code/fhir/fhir-server/app/models/vitals/vitals.py:6) starts at `70000`.
-- AGENTS says create schema examples must include `user_id` and `org_id`; [app/schemas/resources/patient.py](/E:/work/code/fhir/fhir-server/app/schemas/resources/patient.py:78) example omits them.
-- AGENTS says avoid `response_model=` on routes, but [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:143) uses it for `/health`.
-- `openapi_check.json` appears stale and does not match current route layout or conventions.
-
-Impact:
-
-- Internal docs cannot be trusted during implementation, onboarding, or audit preparation.
-
-Required fix:
-
-- Decide whether code or specification is source of truth, then reconcile and add checks to keep them aligned.
-
-### 14. Operational observability is incomplete
-
-JSON logging exists, but metrics, tracing, audit logging completeness, and alerting hooks are missing.
-
-Evidence:
-
-- [app/core/logging.py](/E:/work/code/fhir/fhir-server/app/core/logging.py:37) sets up basic structured logs.
-- [app/main.py](/E:/work/code/fhir/fhir-server/app/main.py:164) contains a comment block listing desired metrics/traces rather than implemented telemetry.
-
-Impact:
-
-- Hard to detect PHI access anomalies, latency regressions, or dependency incidents.
-
-Required fix:
-
-- Add metrics, traces, security audit events, and alert thresholds.
-- Distinguish access logs, application logs, and audit logs.
-
-## Architecture Assessment
-
-What is working:
-
-- Router/service/repository separation is mostly consistent.
-- Use of eager loading via `_with_relationships()` is a good pattern for async serialization.
-- Error normalization toward `OperationOutcome` is directionally correct.
-
-What is missing for production:
-
-- Strong domain services enforcing invariants, not just pass-through orchestration.
-- Transaction boundaries for multi-entity operations with explicit invariants.
-- A formal authorization model beyond ad hoc ownership checks.
-- Data lifecycle controls: retention, purge, archive, legal hold, and audit reconstruction.
-
-## Compliance and Healthcare-Specific Gaps
-
-This repository does not provide evidence of:
-
-- HIPAA-oriented administrative, technical, and physical safeguard implementation
-- full PHI audit trails
-- immutable access audit logs
-- encryption-at-rest strategy
-- key rotation policy
-- backup/restore validation
-- disaster recovery objectives
-- breach detection and alerting
-- consent / minimum-necessary enforcement
-- data retention and deletion policy by resource type
-- FHIR conformance testing against official profiles and search semantics
-
-These may exist outside the repo, but they are not represented here.
-
-## Recommended Remediation Plan
-
-### Phase 1: Stop-the-line security fixes
-
-1. Remove client control over `user_id` and `org_id` for all protected resources.
-2. Enforce tenant-scoped authorization everywhere using both `sub` and `activeOrganizationId`.
-3. Make all reference resolution tenant-aware and fail fast on invalid or foreign references.
-4. Lock down list endpoints to tenant-safe defaults.
-5. Add security regression tests before any further feature work.
-
-### Phase 2: Data integrity and clinical safety
-
-1. Add strict schema validation for vitals and temporal fields.
-2. Reject missing or unresolved cross-resource references.
-3. Add invariants for recurrence, appointment times, encounter links, and patient ownership.
-4. Add idempotency support for create operations where retries are expected.
-
-### Phase 3: Operational hardening
-
-1. Introduce Alembic migrations and remove startup schema creation.
-2. Harden container/runtime, secrets, and dependency connectivity.
-3. Add readiness checks, metrics, tracing, and alerting.
-4. Define backup/restore and incident response procedures.
-
-### Phase 4: Release governance
-
-1. Add CI with tests, linting, typing, OpenAPI drift checks, and dependency scanning.
-2. Add code review gates for auth, schema, and migration changes.
-3. Add change-management documentation for regulated deployment.
-
-## Minimum Bar Before Production
-
-At minimum, I would require all of the following before approving production use:
-
-- tenant-safe auth model proven by tests
-- no caller-controlled ownership fields
-- executable integration and security test suite
-- real migrations
-- hardened deployment and secrets management
-- readiness/observability/alerting
-- documented backup and disaster recovery procedures
-- clinical/domain validation for all patient-facing data
+1. Add `pytest`-based automated tests and CI.
+2. Add migration tests for fresh database and upgrade path.
+3. Harden Redis/Postgres connection security and runtime secret handling.
+4. Add metrics, traces, and audit logging.
 
 ## Final Assessment
 
-This is a promising application skeleton, but it is still closer to a **development/demo implementation** than a production healthcare platform. The primary reason is not code style; it is **trust boundaries**. In a healthcare API, every place that trusts caller-supplied identity, ignores tenant context, or accepts broken references is a major production blocker.
+The project is in a better place than it was in the previous review. The migration story, readiness checks, Docker packaging, appointment reference validation, subject scoping, and vitals validation all improved in meaningful ways.
 
-The next step should be a focused remediation program on security and data integrity, followed immediately by automated verification and operational hardening.
+The remaining blocker is still the trust boundary around data access. Right now the code still allows caller influence over ownership fields, and the resource “authorized” dependencies currently do not authorize ownership or tenancy at all. Until that is corrected and covered by automated tests, this should not be treated as production-ready for healthcare data.
