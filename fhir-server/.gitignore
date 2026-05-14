@@ -1,40 +1,53 @@
-# Byte-compiled / optimized / DLL files
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
 
-# Environments
+# ── Virtual environments ───────────────────────────────────────────────────────
 .venv/
 venv/
 ENV/
 env/
 python/
 
-# Environment variables (Crucial for FastAPI)
+# ── Environment / secrets ──────────────────────────────────────────────────────
+# Keep .env.example (safe template); ignore everything else
 .env
-.flaskenv
+.env.*
+!.env.example
 
-# Testing
+# ── Build artifacts ────────────────────────────────────────────────────────────
+dist/
+build/
+
+# ── Test & coverage ────────────────────────────────────────────────────────────
 .pytest_cache/
 .coverage
 htmlcov/
-nosetests.xml
 coverage.xml
 *.cover
-*.log
 
-# Type checking
+# ── Type checking & linting caches ────────────────────────────────────────────
 .mypy_cache/
 .pytype/
+.ruff_cache/
+.cache/
 
-# Databases (SQLite)
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+
+# ── Databases ─────────────────────────────────────────────────────────────────
 *.db
 *.sqlite3
 
-# OS generated files
+# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 
-# IDEs
+# ── IDEs ──────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
+
+# ── Claude Code ───────────────────────────────────────────────────────────────
+.claude/
