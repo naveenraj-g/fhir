@@ -1,0 +1,11 @@
+{
+  "use": "work",
+  "type": "physical",
+  "text": "Suite 200, 456 Medical Plaza, Chicago, IL 60601, US",
+  "line": "456 Medical Plaza, Suite 200",
+  "city": "Chicago",
+  "district": "Cook County",
+  "state": "IL",
+  "postal_code": "60601",
+  "country": "US"
+}

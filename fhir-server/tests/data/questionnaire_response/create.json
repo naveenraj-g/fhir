@@ -1,0 +1,73 @@
+{
+  "questionnaire": "http://example.org/fhir/Questionnaire/phq-9",
+  "status": "completed",
+  "subject": "Patient/10001",
+  "subject_display": "John Doe",
+  "encounter": "Encounter/20001",
+  "authored": "2026-04-01T09:15:00Z",
+  "author": "Practitioner/30001",
+  "author_display": "Dr. Jane Smith",
+  "source": "Patient/10001",
+  "source_display": "John Doe",
+  "item": [
+    {
+      "link_id": "1",
+      "text": "Over the last 2 weeks, how often have you felt down, depressed, or hopeless?",
+      "answer": [
+        {
+          "value_coding": {
+            "system": "http://loinc.org",
+            "code": "LA6568-5",
+            "display": "Not at all"
+          }
+        }
+      ]
+    },
+    {
+      "link_id": "2",
+      "text": "Over the last 2 weeks, how often have you had little interest or pleasure in doing things?",
+      "answer": [
+        {
+          "value_coding": {
+            "system": "http://loinc.org",
+            "code": "LA6569-3",
+            "display": "Several days"
+          }
+        }
+      ]
+    },
+    {
+      "link_id": "3",
+      "text": "PHQ-9 Score",
+      "answer": [
+        {
+          "value_integer": 1
+        }
+      ]
+    },
+    {
+      "link_id": "4",
+      "text": "Patient demographics group",
+      "item": [
+        {
+          "link_id": "4.1",
+          "text": "Do you smoke?",
+          "answer": [
+            {
+              "value_boolean": false
+            }
+          ]
+        },
+        {
+          "link_id": "4.2",
+          "text": "Date of last physical exam",
+          "answer": [
+            {
+              "value_date": "2025-11-10"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

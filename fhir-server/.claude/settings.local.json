@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python -c \":*)",
+      "Bash(python -c \"from fhir.resources.questionnaireresponse import QuestionnaireResponse; print\\(''OK''\\)\")",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Read(//tmp/**)",
+      "Bash(xargs grep *)"
+    ]
+  }
+}

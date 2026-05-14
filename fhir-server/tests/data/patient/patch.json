@@ -1,0 +1,8 @@
+{
+  "given_name": "Jonathan",
+  "family_name": "Doe",
+  "gender": "male",
+  "birth_date": "1985-04-12",
+  "active": true,
+  "deceased_boolean": false
+}

@@ -1,0 +1,53 @@
+{
+  "status": "completed",
+  "class_code": "ambulatory",
+  "subject": "Patient/10001",
+  "period_start": "2026-04-01T09:00:00Z",
+  "period_end": "2026-04-01T09:30:00Z",
+  "priority": "routine",
+  "type": [
+    {
+      "coding_system": "http://snomed.info/sct",
+      "coding_code": "185349003",
+      "coding_display": "Encounter for check up",
+      "text": "General check-up"
+    }
+  ],
+  "participant": [
+    {
+      "type_text": "Primary Physician",
+      "individual": "Practitioner/30001",
+      "period_start": "2026-04-01T09:00:00Z",
+      "period_end": "2026-04-01T09:30:00Z"
+    }
+  ],
+  "reason_codes": [
+    {
+      "coding_system": "http://snomed.info/sct",
+      "coding_code": "25064002",
+      "coding_display": "Headache",
+      "text": "Headache"
+    }
+  ],
+  "diagnoses": [
+    {
+      "condition_reference": "Condition/99999",
+      "use_text": "admission",
+      "rank": 1
+    }
+  ],
+  "locations": [
+    {
+      "location_reference": "Location/room-3",
+      "status": "completed",
+      "period_start": "2026-04-01T09:00:00Z",
+      "period_end": "2026-04-01T09:30:00Z"
+    }
+  ],
+  "based_on": [
+    {
+      "reference": "ServiceRequest/1234",
+      "display": "Annual check-up request"
+    }
+  ]
+}

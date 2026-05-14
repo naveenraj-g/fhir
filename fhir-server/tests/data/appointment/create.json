@@ -1,0 +1,44 @@
+{
+  "status": "booked",
+  "subject": "Patient/10001",
+  "subject_display": "John Doe",
+  "start": "2026-04-10T09:00:00Z",
+  "end": "2026-04-10T09:30:00Z",
+  "minutes_duration": 30,
+  "description": "Follow-up visit for hypertension management",
+  "comment": "Patient prefers morning appointments",
+  "patient_instruction": "Please arrive 10 minutes early and bring your medication list.",
+  "priority_value": 5,
+  "service_category_code": "gp",
+  "service_category_display": "General Practice",
+  "service_type_code": "11429006",
+  "service_type_display": "Consultation",
+  "specialty_code": "394814009",
+  "specialty_display": "General practice",
+  "appointment_type_code": "FOLLOWUP",
+  "appointment_type_display": "A follow up visit from a previous appointment",
+  "reason_codes": [
+    {
+      "coding_system": "http://snomed.info/sct",
+      "coding_code": "38341003",
+      "coding_display": "Hypertension",
+      "text": "Hypertension follow-up"
+    }
+  ],
+  "participant": [
+    {
+      "actor": "Patient/10001",
+      "actor_display": "John Doe",
+      "required": "required",
+      "status": "accepted"
+    },
+    {
+      "actor": "Practitioner/30001",
+      "actor_display": "Dr. Jane Smith",
+      "type_code": "ATND",
+      "type_display": "attender",
+      "required": "required",
+      "status": "accepted"
+    }
+  ]
+}

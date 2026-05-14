@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  api:
+    image: ghcr.io/naveenraj-g/fhir-server:latest
+    container_name: fhir-server
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    networks:
+      - bezs-net
+
+  db:
+    image: postgres:15-alpine
+    container_name: fhir-postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: fhir-server
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - bezs-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: fhir-redis
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - bezs-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  bezs-net:
+    driver: bridge

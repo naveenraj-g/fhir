@@ -1,0 +1,48 @@
+{
+  "status": "booked",
+  "subject": "Patient/10001",
+  "subject_display": "John Doe",
+  "start": "2026-04-14T10:00:00Z",
+  "end": "2026-04-14T10:30:00Z",
+  "minutes_duration": 30,
+  "description": "Weekly physiotherapy session",
+  "patient_instruction": "Wear comfortable clothing.",
+  "priority_value": 3,
+  "service_type_code": "306005",
+  "service_type_display": "Physiotherapy",
+  "specialty_code": "722165004",
+  "specialty_display": "Physiotherapy",
+  "appointment_type_code": "ROUTINE",
+  "appointment_type_display": "Routine appointment",
+  "participant": [
+    {
+      "actor": "Patient/10001",
+      "actor_display": "John Doe",
+      "required": "required",
+      "status": "accepted"
+    },
+    {
+      "actor": "Practitioner/30001",
+      "actor_display": "Dr. Jane Smith",
+      "type_code": "ATND",
+      "type_display": "attender",
+      "required": "required",
+      "status": "accepted"
+    }
+  ],
+  "recurrence_id": 1,
+  "occurrence_changed": false,
+  "recurrence_template": {
+    "recurrence_type_code": "weekly",
+    "recurrence_type_display": "Weekly",
+    "timezone_code": "America/Chicago",
+    "timezone_display": "US Central Time",
+    "occurrence_count": 8,
+    "last_occurrence_date": "2026-06-02",
+    "excluding_dates": ["2026-05-04"],
+    "weekly_template": {
+      "monday": true,
+      "week_interval": 1
+    }
+  }
+}

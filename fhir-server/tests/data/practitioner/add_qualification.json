@@ -1,0 +1,6 @@
+{
+  "identifier_system": "http://example.org/fhir/sid/illinois-medical-license",
+  "identifier_value": "IL-MD-2024-98765",
+  "code_text": "MD - Doctor of Medicine",
+  "issuer": "Illinois Department of Financial and Professional Regulation"
+}

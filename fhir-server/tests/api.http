@@ -1,0 +1,359 @@
+# FHIR Server API - REST Client Test File
+# Usage: Open in VS Code with the "REST Client" extension (humao.rest-client)
+# Set @token before running any request.
+
+@baseUrl = http://localhost:8000/api/fhir/v1
+@token = Bearer <YOUR_JWT_TOKEN_HERE>
+
+# Replace these IDs with real values returned from create requests:
+@patientId = 10001
+@practitionerId = 30001
+@encounterId = 20001
+@appointmentId = 40001
+@questionnaireResponseId = 60001
+
+
+###############################################################################
+# PATIENT
+###############################################################################
+
+# ── Create Patient ────────────────────────────────────────────────────────────
+# @name createPatient
+POST {{baseUrl}}/patients
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/patient/create.json
+
+###
+
+# ── Get My Patient Profile ────────────────────────────────────────────────────
+GET {{baseUrl}}/patients/me
+Authorization: {{token}}
+
+###
+
+# ── List Patients ─────────────────────────────────────────────────────────────
+GET {{baseUrl}}/patients
+Authorization: {{token}}
+
+###
+
+# ── Get Patient by ID ─────────────────────────────────────────────────────────
+GET {{baseUrl}}/patients/{{patientId}}
+Authorization: {{token}}
+
+###
+
+# ── Patch Patient ─────────────────────────────────────────────────────────────
+PATCH {{baseUrl}}/patients/{{patientId}}
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/patient/patch.json
+
+###
+
+# ── Add Patient Identifier ────────────────────────────────────────────────────
+POST {{baseUrl}}/patients/{{patientId}}/identifiers
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/patient/add_identifier.json
+
+###
+
+# ── Add Patient Telecom ───────────────────────────────────────────────────────
+POST {{baseUrl}}/patients/{{patientId}}/telecom
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/patient/add_telecom.json
+
+###
+
+# ── Add Patient Address ───────────────────────────────────────────────────────
+POST {{baseUrl}}/patients/{{patientId}}/addresses
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/patient/add_address.json
+
+###
+
+# ── Delete Patient ────────────────────────────────────────────────────────────
+# WARNING: This is irreversible. Update @patientId first.
+DELETE {{baseUrl}}/patients/{{patientId}}
+Authorization: {{token}}
+
+
+###############################################################################
+# PRACTITIONER
+###############################################################################
+
+# ── Create Practitioner ───────────────────────────────────────────────────────
+# @name createPractitioner
+POST {{baseUrl}}/practitioners
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/practitioner/create.json
+
+###
+
+# ── Get My Practitioner Profile ───────────────────────────────────────────────
+GET {{baseUrl}}/practitioners/me
+Authorization: {{token}}
+
+###
+
+# ── List Practitioners ────────────────────────────────────────────────────────
+GET {{baseUrl}}/practitioners
+Authorization: {{token}}
+
+###
+
+# ── Get Practitioner by ID ────────────────────────────────────────────────────
+GET {{baseUrl}}/practitioners/{{practitionerId}}
+Authorization: {{token}}
+
+###
+
+# ── Patch Practitioner ────────────────────────────────────────────────────────
+PATCH {{baseUrl}}/practitioners/{{practitionerId}}
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/practitioner/patch.json
+
+###
+
+# ── Add Practitioner Identifier ───────────────────────────────────────────────
+POST {{baseUrl}}/practitioners/{{practitionerId}}/identifiers
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/practitioner/add_identifier.json
+
+###
+
+# ── Add Practitioner Telecom ──────────────────────────────────────────────────
+POST {{baseUrl}}/practitioners/{{practitionerId}}/telecom
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/practitioner/add_telecom.json
+
+###
+
+# ── Add Practitioner Address ──────────────────────────────────────────────────
+POST {{baseUrl}}/practitioners/{{practitionerId}}/addresses
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/practitioner/add_address.json
+
+###
+
+# ── Add Practitioner Qualification ───────────────────────────────────────────
+POST {{baseUrl}}/practitioners/{{practitionerId}}/qualifications
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/practitioner/add_qualification.json
+
+###
+
+# ── Delete Practitioner ───────────────────────────────────────────────────────
+# WARNING: This is irreversible. Update @practitionerId first.
+DELETE {{baseUrl}}/practitioners/{{practitionerId}}
+Authorization: {{token}}
+
+
+###############################################################################
+# ENCOUNTER
+###############################################################################
+
+# ── Create Encounter ──────────────────────────────────────────────────────────
+# @name createEncounter
+# Requires Patient/10001 and Practitioner/30001 to exist.
+# status: planned | in-progress | on-hold | discharged | completed | cancelled | discontinued | entered-in-error | unknown
+# class_code: ambulatory | inpatient | emergency | virtual | observation | home_health
+# priority: routine | urgent | stat | asap
+# diagnoses.use_text: admission | discharge | billing | other
+# locations.status: planned | active | reserved | completed
+# based_on.reference: CarePlan/{id} | DeviceRequest/{id} | MedicationRequest/{id} | ServiceRequest/{id}
+POST {{baseUrl}}/encounters
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/encounter/create.json
+
+###
+
+# ── Get My Encounters ─────────────────────────────────────────────────────────
+GET {{baseUrl}}/encounters/me
+Authorization: {{token}}
+
+###
+
+# ── List Encounters ───────────────────────────────────────────────────────────
+GET {{baseUrl}}/encounters
+Authorization: {{token}}
+
+###
+
+# ── List Encounters filtered by Patient ──────────────────────────────────────
+GET {{baseUrl}}/encounters?patient_id={{patientId}}
+Authorization: {{token}}
+
+###
+
+# ── Get Encounter by ID ───────────────────────────────────────────────────────
+GET {{baseUrl}}/encounters/{{encounterId}}
+Authorization: {{token}}
+
+###
+
+# ── Patch Encounter ───────────────────────────────────────────────────────────
+PATCH {{baseUrl}}/encounters/{{encounterId}}
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/encounter/patch.json
+
+###
+
+# ── Delete Encounter ──────────────────────────────────────────────────────────
+# WARNING: This is irreversible. Update @encounterId first.
+DELETE {{baseUrl}}/encounters/{{encounterId}}
+Authorization: {{token}}
+
+
+###############################################################################
+# APPOINTMENT
+###############################################################################
+
+# ── Create Appointment ────────────────────────────────────────────────────────
+# @name createAppointment
+# Requires Patient/10001 and Practitioner/30001 to exist.
+POST {{baseUrl}}/appointments
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/appointment/create.json
+
+###
+
+# ── Create Recurring Appointment ─────────────────────────────────────────────
+POST {{baseUrl}}/appointments
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/appointment/create_recurring.json
+
+###
+
+# ── Get My Appointments ───────────────────────────────────────────────────────
+GET {{baseUrl}}/appointments/me
+Authorization: {{token}}
+
+###
+
+# ── List Appointments ─────────────────────────────────────────────────────────
+GET {{baseUrl}}/appointments
+Authorization: {{token}}
+
+###
+
+# ── List Appointments filtered by Patient ─────────────────────────────────────
+GET {{baseUrl}}/appointments?patient_id={{patientId}}
+Authorization: {{token}}
+
+###
+
+# ── List Appointments filtered by Encounter ───────────────────────────────────
+GET {{baseUrl}}/appointments?encounter_id={{encounterId}}
+Authorization: {{token}}
+
+###
+
+# ── Get Appointment by ID ─────────────────────────────────────────────────────
+GET {{baseUrl}}/appointments/{{appointmentId}}
+Authorization: {{token}}
+
+###
+
+# ── Patch Appointment ─────────────────────────────────────────────────────────
+PATCH {{baseUrl}}/appointments/{{appointmentId}}
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/appointment/patch.json
+
+###
+
+# ── Delete Appointment ────────────────────────────────────────────────────────
+# WARNING: This is irreversible. Update @appointmentId first.
+DELETE {{baseUrl}}/appointments/{{appointmentId}}
+Authorization: {{token}}
+
+
+###############################################################################
+# QUESTIONNAIRE RESPONSE
+###############################################################################
+
+# ── Create QuestionnaireResponse ─────────────────────────────────────────────
+# @name createQuestionnaireResponse
+# Requires Patient/10001, Encounter/20001, and Practitioner/30001 to exist.
+POST {{baseUrl}}/questionnaire-responses
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/questionnaire_response/create.json
+
+###
+
+# ── Get My QuestionnaireResponses ────────────────────────────────────────────
+GET {{baseUrl}}/questionnaire-responses/me
+Authorization: {{token}}
+
+###
+
+# ── List QuestionnaireResponses ───────────────────────────────────────────────
+GET {{baseUrl}}/questionnaire-responses
+Authorization: {{token}}
+
+###
+
+# ── List QuestionnaireResponses filtered by Patient ───────────────────────────
+GET {{baseUrl}}/questionnaire-responses?patient_id={{patientId}}
+Authorization: {{token}}
+
+###
+
+# ── List QuestionnaireResponses filtered by Encounter ─────────────────────────
+GET {{baseUrl}}/questionnaire-responses?encounter_id={{encounterId}}
+Authorization: {{token}}
+
+###
+
+# ── Get QuestionnaireResponse by ID ──────────────────────────────────────────
+GET {{baseUrl}}/questionnaire-responses/{{questionnaireResponseId}}
+Authorization: {{token}}
+
+###
+
+# ── Patch QuestionnaireResponse ───────────────────────────────────────────────
+PATCH {{baseUrl}}/questionnaire-responses/{{questionnaireResponseId}}
+Content-Type: application/json
+Authorization: {{token}}
+
+< ./data/questionnaire_response/patch.json
+
+###
+
+# ── Delete QuestionnaireResponse ──────────────────────────────────────────────
+# WARNING: This is irreversible. Update @questionnaireResponseId first.
+DELETE {{baseUrl}}/questionnaire-responses/{{questionnaireResponseId}}
+Authorization: {{token}}

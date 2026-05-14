@@ -1,0 +1,10 @@
+{
+  "given_name": "Janet",
+  "family_name": "Smith",
+  "active": true,
+  "gender": "female",
+  "birth_date": "1978-03-15",
+  "role": "doctor",
+  "specialty": "Interventional Cardiology",
+  "deceased_boolean": false
+}
