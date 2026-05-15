@@ -12,13 +12,14 @@ from app.models.questionnaire_response.questionnaire_response import (
     QuestionnaireResponsePartOf,
     QuestionnaireResponseItemModel,
     QuestionnaireResponseAnswerModel,
-)
+)  # QuestionnaireResponseAnswerModel used in selectinload chains
 from app.models.questionnaire_response.enums import (
     QuestionnaireResponseAuthorReferenceType,
     QuestionnaireResponseSourceReferenceType,
     QRBasedOnReferenceType,
     QRPartOfReferenceType,
 )
+from fastapi import HTTPException
 from app.models.encounter.encounter import EncounterModel
 from app.models.enums import SubjectReferenceType
 from app.schemas.questionnaire_response import (
@@ -34,11 +35,16 @@ def _with_relationships(stmt):
         selectinload(QuestionnaireResponseModel.encounter),
         selectinload(QuestionnaireResponseModel.based_ons),
         selectinload(QuestionnaireResponseModel.part_ofs),
-        selectinload(QuestionnaireResponseModel.items).selectinload(
-            QuestionnaireResponseItemModel.answers
-        ),
+        # top-level items → answers (+ answer_items under each answer)
+        selectinload(QuestionnaireResponseModel.items)
+        .selectinload(QuestionnaireResponseItemModel.answers)
+        .selectinload(QuestionnaireResponseAnswerModel.answer_items)
+        .selectinload(QuestionnaireResponseItemModel.answers),
+        # top-level items → sub_items → answers (+ answer_items)
         selectinload(QuestionnaireResponseModel.items)
         .selectinload(QuestionnaireResponseItemModel.sub_items)
+        .selectinload(QuestionnaireResponseItemModel.answers)
+        .selectinload(QuestionnaireResponseAnswerModel.answer_items)
         .selectinload(QuestionnaireResponseItemModel.answers),
     )
 
@@ -79,6 +85,23 @@ def _parse_source(source_str: Optional[str]):
         return None, None
 
 
+def _parse_closed_ref(ref: str, enum_cls, field: str) -> tuple:
+    """Parse 'Type/id' → (enum_value, int_id), raising 422 on invalid input."""
+    parts = ref.split("/", 1)
+    if len(parts) != 2:
+        raise HTTPException(status_code=422, detail=f"Invalid reference format '{ref}' for {field}.")
+    try:
+        ref_id = int(parts[1])
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"Invalid reference id in '{ref}' for {field}.")
+    try:
+        ref_type = enum_cls(parts[0])
+    except ValueError:
+        allowed = [e.value for e in enum_cls]
+        raise HTTPException(status_code=422, detail=f"Invalid reference type '{parts[0]}' for {field}. Allowed: {allowed}.")
+    return ref_type, ref_id
+
+
 def _parse_encounter_ref(encounter_str: Optional[str]) -> Optional[int]:
     if not encounter_str:
         return None
@@ -91,8 +114,8 @@ def _parse_encounter_ref(encounter_str: Optional[str]) -> Optional[int]:
         return None
 
 
-def _build_answer(answer: AnswerInput) -> QuestionnaireResponseAnswerModel:
-    db = QuestionnaireResponseAnswerModel(value_type="unknown")
+def _build_answer(answer: AnswerInput, response_id: int) -> QuestionnaireResponseAnswerModel:
+    db = QuestionnaireResponseAnswerModel(value_type=None)
 
     if answer.value_boolean is not None:
         db.value_type = "boolean"
@@ -145,6 +168,11 @@ def _build_answer(answer: AnswerInput) -> QuestionnaireResponseAnswerModel:
         db.value_attachment_title = att.title
         db.value_attachment_creation = att.creation
 
+    # item.answer.item — nested items under this answer (R4 §item.answer.item)
+    if answer.item:
+        for sub in answer.item:
+            db.answer_items.append(_build_item(sub, response_id))
+
     return db
 
 
@@ -157,7 +185,7 @@ def _build_item(item: ItemInput, response_id: int) -> QuestionnaireResponseItemM
     )
     if item.answer:
         for a in item.answer:
-            db_item.answers.append(_build_answer(a))
+            db_item.answers.append(_build_answer(a, response_id))
     if item.item:
         for sub in item.item:
             db_item.sub_items.append(_build_item(sub, response_id))
@@ -307,31 +335,33 @@ class QuestionnaireResponseRepository:
                 subject_display=payload.subject_display,
                 encounter_id=internal_encounter_id,
                 authored=payload.authored,
-                author_reference_type=author_type,
-                author_reference_id=author_id,
-                author_reference_display=payload.author_display,
-                source_reference_type=source_type,
-                source_reference_id=source_id,
-                source_reference_display=payload.source_display,
+                author_type=author_type,
+                author_id=author_id,
+                author_display=payload.author_display,
+                source_type=source_type,
+                source_id=source_id,
+                source_display=payload.source_display,
             )
 
             # basedOn
             if payload.based_on:
                 for b in payload.based_on:
+                    ref_type, ref_id = _parse_closed_ref(b.reference, QRBasedOnReferenceType, "basedOn.reference")
                     qr.based_ons.append(QuestionnaireResponseBasedOn(
                         org_id=org_id,
-                        reference_type=b.reference_type,
-                        reference_id=b.reference_id,
+                        reference_type=ref_type,
+                        reference_id=ref_id,
                         reference_display=b.reference_display,
                     ))
 
             # partOf
             if payload.part_of:
                 for p in payload.part_of:
+                    ref_type, ref_id = _parse_closed_ref(p.reference, QRPartOfReferenceType, "partOf.reference")
                     qr.part_ofs.append(QuestionnaireResponsePartOf(
                         org_id=org_id,
-                        reference_type=p.reference_type,
-                        reference_id=p.reference_id,
+                        reference_type=ref_type,
+                        reference_id=ref_id,
                         reference_display=p.reference_display,
                     ))
 

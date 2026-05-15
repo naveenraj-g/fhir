@@ -79,6 +79,9 @@ def _map_answer_to_fhir(answer: "QuestionnaireResponseAnswerModel") -> dict:
         if att:
             data["valueAttachment"] = att
 
+    if answer.answer_items:
+        data["item"] = [_map_item_to_fhir(sub) for sub in answer.answer_items]
+
     return data
 
 
@@ -131,6 +134,9 @@ def _map_answer_to_plain(answer: "QuestionnaireResponseAnswerModel") -> dict:
         if answer.value_attachment_creation:
             att["creation"] = answer.value_attachment_creation.isoformat()
         data["value_attachment"] = att or None
+
+    if answer.answer_items:
+        data["item"] = [_map_item_to_plain(sub) for sub in answer.answer_items]
 
     # Always keep value_type; strip other None values except booleans (False is valid)
     return {k: v for k, v in data.items() if k == "value_type" or v is not None}
@@ -239,21 +245,21 @@ def to_fhir_questionnaire_response(qr: "QuestionnaireResponseModel") -> dict:
         result["authored"] = qr.authored.isoformat()
 
     # author
-    if qr.author_reference_type and qr.author_reference_id:
+    if qr.author_type and qr.author_id:
         author: dict = {
-            "reference": f"{qr.author_reference_type.value}/{qr.author_reference_id}"
+            "reference": f"{qr.author_type.value}/{qr.author_id}"
         }
-        if qr.author_reference_display:
-            author["display"] = qr.author_reference_display
+        if qr.author_display:
+            author["display"] = qr.author_display
         result["author"] = author
 
     # source
-    if qr.source_reference_type and qr.source_reference_id:
+    if qr.source_type and qr.source_id:
         source: dict = {
-            "reference": f"{qr.source_reference_type.value}/{qr.source_reference_id}"
+            "reference": f"{qr.source_type.value}/{qr.source_id}"
         }
-        if qr.source_reference_display:
-            source["display"] = qr.source_reference_display
+        if qr.source_display:
+            source["display"] = qr.source_display
         result["source"] = source
 
     # Only emit top-level items (parent_item_id is None)
@@ -307,12 +313,12 @@ def to_plain_questionnaire_response(qr: "QuestionnaireResponseModel") -> dict:
             qr.encounter.encounter_id if qr.encounter and qr.encounter.encounter_id else None
         ),
         "authored": qr.authored.isoformat() if qr.authored else None,
-        "author_type": qr.author_reference_type.value if qr.author_reference_type else None,
-        "author_id": qr.author_reference_id,
-        "author_display": qr.author_reference_display,
-        "source_type": qr.source_reference_type.value if qr.source_reference_type else None,
-        "source_id": qr.source_reference_id,
-        "source_display": qr.source_reference_display,
+        "author_type": qr.author_type.value if qr.author_type else None,
+        "author_id": qr.author_id,
+        "author_display": qr.author_display,
+        "source_type": qr.source_type.value if qr.source_type else None,
+        "source_id": qr.source_id,
+        "source_display": qr.source_display,
         # audit
         "created_at": qr.created_at.isoformat() if qr.created_at else None,
         "updated_at": qr.updated_at.isoformat() if qr.updated_at else None,

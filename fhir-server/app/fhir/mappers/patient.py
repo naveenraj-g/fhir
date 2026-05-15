@@ -116,9 +116,9 @@ def to_fhir_patient(patient: "PatientModel") -> dict:
         result["multipleBirthBoolean"] = patient.multiple_birth_boolean
 
     # managingOrganization
-    if patient.managing_organization_id:
+    if patient.managing_organization_type and patient.managing_organization_id:
         result["managingOrganization"] = {k: v for k, v in {
-            "reference": f"Organization/{patient.managing_organization_id}",
+            "reference": f"{patient.managing_organization_type.value}/{patient.managing_organization_id}",
             "display": patient.managing_organization_display,
         }.items() if v}
 
@@ -133,12 +133,17 @@ def to_fhir_patient(patient: "PatientModel") -> dict:
             entry: dict = {}
             if i.use:
                 entry["use"] = i.use
-            if i.type_system or i.type_code:
-                entry["type"] = {"coding": [{k: v for k, v in {
-                    "system": i.type_system,
-                    "code": i.type_code,
-                    "display": i.type_display,
-                }.items() if v}]}
+            if i.type_system or i.type_code or i.type_text:
+                type_cc: dict = {}
+                if i.type_system or i.type_code:
+                    type_cc["coding"] = [{k: v for k, v in {
+                        "system": i.type_system,
+                        "code": i.type_code,
+                        "display": i.type_display,
+                    }.items() if v}]
+                if i.type_text:
+                    type_cc["text"] = i.type_text
+                entry["type"] = type_cc
             if i.system:
                 entry["system"] = i.system
             if i.value:
@@ -188,6 +193,15 @@ def to_fhir_patient(patient: "PatientModel") -> dict:
                     }.items() if v2}],
                     "text": r.text,
                 }.items() if v} for r in c.relationships]
+            if c.roles:
+                ce["role"] = [{k: v for k, v in {
+                    "coding": [{k2: v2 for k2, v2 in {
+                        "system": r.coding_system,
+                        "code": r.coding_code,
+                        "display": r.coding_display,
+                    }.items() if v2}],
+                    "text": r.text,
+                }.items() if v} for r in c.roles]
             name_entry: dict = {}
             if c.name_use:
                 name_entry["use"] = c.name_use
@@ -206,6 +220,8 @@ def to_fhir_patient(patient: "PatientModel") -> dict:
                 name_entry["suffix"] = suffix
             if name_entry:
                 ce["name"] = name_entry
+            if c.additional_names:
+                ce["additionalName"] = [_fhir_human_name(n) for n in c.additional_names]
             if c.telecoms:
                 ce["telecom"] = [_fhir_telecom(t) for t in c.telecoms]
             addr_entry: dict = {}
@@ -235,11 +251,13 @@ def to_fhir_patient(patient: "PatientModel") -> dict:
                 }.items() if v}
             if addr_entry:
                 ce["address"] = addr_entry
+            if c.additional_addresses:
+                ce["additionalAddress"] = [_fhir_address(a) for a in c.additional_addresses]
             if c.gender:
                 ce["gender"] = c.gender
-            if c.organization_id:
+            if c.organization_type and c.organization_id:
                 ce["organization"] = {k: v for k, v in {
-                    "reference": f"Organization/{c.organization_id}",
+                    "reference": f"{c.organization_type.value}/{c.organization_id}",
                     "display": c.organization_display,
                 }.items() if v}
             if c.period_start or c.period_end:
@@ -300,8 +318,11 @@ def to_plain_patient(patient: "PatientModel") -> dict:
         "marital_status_text": patient.marital_status_text,
         "multiple_birth_boolean": patient.multiple_birth_boolean,
         "multiple_birth_integer": patient.multiple_birth_integer,
+        "managing_organization_type": patient.managing_organization_type.value if patient.managing_organization_type else None,
         "managing_organization_id": patient.managing_organization_id,
         "managing_organization_display": patient.managing_organization_display,
+        "created_at": patient.created_at.isoformat() if patient.created_at else None,
+        "updated_at": patient.updated_at.isoformat() if patient.updated_at else None,
     }
 
     if patient.names:
@@ -322,6 +343,7 @@ def to_plain_patient(patient: "PatientModel") -> dict:
             "type_system": i.type_system,
             "type_code": i.type_code,
             "type_display": i.type_display,
+            "type_text": i.type_text,
             "system": i.system,
             "value": i.value,
             "period_start": i.period_start.isoformat() if i.period_start else None,
@@ -371,12 +393,21 @@ def to_plain_patient(patient: "PatientModel") -> dict:
             "relationship": [{"coding_system": r.coding_system, "coding_code": r.coding_code,
                                "coding_display": r.coding_display, "text": r.text}
                               for r in c.relationships] if c.relationships else None,
+            "role": [{"coding_system": r.coding_system, "coding_code": r.coding_code,
+                       "coding_display": r.coding_display, "text": r.text}
+                     for r in c.roles] if c.roles else None,
             "name_use": c.name_use,
             "name_text": c.name_text,
             "name_family": c.name_family,
             "name_given": _split(c.name_given),
             "name_prefix": _split(c.name_prefix),
             "name_suffix": _split(c.name_suffix),
+            "additional_name": [{"use": n.use, "text": n.text, "family": n.family,
+                                  "given": _split(n.given), "prefix": _split(n.prefix),
+                                  "suffix": _split(n.suffix),
+                                  "period_start": n.period_start.isoformat() if n.period_start else None,
+                                  "period_end": n.period_end.isoformat() if n.period_end else None}
+                                 for n in c.additional_names] if c.additional_names else None,
             "telecom": [{"system": t.system, "value": t.value, "use": t.use, "rank": t.rank,
                           "period_start": t.period_start.isoformat() if t.period_start else None,
                           "period_end": t.period_end.isoformat() if t.period_end else None}
@@ -392,7 +423,15 @@ def to_plain_patient(patient: "PatientModel") -> dict:
             "address_country": c.address_country,
             "address_period_start": c.address_period_start.isoformat() if c.address_period_start else None,
             "address_period_end": c.address_period_end.isoformat() if c.address_period_end else None,
+            "additional_address": [{"use": a.use, "type": a.type, "text": a.text,
+                                     "line": _split(a.line), "city": a.city,
+                                     "district": a.district, "state": a.state,
+                                     "postal_code": a.postal_code, "country": a.country,
+                                     "period_start": a.period_start.isoformat() if a.period_start else None,
+                                     "period_end": a.period_end.isoformat() if a.period_end else None}
+                                    for a in c.additional_addresses] if c.additional_addresses else None,
             "gender": c.gender,
+            "organization_type": c.organization_type.value if c.organization_type else None,
             "organization_id": c.organization_id,
             "organization_display": c.organization_display,
             "period_start": c.period_start.isoformat() if c.period_start else None,

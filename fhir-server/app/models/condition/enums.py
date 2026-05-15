@@ -32,3 +32,12 @@ class ConditionStageAssessmentType(str, Enum):
     CLINICAL_IMPRESSION = "ClinicalImpression"
     DIAGNOSTIC_REPORT = "DiagnosticReport"
     OBSERVATION = "Observation"
+
+
+class ConditionNoteAuthorReferenceType(str, Enum):
+    """Allowed reference types for Condition.note[].author (Annotation.authorReference)."""
+
+    PRACTITIONER = "Practitioner"
+    PATIENT = "Patient"
+    RELATED_PERSON = "RelatedPerson"
+    ORGANIZATION = "Organization"

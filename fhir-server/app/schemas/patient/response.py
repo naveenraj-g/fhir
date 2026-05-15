@@ -19,9 +19,12 @@ from app.schemas.common.fhir import (
 
 class FHIRPatientContact(BaseModel):
     relationship: Optional[List[FHIRCodeableConcept]] = None
+    role: Optional[List[FHIRCodeableConcept]] = None
     name: Optional[FHIRHumanName] = None
+    additionalName: Optional[List[FHIRHumanName]] = None
     telecom: Optional[List[FHIRContactPoint]] = None
     address: Optional[FHIRAddress] = None
+    additionalAddress: Optional[List[FHIRAddress]] = None
     gender: Optional[str] = Field(None, description="male|female|other|unknown")
     organization: Optional[FHIRReference] = None
     period: Optional[FHIRPeriod] = None
@@ -110,6 +113,7 @@ class PlainPatientIdentifier(BaseModel):
     type_system: Optional[str] = None
     type_code: Optional[str] = None
     type_display: Optional[str] = None
+    type_text: Optional[str] = None
     system: Optional[str] = None
     value: Optional[str] = None
     period_start: Optional[str] = None
@@ -158,6 +162,38 @@ class PlainContactRelationship(BaseModel):
     text: Optional[str] = None
 
 
+class PlainContactRole(BaseModel):
+    coding_system: Optional[str] = None
+    coding_code: Optional[str] = None
+    coding_display: Optional[str] = None
+    text: Optional[str] = None
+
+
+class PlainContactAdditionalName(BaseModel):
+    use: Optional[str] = None
+    text: Optional[str] = None
+    family: Optional[str] = None
+    given: Optional[List[str]] = None
+    prefix: Optional[List[str]] = None
+    suffix: Optional[List[str]] = None
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+
+
+class PlainContactAdditionalAddress(BaseModel):
+    use: Optional[str] = None
+    type: Optional[str] = None
+    text: Optional[str] = None
+    line: Optional[List[str]] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+
+
 class PlainContactTelecom(BaseModel):
     system: Optional[str] = None
     value: Optional[str] = None
@@ -169,6 +205,7 @@ class PlainContactTelecom(BaseModel):
 
 class PlainPatientContact(BaseModel):
     relationship: Optional[List[PlainContactRelationship]] = None
+    role: Optional[List[PlainContactRole]] = None
     name_use: Optional[str] = None
     name_text: Optional[str] = None
     name_family: Optional[str] = None
@@ -176,6 +213,7 @@ class PlainPatientContact(BaseModel):
     name_prefix: Optional[List[str]] = None
     name_suffix: Optional[List[str]] = None
     telecom: Optional[List[PlainContactTelecom]] = None
+    additional_name: Optional[List[PlainContactAdditionalName]] = None
     address_use: Optional[str] = None
     address_type: Optional[str] = None
     address_text: Optional[str] = None
@@ -187,7 +225,9 @@ class PlainPatientContact(BaseModel):
     address_country: Optional[str] = None
     address_period_start: Optional[str] = None
     address_period_end: Optional[str] = None
+    additional_address: Optional[List[PlainContactAdditionalAddress]] = None
     gender: Optional[str] = None
+    organization_type: Optional[str] = None
     organization_id: Optional[int] = None
     organization_display: Optional[str] = None
     period_start: Optional[str] = None
@@ -233,8 +273,11 @@ class PlainPatientResponse(BaseModel):
     marital_status_text: Optional[str] = None
     multiple_birth_boolean: Optional[bool] = None
     multiple_birth_integer: Optional[int] = None
+    managing_organization_type: Optional[str] = None
     managing_organization_id: Optional[int] = None
     managing_organization_display: Optional[str] = None
+    created_at: Optional[str] = Field(None, description="ISO 8601 datetime when record was created.")
+    updated_at: Optional[str] = Field(None, description="ISO 8601 datetime when record was last updated.")
     name: Optional[List[PlainPatientName]] = None
     identifier: Optional[List[PlainPatientIdentifier]] = None
     telecom: Optional[List[PlainPatientTelecom]] = None

@@ -6,6 +6,7 @@ from app.models.practitioner.practitioner import (
     PractitionerAddress,
     PractitionerPhoto,
     PractitionerQualification,
+    PractitionerQualificationIdentifier,
     PractitionerCommunication,
 )
 
@@ -17,5 +18,6 @@ __all__ = [
     "PractitionerAddress",
     "PractitionerPhoto",
     "PractitionerQualification",
+    "PractitionerQualificationIdentifier",
     "PractitionerCommunication",
 ]

@@ -15,6 +15,7 @@ from sqlalchemy.sql import func
 from app.core.database import FHIRBase as Base
 from app.models.condition.enums import (
     ConditionAsserterType,
+    ConditionNoteAuthorReferenceType,
     ConditionRecorderType,
     ConditionStageAssessmentType,
     ConditionSubjectType,
@@ -49,6 +50,7 @@ class ConditionModel(Base):
     clinical_status_system = Column(String, nullable=True)
     clinical_status_code = Column(String, nullable=True, index=True)
     clinical_status_display = Column(String, nullable=True)
+    clinical_status_text = Column(String, nullable=True)
 
     # ── verificationStatus (0..1 CodeableConcept, modifier) ───────────────────
     # Required binding: unconfirmed|provisional|differential|confirmed|refuted|entered-in-error
@@ -57,6 +59,7 @@ class ConditionModel(Base):
     verification_status_system = Column(String, nullable=True)
     verification_status_code = Column(String, nullable=True, index=True)
     verification_status_display = Column(String, nullable=True)
+    verification_status_text = Column(String, nullable=True)
 
     # ── severity (0..1 CodeableConcept) ───────────────────────────────────────
 
@@ -218,6 +221,7 @@ class ConditionIdentifier(Base):
     type_system = Column(String, nullable=True)
     type_code = Column(String, nullable=True)
     type_display = Column(String, nullable=True)
+    type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=False)
     period_start = Column(DateTime(timezone=True), nullable=True)
@@ -427,9 +431,12 @@ class ConditionNote(Base):
     author_string = Column(String, nullable=True)
 
     # author[x] — Reference variant
-    # Allowed: Practitioner | PractitionerRole | Patient | RelatedPerson | Organization
-    author_reference_type = Column(String, nullable=True)
+    # Allowed: Practitioner | Patient | RelatedPerson | Organization
+    author_reference_type = Column(
+        Enum(ConditionNoteAuthorReferenceType, name="condition_note_author_ref_type"),
+        nullable=True,
+    )
     author_reference_id = Column(Integer, nullable=True)
-    author_display = Column(String, nullable=True)
+    author_reference_display = Column(String, nullable=True)
 
     condition = relationship("ConditionModel", back_populates="notes")

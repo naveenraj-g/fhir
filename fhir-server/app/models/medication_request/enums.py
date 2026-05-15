@@ -81,3 +81,65 @@ class MedicationReportedReferenceType(str, Enum):
     PRACTITIONER_ROLE = "PractitionerRole"
     RELATED_PERSON = "RelatedPerson"
     ORGANIZATION = "Organization"
+
+
+class MedicationRequestMedicationReferenceType(str, Enum):
+    """Allowed reference types for MedicationRequest.medicationReference."""
+
+    MEDICATION = "Medication"
+
+
+class MedicationRequestPriorPrescriptionType(str, Enum):
+    """Allowed reference types for MedicationRequest.priorPrescription."""
+
+    MEDICATION_REQUEST = "MedicationRequest"
+
+
+class MedicationRequestReasonReferenceType(str, Enum):
+    """Allowed reference types for MedicationRequest.reasonReference[]."""
+
+    CONDITION = "Condition"
+    OBSERVATION = "Observation"
+
+
+class MedicationRequestBasedOnReferenceType(str, Enum):
+    """Allowed reference types for MedicationRequest.basedOn[]."""
+
+    CARE_PLAN = "CarePlan"
+    MEDICATION_REQUEST = "MedicationRequest"
+    SERVICE_REQUEST = "ServiceRequest"
+    IMMUNIZATION_RECOMMENDATION = "ImmunizationRecommendation"
+
+
+class MedicationRequestInsuranceReferenceType(str, Enum):
+    """Allowed reference types for MedicationRequest.insurance[]."""
+
+    COVERAGE = "Coverage"
+    CLAIM_RESPONSE = "ClaimResponse"
+
+
+class MedicationRequestNoteAuthorReferenceType(str, Enum):
+    """Allowed reference types for MedicationRequest.note[].author (Annotation.authorReference)."""
+
+    PRACTITIONER = "Practitioner"
+    PATIENT = "Patient"
+    RELATED_PERSON = "RelatedPerson"
+    ORGANIZATION = "Organization"
+
+
+class MedicationRequestDetectedIssueReferenceType(str, Enum):
+    """Allowed reference types for MedicationRequest.detectedIssue[]."""
+
+    DETECTED_ISSUE = "DetectedIssue"
+
+
+class MedicationRequestEventHistoryReferenceType(str, Enum):
+    """Allowed reference types for MedicationRequest.eventHistory[]."""
+
+    PROVENANCE = "Provenance"
+
+
+class MedicationRequestDispensePerformerType(str, Enum):
+    """Allowed reference types for MedicationRequest.dispenseRequest.performer."""
+
+    ORGANIZATION = "Organization"

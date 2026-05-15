@@ -6,6 +6,7 @@ from app.schemas.practitioner.input import (
     PractitionerTelecomCreate,
     PractitionerAddressCreate,
     PractitionerPhotoCreate,
+    QualificationIdentifierCreate,
     PractitionerQualificationCreate,
     PractitionerCommunicationCreate,
 )
@@ -23,6 +24,7 @@ from app.schemas.practitioner.response import (
     PlainPractitionerTelecom,
     PlainPractitionerAddress,
     PlainPractitionerPhoto,
+    PlainQualificationIdentifier,
     PlainQualification,
     PlainPractitionerCommunication,
 )
@@ -36,6 +38,7 @@ __all__ = [
     "PractitionerTelecomCreate",
     "PractitionerAddressCreate",
     "PractitionerPhotoCreate",
+    "QualificationIdentifierCreate",
     "PractitionerQualificationCreate",
     "PractitionerCommunicationCreate",
     # Response
@@ -52,6 +55,7 @@ __all__ = [
     "PlainPractitionerTelecom",
     "PlainPractitionerAddress",
     "PlainPractitionerPhoto",
+    "PlainQualificationIdentifier",
     "PlainQualification",
     "PlainPractitionerCommunication",
 ]

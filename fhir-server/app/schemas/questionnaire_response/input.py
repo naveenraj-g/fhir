@@ -2,11 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.questionnaire_response.enums import (
-    QuestionnaireResponseStatus,
-    QRBasedOnReferenceType,
-    QRPartOfReferenceType,
-)
+from app.models.questionnaire_response.enums import QuestionnaireResponseStatus
 from app.models.enums import IdentifierUse
 
 
@@ -49,10 +45,7 @@ class QRBasedOnInput(BaseModel):
     """basedOn — Reference(CarePlan | ServiceRequest)."""
 
     model_config = ConfigDict(extra="forbid")
-    reference_type: QRBasedOnReferenceType = Field(
-        ..., description="CarePlan | ServiceRequest"
-    )
-    reference_id: int = Field(..., description="Public resource ID.")
+    reference: str = Field(..., description="FHIR reference, e.g. 'ServiceRequest/80001' or 'CarePlan/1'.")
     reference_display: Optional[str] = None
 
 
@@ -60,10 +53,7 @@ class QRPartOfInput(BaseModel):
     """partOf — Reference(Observation | Procedure)."""
 
     model_config = ConfigDict(extra="forbid")
-    reference_type: QRPartOfReferenceType = Field(
-        ..., description="Observation | Procedure"
-    )
-    reference_id: int = Field(..., description="Public resource ID.")
+    reference: str = Field(..., description="FHIR reference, e.g. 'Observation/1' or 'Procedure/100001'.")
     reference_display: Optional[str] = None
 
 
@@ -130,7 +120,7 @@ class QuestionnaireResponseCreateSchema(BaseModel):
                 "author": "Practitioner/30001",
                 "source": "Patient/10001",
                 "based_on": [
-                    {"reference_type": "ServiceRequest", "reference_id": 80001}
+                    {"reference": "ServiceRequest/80001"}
                 ],
                 "item": [
                     {

@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple
 
+from fastapi import HTTPException, status as http_status
 from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.orm import selectinload
@@ -10,7 +11,10 @@ from app.models.patient.patient import (
     PatientCommunication,
     PatientContact,
     PatientContactRelationship,
+    PatientContactRole,
     PatientContactTelecom,
+    PatientContactAdditionalName,
+    PatientContactAdditionalAddress,
     PatientGeneralPractitioner,
     PatientIdentifier,
     PatientLink,
@@ -18,6 +22,7 @@ from app.models.patient.patient import (
     PatientPhoto,
     PatientTelecom,
 )
+from app.models.enums import OrganizationReferenceType
 from app.schemas.resources import (
     AddressCreate,
     CommunicationCreate,
@@ -33,6 +38,31 @@ from app.schemas.resources import (
 )
 
 
+def _parse_org_ref(ref: str) -> tuple:
+    """Parse 'Organization/123' → (OrganizationReferenceType.ORGANIZATION, 123)."""
+    parts = ref.split("/", 1)
+    if len(parts) != 2:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid reference format: '{ref}'. Expected 'ResourceType/id'.",
+        )
+    try:
+        ref_id = int(parts[1])
+    except ValueError:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid reference id in: '{ref}'. Id must be an integer.",
+        )
+    try:
+        ref_type = OrganizationReferenceType(parts[0])
+    except ValueError:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid reference type '{parts[0]}'. Allowed: ['Organization'].",
+        )
+    return ref_type, ref_id
+
+
 def _with_relationships(stmt):
     return stmt.options(
         selectinload(PatientModel.names),
@@ -41,7 +71,10 @@ def _with_relationships(stmt):
         selectinload(PatientModel.addresses),
         selectinload(PatientModel.photos),
         selectinload(PatientModel.contacts).selectinload(PatientContact.relationships),
+        selectinload(PatientModel.contacts).selectinload(PatientContact.roles),
         selectinload(PatientModel.contacts).selectinload(PatientContact.telecoms),
+        selectinload(PatientModel.contacts).selectinload(PatientContact.additional_names),
+        selectinload(PatientModel.contacts).selectinload(PatientContact.additional_addresses),
         selectinload(PatientModel.communications),
         selectinload(PatientModel.general_practitioners),
         selectinload(PatientModel.links),
@@ -174,7 +207,14 @@ class PatientRepository:
                 marital_status_text=payload.marital_status_text,
                 multiple_birth_boolean=payload.multiple_birth_boolean,
                 multiple_birth_integer=payload.multiple_birth_integer,
-                managing_organization_id=payload.managing_organization_id,
+                managing_organization_type=(
+                    _parse_org_ref(payload.managing_organization)[0]
+                    if payload.managing_organization else None
+                ),
+                managing_organization_id=(
+                    _parse_org_ref(payload.managing_organization)[1]
+                    if payload.managing_organization else None
+                ),
                 managing_organization_display=payload.managing_organization_display,
                 created_by=created_by,
             )
@@ -203,7 +243,16 @@ class PatientRepository:
                 return None
 
             for field, value in payload.model_dump(exclude_unset=True).items():
-                setattr(patient, field, value)
+                if field == "managing_organization":
+                    if value is not None:
+                        ref_type, ref_id = _parse_org_ref(value)
+                        patient.managing_organization_type = ref_type
+                        patient.managing_organization_id = ref_id
+                    else:
+                        patient.managing_organization_type = None
+                        patient.managing_organization_id = None
+                else:
+                    setattr(patient, field, value)
             if updated_by is not None:
                 patient.updated_by = updated_by
 
@@ -282,6 +331,7 @@ class PatientRepository:
                 type_system=payload.type_system,
                 type_code=payload.type_code,
                 type_display=payload.type_display,
+                type_text=payload.type_text,
                 system=payload.system,
                 value=payload.value,
                 period_start=payload.period_start,
@@ -406,7 +456,14 @@ class PatientRepository:
                 address_period_start=payload.address_period_start,
                 address_period_end=payload.address_period_end,
                 gender=payload.gender,
-                organization_id=payload.organization_id,
+                organization_type=(
+                    _parse_org_ref(payload.organization)[0]
+                    if payload.organization else None
+                ),
+                organization_id=(
+                    _parse_org_ref(payload.organization)[1]
+                    if payload.organization else None
+                ),
                 organization_display=payload.organization_display,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
@@ -417,6 +474,17 @@ class PatientRepository:
             if payload.relationship:
                 for r in payload.relationship:
                     session.add(PatientContactRelationship(
+                        contact_id=contact.id,
+                        org_id=patient.org_id,
+                        coding_system=r.coding_system,
+                        coding_code=r.coding_code,
+                        coding_display=r.coding_display,
+                        text=r.text,
+                    ))
+
+            if payload.role:
+                for r in payload.role:
+                    session.add(PatientContactRole(
                         contact_id=contact.id,
                         org_id=patient.org_id,
                         coding_system=r.coding_system,
@@ -436,6 +504,39 @@ class PatientRepository:
                         rank=t.rank,
                         period_start=t.period_start,
                         period_end=t.period_end,
+                    ))
+
+            if payload.additional_name:
+                for n in payload.additional_name:
+                    session.add(PatientContactAdditionalName(
+                        contact_id=contact.id,
+                        org_id=patient.org_id,
+                        use=n.use,
+                        text=n.text,
+                        family=n.family,
+                        given=", ".join(n.given) if n.given else None,
+                        prefix=", ".join(n.prefix) if n.prefix else None,
+                        suffix=", ".join(n.suffix) if n.suffix else None,
+                        period_start=n.period_start,
+                        period_end=n.period_end,
+                    ))
+
+            if payload.additional_address:
+                for a in payload.additional_address:
+                    session.add(PatientContactAdditionalAddress(
+                        contact_id=contact.id,
+                        org_id=patient.org_id,
+                        use=a.use,
+                        type=a.type,
+                        text=a.text,
+                        line=", ".join(a.line) if a.line else None,
+                        city=a.city,
+                        district=a.district,
+                        state=a.state,
+                        postal_code=a.postal_code,
+                        country=a.country,
+                        period_start=a.period_start,
+                        period_end=a.period_end,
                     ))
 
             try:

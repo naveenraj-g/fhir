@@ -65,3 +65,40 @@ class DeviceRequestPerformerReferenceType(str, Enum):
     PATIENT = "Patient"
     DEVICE = "Device"
     RELATED_PERSON = "RelatedPerson"
+
+
+class DeviceRequestCodeReferenceType(str, Enum):
+    """Allowed reference types for DeviceRequest.codeReference."""
+
+    DEVICE = "Device"
+
+
+class DeviceRequestReasonReferenceType(str, Enum):
+    """Allowed reference types for DeviceRequest.reasonReference[]."""
+
+    CONDITION = "Condition"
+    OBSERVATION = "Observation"
+    DIAGNOSTIC_REPORT = "DiagnosticReport"
+    DOCUMENT_REFERENCE = "DocumentReference"
+
+
+class DeviceRequestInsuranceReferenceType(str, Enum):
+    """Allowed reference types for DeviceRequest.insurance[]."""
+
+    COVERAGE = "Coverage"
+    CLAIM_RESPONSE = "ClaimResponse"
+
+
+class DeviceRequestNoteAuthorReferenceType(str, Enum):
+    """Allowed reference types for DeviceRequest.note[].author (Annotation.authorReference)."""
+
+    PRACTITIONER = "Practitioner"
+    PATIENT = "Patient"
+    RELATED_PERSON = "RelatedPerson"
+    ORGANIZATION = "Organization"
+
+
+class DeviceRequestRelevantHistoryReferenceType(str, Enum):
+    """Allowed reference types for DeviceRequest.relevantHistory[]."""
+
+    PROVENANCE = "Provenance"

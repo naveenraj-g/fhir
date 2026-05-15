@@ -108,9 +108,8 @@ async def get_my_encounters(
     request: Request,
     enc_status: Optional[str] = Query(None, alias="status"),
     patient_id: Optional[int] = Query(None),
-    class_code: Optional[str] = Query(None, description="Filter by class code, e.g. 'AMB', 'IMP', 'EMER'."),
-    period_start_from: Optional[datetime] = Query(None),
-    period_start_to: Optional[datetime] = Query(None),
+    actual_period_start_from: Optional[datetime] = Query(None),
+    actual_period_start_to: Optional[datetime] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     encounter_service: EncounterService = Depends(get_encounter_service),
@@ -119,8 +118,9 @@ async def get_my_encounters(
     org_id: str = request.state.user.get("activeOrganizationId")
     encounters, total = await encounter_service.get_me(
         user_id, org_id,
-        status=enc_status, patient_id=patient_id, class_code=class_code,
-        period_start_from=period_start_from, period_start_to=period_start_to,
+        status=enc_status, patient_id=patient_id,
+        actual_period_start_from=actual_period_start_from,
+        actual_period_start_to=actual_period_start_to,
         limit=limit, offset=offset,
     )
     return format_paginated_response(
@@ -212,9 +212,8 @@ async def list_encounters(
     request: Request,
     enc_status: Optional[str] = Query(None, alias="status"),
     patient_id: Optional[int] = Query(None),
-    class_code: Optional[str] = Query(None, description="Filter by class code, e.g. 'AMB', 'IMP', 'EMER'."),
-    period_start_from: Optional[datetime] = Query(None),
-    period_start_to: Optional[datetime] = Query(None),
+    actual_period_start_from: Optional[datetime] = Query(None),
+    actual_period_start_to: Optional[datetime] = Query(None),
     user_id: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
@@ -223,8 +222,9 @@ async def list_encounters(
 ):
     encounters, total = await encounter_service.list_encounters(
         user_id=user_id, org_id=org_id, status=enc_status, patient_id=patient_id,
-        class_code=class_code, period_start_from=period_start_from,
-        period_start_to=period_start_to, limit=limit, offset=offset,
+        actual_period_start_from=actual_period_start_from,
+        actual_period_start_to=actual_period_start_to,
+        limit=limit, offset=offset,
     )
     return format_paginated_response(
         [encounter_service._to_fhir(e) for e in encounters],

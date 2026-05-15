@@ -18,8 +18,17 @@ from app.models.medication_request.enums import (
     MedicationPerformerType,
     MedicationRecorderType,
     MedicationReportedReferenceType,
+    MedicationRequestBasedOnReferenceType,
+    MedicationRequestDetectedIssueReferenceType,
+    MedicationRequestDispensePerformerType,
+    MedicationRequestEventHistoryReferenceType,
+    MedicationRequestInsuranceReferenceType,
     MedicationRequestIntent,
+    MedicationRequestMedicationReferenceType,
+    MedicationRequestNoteAuthorReferenceType,
     MedicationRequestPriority,
+    MedicationRequestPriorPrescriptionType,
+    MedicationRequestReasonReferenceType,
     MedicationRequestStatus,
     MedicationRequesterType,
     MedicationSubjectType,
@@ -65,7 +74,6 @@ class MedicationRequestModel(Base):
     do_not_perform = Column(Boolean, nullable=True)
 
     # ── medication[x] — CodeableConcept | Reference(Medication) ──────────────
-    # Discriminated by which set of columns is non-null.
     # medication[x] is required (1..1) — at least one variant must be populated.
 
     # medicationCodeableConcept
@@ -74,8 +82,11 @@ class MedicationRequestModel(Base):
     medication_code_display = Column(String, nullable=True)
     medication_code_text = Column(String, nullable=True)
 
-    # medicationReference — Medication is not tracked; stored as type+id for forward-compat.
-    medication_reference_type = Column(String, nullable=True, default="Medication")
+    # medicationReference — Reference(Medication)
+    medication_reference_type = Column(
+        Enum(MedicationRequestMedicationReferenceType, name="mr_medication_ref_type"),
+        nullable=True,
+    )
     medication_reference_id = Column(Integer, nullable=True)
     medication_reference_display = Column(String, nullable=True)
 
@@ -96,7 +107,6 @@ class MedicationRequestModel(Base):
     authored_on = Column(DateTime(timezone=True), nullable=True, index=True)
 
     # ── reported[x] — boolean | Reference(Patient|Practitioner|...) ──────────
-    # Discriminated by which variant is non-null.
 
     reported_boolean = Column(Boolean, nullable=True)
     reported_reference_type = Column(
@@ -136,10 +146,18 @@ class MedicationRequestModel(Base):
     recorder_id = Column(Integer, nullable=True)
     recorder_display = Column(String, nullable=True)
 
-    # ── groupIdentifier — 0..1 Identifier ────────────────────────────────────
+    # ── groupIdentifier — 0..1 Identifier (full datatype) ────────────────────
 
+    group_identifier_use = Column(String, nullable=True)
+    group_identifier_type_system = Column(String, nullable=True)
+    group_identifier_type_code = Column(String, nullable=True)
+    group_identifier_type_display = Column(String, nullable=True)
+    group_identifier_type_text = Column(String, nullable=True)
     group_identifier_system = Column(String, nullable=True)
     group_identifier_value = Column(String, nullable=True)
+    group_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    group_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    group_identifier_assigner = Column(String, nullable=True)
 
     # ── courseOfTherapyType — 0..1 CodeableConcept ────────────────────────────
 
@@ -148,9 +166,12 @@ class MedicationRequestModel(Base):
     course_of_therapy_type_display = Column(String, nullable=True)
     course_of_therapy_type_text = Column(String, nullable=True)
 
-    # ── priorPrescription — 0..1 Reference(MedicationRequest) self-ref ────────
-    # Stores the public medication_request_id of the prior prescription.
+    # ── priorPrescription — 0..1 Reference(MedicationRequest) ────────────────
 
+    prior_prescription_type = Column(
+        Enum(MedicationRequestPriorPrescriptionType, name="mr_prior_prescription_type"),
+        nullable=True,
+    )
     prior_prescription_id = Column(Integer, nullable=True)
     prior_prescription_display = Column(String, nullable=True)
 
@@ -192,7 +213,11 @@ class MedicationRequestModel(Base):
     dispense_expected_supply_duration_value = Column(Float, nullable=True)
     dispense_expected_supply_duration_unit = Column(String, nullable=True)
 
-    # performer (Reference(Organization) — dispenser in R4)
+    # performer — Reference(Organization)
+    dispense_performer_type = Column(
+        Enum(MedicationRequestDispensePerformerType, name="mr_dispense_performer_type"),
+        nullable=True,
+    )
     dispense_performer_id = Column(Integer, nullable=True)
     dispense_performer_display = Column(String, nullable=True)
 
@@ -203,6 +228,7 @@ class MedicationRequestModel(Base):
     substitution_allowed_system = Column(String, nullable=True)
     substitution_allowed_code = Column(String, nullable=True)
     substitution_allowed_display = Column(String, nullable=True)
+    substitution_allowed_text = Column(String, nullable=True)
 
     # reason (CodeableConcept)
     substitution_reason_system = Column(String, nullable=True)
@@ -293,9 +319,15 @@ class MedicationRequestIdentifier(Base):
     )
     org_id = Column(String, nullable=True)
 
-    use = Column(String, nullable=True)       # usual | official | temp | secondary | old
+    use = Column(String, nullable=True)
+    type_system = Column(String, nullable=True)
+    type_code = Column(String, nullable=True)
+    type_display = Column(String, nullable=True)
+    type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=False)
+    period_start = Column(DateTime(timezone=True), nullable=True)
+    period_end = Column(DateTime(timezone=True), nullable=True)
     assigner = Column(String, nullable=True)
 
     medication_request = relationship("MedicationRequestModel", back_populates="identifiers")
@@ -331,7 +363,7 @@ class MedicationRequestSupportingInfo(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Any FHIR resource type
+    # Open reference — any FHIR resource type allowed
     reference_type = Column(String, nullable=True)
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
@@ -369,8 +401,10 @@ class MedicationRequestReasonReference(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Condition | Observation
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(MedicationRequestReasonReferenceType, name="mr_reason_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -388,8 +422,10 @@ class MedicationRequestBasedOn(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: CarePlan | MedicationRequest | ServiceRequest | ImmunizationRecommendation
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(MedicationRequestBasedOnReferenceType, name="mr_based_on_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -407,8 +443,10 @@ class MedicationRequestInsurance(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Coverage | ClaimResponse
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(MedicationRequestInsuranceReferenceType, name="mr_insurance_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -431,9 +469,12 @@ class MedicationRequestNote(Base):
 
     # author[x] — string | Reference(Practitioner|Patient|RelatedPerson|Organization)
     author_string = Column(String, nullable=True)
-    author_reference_type = Column(String, nullable=True)
+    author_reference_type = Column(
+        Enum(MedicationRequestNoteAuthorReferenceType, name="mr_note_author_ref_type"),
+        nullable=True,
+    )
     author_reference_id = Column(Integer, nullable=True)
-    author_display = Column(String, nullable=True)
+    author_reference_display = Column(String, nullable=True)
 
     medication_request = relationship("MedicationRequestModel", back_populates="notes")
 
@@ -463,6 +504,7 @@ class MedicationRequestDosageInstruction(Base):
     as_needed_system = Column(String, nullable=True)
     as_needed_code = Column(String, nullable=True)
     as_needed_display = Column(String, nullable=True)
+    as_needed_text = Column(String, nullable=True)
 
     # site — CodeableConcept (body site for administration)
     site_system = Column(String, nullable=True)
@@ -492,20 +534,20 @@ class MedicationRequestDosageInstruction(Base):
     # timing.repeat fields
     timing_repeat_bounds_start = Column(DateTime(timezone=True), nullable=True)
     timing_repeat_bounds_end = Column(DateTime(timezone=True), nullable=True)
-    timing_repeat_count = Column(Integer, nullable=True)        # total occurrences
+    timing_repeat_count = Column(Integer, nullable=True)
     timing_repeat_count_max = Column(Integer, nullable=True)
-    timing_repeat_duration = Column(Float, nullable=True)       # how long each occurrence lasts
+    timing_repeat_duration = Column(Float, nullable=True)
     timing_repeat_duration_max = Column(Float, nullable=True)
-    timing_repeat_duration_unit = Column(String, nullable=True) # s|min|h|d|wk|mo|a
-    timing_repeat_frequency = Column(Integer, nullable=True)    # events per period
+    timing_repeat_duration_unit = Column(String, nullable=True)  # s|min|h|d|wk|mo|a
+    timing_repeat_frequency = Column(Integer, nullable=True)
     timing_repeat_frequency_max = Column(Integer, nullable=True)
-    timing_repeat_period = Column(Float, nullable=True)         # period length
+    timing_repeat_period = Column(Float, nullable=True)
     timing_repeat_period_max = Column(Float, nullable=True)
-    timing_repeat_period_unit = Column(String, nullable=True)   # s|min|h|d|wk|mo|a
-    timing_repeat_day_of_week = Column(String, nullable=True)   # comma-separated: mon|tue|wed|thu|fri|sat|sun
-    timing_repeat_time_of_day = Column(String, nullable=True)   # comma-separated HH:MM times
-    timing_repeat_when = Column(String, nullable=True)          # comma-separated event codes (MORN|AFT|EVE|NIGHT|...)
-    timing_repeat_offset = Column(Integer, nullable=True)       # minutes from event
+    timing_repeat_period_unit = Column(String, nullable=True)    # s|min|h|d|wk|mo|a
+    timing_repeat_day_of_week = Column(String, nullable=True)    # comma-separated: mon|tue|...
+    timing_repeat_time_of_day = Column(String, nullable=True)    # comma-separated HH:MM
+    timing_repeat_when = Column(String, nullable=True)           # comma-separated event codes
+    timing_repeat_offset = Column(Integer, nullable=True)        # minutes from event
 
     # ── maxDose fields ────────────────────────────────────────────────────────
 
@@ -582,29 +624,24 @@ class MedicationRequestDosageDoseAndRate(Base):
     type_display = Column(String, nullable=True)
 
     # dose[x] — SimpleQuantity | Range
-    # SimpleQuantity variant
     dose_quantity_value = Column(Float, nullable=True)
     dose_quantity_unit = Column(String, nullable=True)
     dose_quantity_system = Column(String, nullable=True)
     dose_quantity_code = Column(String, nullable=True)
-    # Range variant
     dose_range_low_value = Column(Float, nullable=True)
     dose_range_low_unit = Column(String, nullable=True)
     dose_range_high_value = Column(Float, nullable=True)
     dose_range_high_unit = Column(String, nullable=True)
 
     # rate[x] — Ratio | Range | SimpleQuantity
-    # Ratio variant
     rate_ratio_numerator_value = Column(Float, nullable=True)
     rate_ratio_numerator_unit = Column(String, nullable=True)
     rate_ratio_denominator_value = Column(Float, nullable=True)
     rate_ratio_denominator_unit = Column(String, nullable=True)
-    # Range variant
     rate_range_low_value = Column(Float, nullable=True)
     rate_range_low_unit = Column(String, nullable=True)
     rate_range_high_value = Column(Float, nullable=True)
     rate_range_high_unit = Column(String, nullable=True)
-    # SimpleQuantity variant
     rate_quantity_value = Column(Float, nullable=True)
     rate_quantity_unit = Column(String, nullable=True)
     rate_quantity_system = Column(String, nullable=True)
@@ -626,8 +663,10 @@ class MedicationRequestDetectedIssue(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # DetectedIssue is not a tracked resource; stored as type+id for forward-compat.
-    reference_type = Column(String, nullable=True, default="DetectedIssue")
+    reference_type = Column(
+        Enum(MedicationRequestDetectedIssueReferenceType, name="mr_detected_issue_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -645,8 +684,10 @@ class MedicationRequestEventHistory(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Provenance is not a tracked resource; stored as type+id for forward-compat.
-    reference_type = Column(String, nullable=True, default="Provenance")
+    reference_type = Column(
+        Enum(MedicationRequestEventHistoryReferenceType, name="mr_event_history_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 

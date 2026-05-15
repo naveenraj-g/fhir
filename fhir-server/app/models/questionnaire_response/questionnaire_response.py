@@ -78,19 +78,19 @@ class QuestionnaireResponseModel(Base):
     # Authored / Author / Source
     authored = Column(DateTime(timezone=True), nullable=True)
 
-    author_reference_type = Column(
+    author_type = Column(
         Enum(QuestionnaireResponseAuthorReferenceType, name="author_reference_type"),
         nullable=True,
     )
-    author_reference_id = Column(Integer, nullable=True)
-    author_reference_display = Column(String, nullable=True)
+    author_id = Column(Integer, nullable=True)
+    author_display = Column(String, nullable=True)
 
-    source_reference_type = Column(
+    source_type = Column(
         Enum(QuestionnaireResponseSourceReferenceType, name="source_reference_type"),
         nullable=True,
     )
-    source_reference_id = Column(Integer, nullable=True)
-    source_reference_display = Column(String, nullable=True)
+    source_id = Column(Integer, nullable=True)
+    source_display = Column(String, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -164,6 +164,10 @@ class QuestionnaireResponseItemModel(Base):
     parent_item_id = Column(
         Integer, ForeignKey("questionnaire_response_item.id"), nullable=True, index=True
     )
+    # item.answer.item — items nested under an answer (R4 §item.answer.item 0..*)
+    parent_answer_id = Column(
+        Integer, ForeignKey("questionnaire_response_answer.id"), nullable=True, index=True
+    )
     org_id = Column(String, nullable=True)
 
     link_id = Column(String, nullable=False)
@@ -179,6 +183,7 @@ class QuestionnaireResponseItemModel(Base):
         "QuestionnaireResponseAnswerModel",
         back_populates="item",
         cascade="all, delete-orphan",
+        foreign_keys="[QuestionnaireResponseAnswerModel.item_id]",
     )
     sub_items = relationship(
         "QuestionnaireResponseItemModel",
@@ -199,8 +204,8 @@ class QuestionnaireResponseAnswerModel(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Discriminator for which value[x] is stored
-    value_type = Column(String, nullable=False)
+    # Discriminator for which value[x] is stored (nullable — R4 value[x] is 0..1)
+    value_type = Column(String, nullable=True)
 
     # Scalar values
     value_string = Column(Text, nullable=True)  # valueString, valueUri, valueTime, valueDate
@@ -234,4 +239,14 @@ class QuestionnaireResponseAnswerModel(Base):
     value_attachment_title = Column(String, nullable=True)
     value_attachment_creation = Column(DateTime(timezone=True), nullable=True)
 
-    item = relationship("QuestionnaireResponseItemModel", back_populates="answers")
+    item = relationship(
+        "QuestionnaireResponseItemModel",
+        back_populates="answers",
+        foreign_keys="[QuestionnaireResponseAnswerModel.item_id]",
+    )
+    # item.answer.item — sub-items nested under this answer
+    answer_items = relationship(
+        "QuestionnaireResponseItemModel",
+        foreign_keys="[QuestionnaireResponseItemModel.parent_answer_id]",
+        cascade="all, delete-orphan",
+    )

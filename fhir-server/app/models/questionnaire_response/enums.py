@@ -19,6 +19,7 @@ class QuestionnaireResponseAuthorReferenceType(str, Enum):
 
 
 class QuestionnaireResponseSourceReferenceType(str, Enum):
+    """R4 allowed types for QuestionnaireResponse.source."""
     PATIENT = "Patient"
     PRACTITIONER = "Practitioner"
     PRACTITIONER_ROLE = "PractitionerRole"

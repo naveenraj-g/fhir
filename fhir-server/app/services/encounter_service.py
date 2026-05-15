@@ -35,16 +35,16 @@ class EncounterService:
         org_id: str,
         status: Optional[str] = None,
         patient_id: Optional[int] = None,
-        class_code: Optional[str] = None,
-        period_start_from: Optional[datetime] = None,
-        period_start_to: Optional[datetime] = None,
+        actual_period_start_from: Optional[datetime] = None,
+        actual_period_start_to: Optional[datetime] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[EncounterModel], int]:
         return await self.repository.get_me(
             user_id, org_id,
-            status=status, patient_id=patient_id, class_code=class_code,
-            period_start_from=period_start_from, period_start_to=period_start_to,
+            status=status, patient_id=patient_id,
+            actual_period_start_from=actual_period_start_from,
+            actual_period_start_to=actual_period_start_to,
             limit=limit, offset=offset,
         )
 
@@ -54,16 +54,16 @@ class EncounterService:
         org_id: Optional[str] = None,
         status: Optional[str] = None,
         patient_id: Optional[int] = None,
-        class_code: Optional[str] = None,
-        period_start_from: Optional[datetime] = None,
-        period_start_to: Optional[datetime] = None,
+        actual_period_start_from: Optional[datetime] = None,
+        actual_period_start_to: Optional[datetime] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[EncounterModel], int]:
         return await self.repository.list(
             user_id=user_id, org_id=org_id, status=status, patient_id=patient_id,
-            class_code=class_code, period_start_from=period_start_from,
-            period_start_to=period_start_to, limit=limit, offset=offset,
+            actual_period_start_from=actual_period_start_from,
+            actual_period_start_to=actual_period_start_to,
+            limit=limit, offset=offset,
         )
 
     # ── Write ─────────────────────────────────────────────────────────────

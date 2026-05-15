@@ -67,3 +67,60 @@ class ServiceRequestPerformerReferenceType(str, Enum):
     PATIENT = "Patient"
     DEVICE = "Device"
     RELATED_PERSON = "RelatedPerson"
+
+
+class ServiceRequestBasedOnReferenceType(str, Enum):
+    """Allowed reference types for ServiceRequest.basedOn[]."""
+
+    CARE_PLAN = "CarePlan"
+    SERVICE_REQUEST = "ServiceRequest"
+    MEDICATION_REQUEST = "MedicationRequest"
+
+
+class ServiceRequestReplacesReferenceType(str, Enum):
+    """Allowed reference types for ServiceRequest.replaces[]."""
+
+    SERVICE_REQUEST = "ServiceRequest"
+
+
+class ServiceRequestReasonReferenceType(str, Enum):
+    """Allowed reference types for ServiceRequest.reasonReference[]."""
+
+    CONDITION = "Condition"
+    OBSERVATION = "Observation"
+    DIAGNOSTIC_REPORT = "DiagnosticReport"
+    DOCUMENT_REFERENCE = "DocumentReference"
+
+
+class ServiceRequestInsuranceReferenceType(str, Enum):
+    """Allowed reference types for ServiceRequest.insurance[]."""
+
+    COVERAGE = "Coverage"
+    CLAIM_RESPONSE = "ClaimResponse"
+
+
+class ServiceRequestLocationReferenceType(str, Enum):
+    """Allowed reference types for ServiceRequest.locationReference[]."""
+
+    LOCATION = "Location"
+
+
+class ServiceRequestSpecimenReferenceType(str, Enum):
+    """Allowed reference types for ServiceRequest.specimen[]."""
+
+    SPECIMEN = "Specimen"
+
+
+class ServiceRequestRelevantHistoryReferenceType(str, Enum):
+    """Allowed reference types for ServiceRequest.relevantHistory[]."""
+
+    PROVENANCE = "Provenance"
+
+
+class ServiceRequestNoteAuthorReferenceType(str, Enum):
+    """Allowed reference types for ServiceRequest.note[].author (Annotation.authorReference)."""
+
+    PRACTITIONER = "Practitioner"
+    PATIENT = "Patient"
+    RELATED_PERSON = "RelatedPerson"
+    ORGANIZATION = "Organization"

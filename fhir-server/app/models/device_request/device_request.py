@@ -15,9 +15,14 @@ from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.device_request.enums import (
+    DeviceRequestCodeReferenceType,
+    DeviceRequestInsuranceReferenceType,
     DeviceRequestIntent,
+    DeviceRequestNoteAuthorReferenceType,
     DeviceRequestPerformerReferenceType,
     DeviceRequestPriority,
+    DeviceRequestReasonReferenceType,
+    DeviceRequestRelevantHistoryReferenceType,
     DeviceRequestRequesterType,
     DeviceRequestStatus,
     DeviceRequestSubjectType,
@@ -58,14 +63,16 @@ class DeviceRequestModel(Base):
     )
 
     # ── code[x] (1..1 — Reference(Device) | CodeableConcept) ─────────────────
-    # Discriminated by which variant is non-null.
 
-    # codeReference — device requested by reference
-    code_reference_type = Column(String, nullable=True, default="Device")
+    # codeReference — Reference(Device)
+    code_reference_type = Column(
+        Enum(DeviceRequestCodeReferenceType, name="dr_code_ref_type"),
+        nullable=True,
+    )
     code_reference_id = Column(Integer, nullable=True, index=True)
     code_reference_display = Column(String, nullable=True)
 
-    # codeCodeableConcept — device requested by type code
+    # codeCodeableConcept
     code_concept_system = Column(String, nullable=True)
     code_concept_code = Column(String, nullable=True, index=True)
     code_concept_display = Column(String, nullable=True)
@@ -84,21 +91,15 @@ class DeviceRequestModel(Base):
     encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
 
     # ── occurrence[x] (0..1 — dateTime | Period | Timing) ────────────────────
-    # All three variants stored; mapper uses whichever set of columns is non-null.
 
-    # occurrenceDateTime
     occurrence_datetime = Column(DateTime(timezone=True), nullable=True)
-
-    # occurrencePeriod
     occurrence_period_start = Column(DateTime(timezone=True), nullable=True)
     occurrence_period_end = Column(DateTime(timezone=True), nullable=True)
 
     # occurrenceTiming — full Timing.repeat flattened
-    # timing.code (CodeableConcept — e.g. BID, TID, QID)
     occurrence_timing_code_system = Column(String, nullable=True)
     occurrence_timing_code_code = Column(String, nullable=True)
     occurrence_timing_code_display = Column(String, nullable=True)
-    # timing.repeat fields
     occurrence_timing_bounds_start = Column(DateTime(timezone=True), nullable=True)
     occurrence_timing_bounds_end = Column(DateTime(timezone=True), nullable=True)
     occurrence_timing_count = Column(Integer, nullable=True)
@@ -111,8 +112,8 @@ class DeviceRequestModel(Base):
     occurrence_timing_period = Column(Float, nullable=True)
     occurrence_timing_period_max = Column(Float, nullable=True)
     occurrence_timing_period_unit = Column(String, nullable=True)    # s|min|h|d|wk|mo|a
-    occurrence_timing_day_of_week = Column(String, nullable=True)    # comma-separated: mon|tue|wed|thu|fri|sat|sun
-    occurrence_timing_time_of_day = Column(String, nullable=True)    # comma-separated HH:MM times
+    occurrence_timing_day_of_week = Column(String, nullable=True)    # comma-separated: mon|tue|...
+    occurrence_timing_time_of_day = Column(String, nullable=True)    # comma-separated HH:MM
     occurrence_timing_when = Column(String, nullable=True)           # comma-separated EventTiming codes
     occurrence_timing_offset = Column(Integer, nullable=True)        # minutes from event
 
@@ -120,7 +121,7 @@ class DeviceRequestModel(Base):
 
     authored_on = Column(DateTime(timezone=True), nullable=True, index=True)
 
-    # ── requester (0..1 Reference — Device | Practitioner | PractitionerRole | Organization) ──
+    # ── requester (0..1 Reference) ────────────────────────────────────────────
 
     requester_type = Column(
         Enum(DeviceRequestRequesterType, name="dr_req_requester_type"), nullable=True
@@ -128,14 +129,14 @@ class DeviceRequestModel(Base):
     requester_id = Column(Integer, nullable=True)
     requester_display = Column(String, nullable=True)
 
-    # ── performerType (0..1 CodeableConcept) — desired performer role ─────────
+    # ── performerType (0..1 CodeableConcept) ─────────────────────────────────
 
     performer_type_system = Column(String, nullable=True)
     performer_type_code = Column(String, nullable=True)
     performer_type_display = Column(String, nullable=True)
     performer_type_text = Column(String, nullable=True)
 
-    # ── performer (0..1 Reference) — requested filler ─────────────────────────
+    # ── performer (0..1 Reference) ────────────────────────────────────────────
 
     performer_reference_type = Column(
         Enum(DeviceRequestPerformerReferenceType, name="dr_req_performer_ref_type"),
@@ -144,12 +145,18 @@ class DeviceRequestModel(Base):
     performer_reference_id = Column(Integer, nullable=True)
     performer_reference_display = Column(String, nullable=True)
 
-    # ── groupIdentifier (0..1 Identifier) — composite request group ──────────
-    # Identifier fields: use | system | value (type and period omitted for simplicity)
+    # ── groupIdentifier (0..1 Identifier — full datatype) ────────────────────
 
     group_identifier_use = Column(String, nullable=True)
+    group_identifier_type_system = Column(String, nullable=True)
+    group_identifier_type_code = Column(String, nullable=True)
+    group_identifier_type_display = Column(String, nullable=True)
+    group_identifier_type_text = Column(String, nullable=True)
     group_identifier_system = Column(String, nullable=True)
     group_identifier_value = Column(String, nullable=True)
+    group_identifier_period_start = Column(DateTime(timezone=True), nullable=True)
+    group_identifier_period_end = Column(DateTime(timezone=True), nullable=True)
+    group_identifier_assigner = Column(String, nullable=True)
 
     # ── instantiates (comma-separated — rarely queried individually) ──────────
 
@@ -233,11 +240,11 @@ class DeviceRequestIdentifier(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Full Identifier spec: use | type | system | value | period | assigner
     use = Column(String, nullable=True)
     type_system = Column(String, nullable=True)
     type_code = Column(String, nullable=True)
     type_display = Column(String, nullable=True)
+    type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=False)
     period_start = Column(DateTime(timezone=True), nullable=True)
@@ -258,6 +265,7 @@ class DeviceRequestBasedOn(Base):
     )
     org_id = Column(String, nullable=True)
 
+    # Open reference — any FHIR resource type allowed
     reference_type = Column(String, nullable=True)
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
@@ -276,6 +284,7 @@ class DeviceRequestPriorRequest(Base):
     )
     org_id = Column(String, nullable=True)
 
+    # Open reference — any FHIR resource type allowed
     reference_type = Column(String, nullable=True)
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
@@ -284,12 +293,7 @@ class DeviceRequestPriorRequest(Base):
 
 
 class DeviceRequestParameter(Base):
-    """parameter[] BackboneElement — specific device configuration details.
-
-    BackboneElement fields:
-      - code       (0..1 CodeableConcept)                     device detail name
-      - value[x]   (0..1 CodeableConcept|Quantity|Range|boolean)  detail value
-    """
+    """parameter[] BackboneElement — specific device configuration details."""
 
     __tablename__ = "device_request_parameter"
 
@@ -299,34 +303,28 @@ class DeviceRequestParameter(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # code (0..1 CodeableConcept) — which device detail this parameter describes
+    # code (0..1 CodeableConcept)
     code_system = Column(String, nullable=True)
     code_code = Column(String, nullable=True)
     code_display = Column(String, nullable=True)
     code_text = Column(String, nullable=True)
 
-    # value[x] (0..1) — the value of the device detail parameter
-    # Discriminated by which variant is non-null.
-
-    # CodeableConcept variant
+    # value[x] (0..1 — CodeableConcept | Quantity | Range | boolean)
     value_concept_system = Column(String, nullable=True)
     value_concept_code = Column(String, nullable=True)
     value_concept_display = Column(String, nullable=True)
     value_concept_text = Column(String, nullable=True)
 
-    # Quantity variant (value + unit + system + code)
     value_quantity_value = Column(Float, nullable=True)
     value_quantity_unit = Column(String, nullable=True)
     value_quantity_system = Column(String, nullable=True)
     value_quantity_code = Column(String, nullable=True)
 
-    # Range variant (low/high as SimpleQuantity — no comparator)
     value_range_low_value = Column(Float, nullable=True)
     value_range_low_unit = Column(String, nullable=True)
     value_range_high_value = Column(Float, nullable=True)
     value_range_high_unit = Column(String, nullable=True)
 
-    # boolean variant
     value_boolean = Column(Boolean, nullable=True)
 
     device_request = relationship("DeviceRequestModel", back_populates="parameters")
@@ -362,8 +360,10 @@ class DeviceRequestReasonReference(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Condition | Observation | DiagnosticReport | DocumentReference
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(DeviceRequestReasonReferenceType, name="dr_reason_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -381,8 +381,10 @@ class DeviceRequestInsurance(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Coverage | ClaimResponse
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(DeviceRequestInsuranceReferenceType, name="dr_insurance_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -400,6 +402,7 @@ class DeviceRequestSupportingInfo(Base):
     )
     org_id = Column(String, nullable=True)
 
+    # Open reference — any FHIR resource type allowed
     reference_type = Column(String, nullable=True)
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
@@ -408,13 +411,7 @@ class DeviceRequestSupportingInfo(Base):
 
 
 class DeviceRequestNote(Base):
-    """note[] — Annotation notes or comments about the device request.
-
-    Annotation structure (per spec):
-      - text      (1..1 markdown)  required
-      - time      (0..1 dateTime)
-      - author[x] (0..1)           string OR Reference
-    """
+    """note[] — Annotation notes or comments about the device request."""
 
     __tablename__ = "device_request_note"
 
@@ -424,20 +421,20 @@ class DeviceRequestNote(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # text (1..1 markdown) — required
+    # text (1..1 markdown)
     text = Column(Text, nullable=False)
 
     # time (0..1 dateTime)
     time = Column(DateTime(timezone=True), nullable=True)
 
-    # author[x] — string variant
+    # author[x] — string | Reference(Practitioner|Patient|RelatedPerson|Organization)
     author_string = Column(String, nullable=True)
-
-    # author[x] — Reference variant
-    # Allowed: Practitioner | PractitionerRole | Patient | RelatedPerson | Organization
-    author_reference_type = Column(String, nullable=True)
+    author_reference_type = Column(
+        Enum(DeviceRequestNoteAuthorReferenceType, name="dr_note_author_ref_type"),
+        nullable=True,
+    )
     author_reference_id = Column(Integer, nullable=True)
-    author_display = Column(String, nullable=True)
+    author_reference_display = Column(String, nullable=True)
 
     device_request = relationship("DeviceRequestModel", back_populates="notes")
 
@@ -453,8 +450,10 @@ class DeviceRequestRelevantHistory(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Provenance is not a tracked resource; stored as type+id for forward-compat.
-    reference_type = Column(String, nullable=True, default="Provenance")
+    reference_type = Column(
+        Enum(DeviceRequestRelevantHistoryReferenceType, name="dr_relevant_history_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 

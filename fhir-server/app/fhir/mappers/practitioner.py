@@ -21,8 +21,6 @@ def to_fhir_practitioner(practitioner: "PractitionerModel") -> dict:
         "birthDate": practitioner.birth_date.isoformat() if practitioner.birth_date else None,
         "deceasedBoolean": practitioner.deceased_boolean,
         "deceasedDateTime": practitioner.deceased_datetime.isoformat() if practitioner.deceased_datetime else None,
-        "role": practitioner.role.value if practitioner.role else None,
-        "specialty": practitioner.specialty,
     }
 
     # name (0..* HumanName)
@@ -60,18 +58,17 @@ def to_fhir_practitioner(practitioner: "PractitionerModel") -> dict:
             entry = {}
             if i.use:
                 entry["use"] = i.use
-            if i.type_system or i.type_code:
-                coding: dict = {k: v for k, v in {
-                    "system": i.type_system,
-                    "code": i.type_code,
-                    "display": i.type_display,
-                }.items() if v}
-                type_cc: dict = {"coding": [coding]}
+            if i.type_system or i.type_code or i.type_text:
+                type_cc: dict = {}
+                if i.type_system or i.type_code:
+                    type_cc["coding"] = [{k: v for k, v in {
+                        "system": i.type_system,
+                        "code": i.type_code,
+                        "display": i.type_display,
+                    }.items() if v}]
                 if i.type_text:
                     type_cc["text"] = i.type_text
                 entry["type"] = type_cc
-            elif i.type_text:
-                entry["type"] = {"text": i.type_text}
             if i.system:
                 entry["system"] = i.system
             if i.value:
@@ -154,11 +151,36 @@ def to_fhir_practitioner(practitioner: "PractitionerModel") -> dict:
         qualifications = []
         for q in practitioner.qualifications:
             entry = {}
-            if q.identifier_system or q.identifier_value:
-                entry["identifier"] = [{k: v for k, v in {
-                    "system": q.identifier_system,
-                    "value": q.identifier_value,
-                }.items() if v}]
+            if q.identifiers:
+                ident_list = []
+                for qi in q.identifiers:
+                    ident_entry = {}
+                    if qi.use:
+                        ident_entry["use"] = qi.use
+                    if qi.type_system or qi.type_code or qi.type_text:
+                        type_cc: dict = {}
+                        if qi.type_system or qi.type_code:
+                            type_cc["coding"] = [{k: v for k, v in {
+                                "system": qi.type_system,
+                                "code": qi.type_code,
+                                "display": qi.type_display,
+                            }.items() if v}]
+                        if qi.type_text:
+                            type_cc["text"] = qi.type_text
+                        ident_entry["type"] = type_cc
+                    if qi.system:
+                        ident_entry["system"] = qi.system
+                    if qi.value:
+                        ident_entry["value"] = qi.value
+                    if qi.period_start or qi.period_end:
+                        ident_entry["period"] = {k: v for k, v in {
+                            "start": qi.period_start.isoformat() if qi.period_start else None,
+                            "end": qi.period_end.isoformat() if qi.period_end else None,
+                        }.items() if v}
+                    if qi.assigner:
+                        ident_entry["assigner"] = {"display": qi.assigner}
+                    ident_list.append(ident_entry)
+                entry["identifier"] = ident_list
             code_cc: dict = {}
             if q.code_system or q.code_code:
                 code_cc["coding"] = [{k: v for k, v in {
@@ -170,14 +192,25 @@ def to_fhir_practitioner(practitioner: "PractitionerModel") -> dict:
                 code_cc["text"] = q.code_text
             if code_cc:
                 entry["code"] = code_cc
+            if q.status_system or q.status_code or q.status_text:
+                status_cc: dict = {}
+                if q.status_system or q.status_code:
+                    status_cc["coding"] = [{k: v for k, v in {
+                        "system": q.status_system,
+                        "code": q.status_code,
+                        "display": q.status_display,
+                    }.items() if v}]
+                if q.status_text:
+                    status_cc["text"] = q.status_text
+                entry["status"] = status_cc
             if q.period_start or q.period_end:
                 entry["period"] = {k: v for k, v in {
                     "start": q.period_start.isoformat() if q.period_start else None,
                     "end": q.period_end.isoformat() if q.period_end else None,
                 }.items() if v}
-            if q.issuer_id or q.issuer_display:
+            if q.issuer_type and q.issuer_id or q.issuer_display:
                 entry["issuer"] = {k: v for k, v in {
-                    "reference": f"Organization/{q.issuer_id}" if q.issuer_id else None,
+                    "reference": f"{q.issuer_type.value}/{q.issuer_id}" if q.issuer_type and q.issuer_id else None,
                     "display": q.issuer_display,
                 }.items() if v}
             qualifications.append(entry)
@@ -218,8 +251,6 @@ def to_plain_practitioner(practitioner: "PractitionerModel") -> dict:
         "birth_date": practitioner.birth_date.isoformat() if practitioner.birth_date else None,
         "deceased_boolean": practitioner.deceased_boolean,
         "deceased_datetime": practitioner.deceased_datetime.isoformat() if practitioner.deceased_datetime else None,
-        "role": practitioner.role.value if practitioner.role else None,
-        "specialty": practitioner.specialty,
         "created_at": practitioner.created_at.isoformat() if practitioner.created_at else None,
         "updated_at": practitioner.updated_at.isoformat() if practitioner.updated_at else None,
         "created_by": practitioner.created_by,
@@ -291,14 +322,29 @@ def to_plain_practitioner(practitioner: "PractitionerModel") -> dict:
 
     if practitioner.qualifications:
         result["qualification"] = [{
-            "identifier_system": q.identifier_system,
-            "identifier_value": q.identifier_value,
+            "identifier": [{
+                "use": qi.use,
+                "type_system": qi.type_system,
+                "type_code": qi.type_code,
+                "type_display": qi.type_display,
+                "type_text": qi.type_text,
+                "system": qi.system,
+                "value": qi.value,
+                "period_start": qi.period_start.isoformat() if qi.period_start else None,
+                "period_end": qi.period_end.isoformat() if qi.period_end else None,
+                "assigner": qi.assigner,
+            } for qi in q.identifiers] if q.identifiers else None,
             "code_system": q.code_system,
             "code_code": q.code_code,
             "code_display": q.code_display,
             "code_text": q.code_text,
+            "status_system": q.status_system,
+            "status_code": q.status_code,
+            "status_display": q.status_display,
+            "status_text": q.status_text,
             "period_start": q.period_start.isoformat() if q.period_start else None,
             "period_end": q.period_end.isoformat() if q.period_end else None,
+            "issuer_type": q.issuer_type.value if q.issuer_type else None,
             "issuer_id": q.issuer_id,
             "issuer_display": q.issuer_display,
         } for q in practitioner.qualifications]

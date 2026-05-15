@@ -27,6 +27,7 @@ import app.models.diagnostic_report.diagnostic_report  # noqa: F401
 import app.models.condition.condition  # noqa: F401
 import app.models.device_request.device_request  # noqa: F401
 import app.models.practitioner_role.practitioner_role  # noqa: F401
+import app.models.healthcare_service.healthcare_service  # noqa: F401
 
 # Read alembic.ini logging config
 config = context.config

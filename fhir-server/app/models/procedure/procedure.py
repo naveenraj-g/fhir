@@ -1,5 +1,4 @@
 from sqlalchemy import (
-    Boolean,
     Column,
     DateTime,
     Enum,
@@ -16,10 +15,20 @@ from sqlalchemy.sql import func
 from app.core.database import FHIRBase as Base
 from app.models.procedure.enums import (
     ProcedureAsserterType,
+    ProcedureBasedOnReferenceType,
+    ProcedureComplicationDetailReferenceType,
+    ProcedureFocalDeviceManipulatedReferenceType,
+    ProcedureLocationReferenceType,
+    ProcedureNoteAuthorReferenceType,
+    ProcedurePartOfReferenceType,
     ProcedurePerformerActorType,
+    ProcedurePerformerOnBehalfOfType,
+    ProcedureReasonReferenceType,
     ProcedureRecorderType,
+    ProcedureReportReferenceType,
     ProcedureStatus,
     ProcedureSubjectType,
+    ProcedureUsedReferenceType,
 )
 
 procedure_id_seq = Sequence("procedure_id_seq", start=100000, increment=1)
@@ -84,20 +93,15 @@ class ProcedureModel(Base):
     # ── performed[x] (0..1 — dateTime | Period | string | Age | Range) ────────
     # All five variants stored; mapper uses whichever is non-null.
 
-    # performedDateTime
     performed_datetime = Column(DateTime(timezone=True), nullable=True)
-
-    # performedPeriod
     performed_period_start = Column(DateTime(timezone=True), nullable=True)
     performed_period_end = Column(DateTime(timezone=True), nullable=True)
-
-    # performedString — free-text description when exact timing unknown
     performed_string = Column(String, nullable=True)
 
-    # performedAge (Quantity specialisation: value + unit only needed)
+    # performedAge (Age datatype)
     performed_age_value = Column(Float, nullable=True)
-    performed_age_unit = Column(String, nullable=True)   # UCUM unit, e.g. "a" (years)
-    performed_age_system = Column(String, nullable=True) # http://unitsofmeasure.org
+    performed_age_unit = Column(String, nullable=True)
+    performed_age_system = Column(String, nullable=True)
     performed_age_code = Column(String, nullable=True)
 
     # performedRange (low/high SimpleQuantity)
@@ -114,7 +118,7 @@ class ProcedureModel(Base):
     recorder_id = Column(Integer, nullable=True)
     recorder_display = Column(String, nullable=True)
 
-    # ── asserter (0..1 Reference — who asserts that the procedure occurred) ───
+    # ── asserter (0..1 Reference) ─────────────────────────────────────────────
 
     asserter_type = Column(
         Enum(ProcedureAsserterType, name="procedure_asserter_type"), nullable=True
@@ -123,8 +127,11 @@ class ProcedureModel(Base):
     asserter_display = Column(String, nullable=True)
 
     # ── location (0..1 Reference(Location)) ──────────────────────────────────
-    # Location is not a tracked resource; stored as id+display only.
 
+    location_type = Column(
+        Enum(ProcedureLocationReferenceType, name="procedure_location_ref_type"),
+        nullable=True,
+    )
     location_reference_id = Column(Integer, nullable=True)
     location_display = Column(String, nullable=True)
 
@@ -242,16 +249,16 @@ class ProcedureIdentifier(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Identifier fields per spec: use | type | system | value | period | assigner
-    use = Column(String, nullable=True)        # usual | official | temp | secondary | old
+    use = Column(String, nullable=True)
     type_system = Column(String, nullable=True)
     type_code = Column(String, nullable=True)
     type_display = Column(String, nullable=True)
+    type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=False)
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
-    assigner = Column(String, nullable=True)   # display name of assigning org
+    assigner = Column(String, nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="identifiers")
 
@@ -267,8 +274,10 @@ class ProcedureBasedOn(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: CarePlan | ServiceRequest
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(ProcedureBasedOnReferenceType, name="procedure_based_on_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -286,8 +295,10 @@ class ProcedurePartOf(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Procedure | Observation | MedicationAdministration
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(ProcedurePartOfReferenceType, name="procedure_part_of_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -305,13 +316,13 @@ class ProcedurePerformer(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # function (0..1 CodeableConcept) — role of the performer (surgeon, anesthetist…)
+    # function (0..1 CodeableConcept)
     function_system = Column(String, nullable=True)
     function_code = Column(String, nullable=True)
     function_display = Column(String, nullable=True)
     function_text = Column(String, nullable=True)
 
-    # actor (1..1 Reference) — who performed
+    # actor (1..1 Reference)
     actor_type = Column(
         Enum(ProcedurePerformerActorType, name="procedure_performer_actor_type"),
         nullable=True,
@@ -319,7 +330,11 @@ class ProcedurePerformer(Base):
     actor_id = Column(Integer, nullable=True)
     actor_display = Column(String, nullable=True)
 
-    # onBehalfOf (0..1 Reference(Organization)) — organisation the actor represented
+    # onBehalfOf (0..1 Reference(Organization))
+    on_behalf_of_type = Column(
+        Enum(ProcedurePerformerOnBehalfOfType, name="procedure_on_behalf_of_type"),
+        nullable=True,
+    )
     on_behalf_of_id = Column(Integer, nullable=True)
     on_behalf_of_display = Column(String, nullable=True)
 
@@ -356,8 +371,10 @@ class ProcedureReasonReference(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Condition | Observation | Procedure | DiagnosticReport | DocumentReference
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(ProcedureReasonReferenceType, name="procedure_reason_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -394,8 +411,10 @@ class ProcedureReport(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: DiagnosticReport | DocumentReference | Composition
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(ProcedureReportReferenceType, name="procedure_report_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -432,8 +451,10 @@ class ProcedureComplicationDetail(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Condition is not a tracked resource; stored as type+id for forward-compat.
-    reference_type = Column(String, nullable=True, default="Condition")
+    reference_type = Column(
+        Enum(ProcedureComplicationDetailReferenceType, name="procedure_complication_detail_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -460,13 +481,7 @@ class ProcedureFollowUp(Base):
 
 
 class ProcedureNote(Base):
-    """note[] — Annotation comments about the procedure.
-
-    Annotation structure (per FHIR spec):
-      - text  (1..1, markdown)     required
-      - time  (0..1, dateTime)
-      - author[x] (0..1)  either a free-text string OR a typed reference
-    """
+    """note[] — Annotation comments about the procedure."""
 
     __tablename__ = "procedure_note"
 
@@ -476,20 +491,20 @@ class ProcedureNote(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # text (1..1 markdown) — the annotation content
+    # text (1..1 markdown)
     text = Column(Text, nullable=False)
 
     # time (0..1 dateTime)
     time = Column(DateTime(timezone=True), nullable=True)
 
-    # author[x] — string variant
+    # author[x] — string | Reference(Practitioner|Patient|RelatedPerson|Organization)
     author_string = Column(String, nullable=True)
-
-    # author[x] — Reference variant
-    # Allowed: Practitioner | PractitionerRole | Patient | RelatedPerson | Organization
-    author_reference_type = Column(String, nullable=True)
+    author_reference_type = Column(
+        Enum(ProcedureNoteAuthorReferenceType, name="procedure_note_author_ref_type"),
+        nullable=True,
+    )
     author_reference_id = Column(Integer, nullable=True)
-    author_display = Column(String, nullable=True)
+    author_reference_display = Column(String, nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="notes")
 
@@ -505,17 +520,19 @@ class ProcedureFocalDevice(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # action (0..1 CodeableConcept) — implanted | explanted | manipulated
+    # action (0..1 CodeableConcept)
     action_system = Column(String, nullable=True)
     action_code = Column(String, nullable=True)
     action_display = Column(String, nullable=True)
     action_text = Column(String, nullable=True)
 
-    # manipulated (1..1 Reference(Device)) — the device acted upon
-    # Device is not a tracked resource; stored as type+id for forward-compat.
-    manipulated_reference_type = Column(String, nullable=True, default="Device")
+    # manipulated (1..1 Reference(Device))
+    manipulated_reference_type = Column(
+        Enum(ProcedureFocalDeviceManipulatedReferenceType, name="procedure_focal_device_ref_type"),
+        nullable=True,
+    )
     manipulated_reference_id = Column(Integer, nullable=True)
-    manipulated_display = Column(String, nullable=True)
+    manipulated_reference_display = Column(String, nullable=True)
 
     procedure = relationship("ProcedureModel", back_populates="focal_devices")
 
@@ -531,8 +548,10 @@ class ProcedureUsedReference(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Device | Medication | Substance
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(ProcedureUsedReferenceType, name="procedure_used_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 

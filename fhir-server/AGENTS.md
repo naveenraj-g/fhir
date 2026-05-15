@@ -193,6 +193,33 @@ Reconstructed in mappers:
 f"{model.subject_type.value}/{model.subject_id}"   # → "Patient/10001"
 ```
 
+**Closed-set vs open-set:** Use `Enum(MyEnumClass, name="pg_type_name")` when the allowed resource types are a fixed list (e.g. `Reference(Condition|Procedure)`). Use plain `String` when any resource type is allowed.
+
+---
+
+## CodeableReference in DB (R5)
+
+`CodeableReference` combines a `CodeableConcept` (concept) and a `Reference` (reference). Both halves are optional. Every CodeableReference child table gets **all 7 columns**:
+
+```python
+# concept half
+coding_system  = Column(String, nullable=True)
+coding_code    = Column(String, nullable=True)
+coding_display = Column(String, nullable=True)
+text           = Column(String, nullable=True)
+
+# reference half — closed set → Enum; open set → String
+reference_type    = Column(Enum(MyReferenceType, name="my_ref_type"), nullable=True)
+reference_id      = Column(Integer, nullable=True)
+reference_display = Column(String, nullable=True)
+```
+
+**Enum naming:** `<Resource><Field>ReferenceType` in Python, `<table>_reference_type` as the PostgreSQL type name.
+
+**Repository:** parse the reference string with `_parse_open_ref()`, then validate with `_cast_ref_type(ref_type_str, MyReferenceType, "field.reference")` — raises HTTP 422 for unknown types.
+
+**Migration:** Alembic autogenerate emits uppercase enum member names. Always manually rewrite to use `postgresql.ENUM('TitleCaseValue', ...)` with `create_type=False` on the column and an explicit `.create(op.get_bind(), checkfirst=True)` call. VARCHAR→Enum requires `postgresql_using='col::pg_type_name'`.
+
 ---
 
 ## Paginated Responses

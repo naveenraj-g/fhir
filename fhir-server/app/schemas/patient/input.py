@@ -9,6 +9,14 @@ from app.models.patient.enums import (
     PatientLinkOtherType,
     PatientLinkType,
 )
+from app.schemas.enums import (
+    AddressType,
+    AddressUse,
+    ContactPointSystem,
+    ContactPointUse,
+    HumanNameUse,
+    IdentifierUse,
+)
 
 
 # ── Sub-resource create schemas ────────────────────────────────────────────────
@@ -16,7 +24,7 @@ from app.models.patient.enums import (
 
 class NameCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[str] = Field(None, description="usual|official|temp|nickname|anonymous|old|maiden")
+    use: Optional[HumanNameUse] = Field(None, description="usual|official|temp|nickname|anonymous|old|maiden")
     text: Optional[str] = Field(None, description="Full name as a display string.")
     family: Optional[str] = Field(None, description="Family (last) name.")
     given: Optional[List[str]] = Field(None, description="Given (first/middle) names.")
@@ -28,10 +36,11 @@ class NameCreate(BaseModel):
 
 class IdentifierCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[str] = Field(None, description="usual|official|temp|secondary|old")
+    use: Optional[IdentifierUse] = Field(None, description="usual|official|temp|secondary|old")
     type_system: Optional[str] = Field(None, description="Coding system for identifier type.")
     type_code: Optional[str] = Field(None, description="Code for identifier type (e.g. MR, SS).")
     type_display: Optional[str] = Field(None, description="Display for identifier type.")
+    type_text: Optional[str] = Field(None, description="Text of the CodeableConcept for identifier type.")
     system: Optional[str] = Field(None, description="URI namespace of the identifier.")
     value: str = Field(..., description="Identifier value within the given system.")
     period_start: Optional[datetime] = Field(None, description="Start of identifier validity period.")
@@ -41,9 +50,9 @@ class IdentifierCreate(BaseModel):
 
 class TelecomCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    system: str = Field(..., description="phone|fax|email|pager|url|sms|other")
+    system: ContactPointSystem = Field(..., description="phone|fax|email|pager|url|sms|other")
     value: str = Field(..., description="Contact point details (phone number, email address, etc.).")
-    use: Optional[str] = Field(None, description="home|work|temp|old|mobile")
+    use: Optional[ContactPointUse] = Field(None, description="home|work|temp|old|mobile")
     rank: Optional[int] = Field(None, ge=1, description="Preferred order — lower number = higher preference.")
     period_start: Optional[datetime] = Field(None, description="Start of period when this contact was valid.")
     period_end: Optional[datetime] = Field(None, description="End of period when this contact was valid.")
@@ -51,8 +60,8 @@ class TelecomCreate(BaseModel):
 
 class AddressCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[str] = Field(None, description="home|work|temp|old|billing")
-    type: Optional[str] = Field(None, description="postal|physical|both")
+    use: Optional[AddressUse] = Field(None, description="home|work|temp|old|billing")
+    type: Optional[AddressType] = Field(None, description="postal|physical|both")
     text: Optional[str] = Field(None, description="Full address as a display string.")
     line: Optional[List[str]] = Field(None, description="Street address lines.")
     city: Optional[str] = None
@@ -84,11 +93,46 @@ class ContactRelationshipCreate(BaseModel):
     text: Optional[str] = None
 
 
+class ContactRoleCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    coding_system: Optional[str] = None
+    coding_code: Optional[str] = None
+    coding_display: Optional[str] = None
+    text: Optional[str] = None
+
+
+class ContactAdditionalNameCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[HumanNameUse] = None
+    text: Optional[str] = None
+    family: Optional[str] = None
+    given: Optional[List[str]] = None
+    prefix: Optional[List[str]] = None
+    suffix: Optional[List[str]] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class ContactAdditionalAddressCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[AddressUse] = None
+    type: Optional[AddressType] = None
+    text: Optional[str] = None
+    line: Optional[List[str]] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
 class ContactTelecomCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    system: Optional[str] = Field(None, description="phone|fax|email|pager|url|sms|other")
+    system: Optional[ContactPointSystem] = Field(None, description="phone|fax|email|pager|url|sms|other")
     value: Optional[str] = None
-    use: Optional[str] = Field(None, description="home|work|temp|old|mobile")
+    use: Optional[ContactPointUse] = Field(None, description="home|work|temp|old|mobile")
     rank: Optional[int] = Field(None, ge=1)
     period_start: Optional[datetime] = None
     period_end: Optional[datetime] = None
@@ -96,20 +140,24 @@ class ContactTelecomCreate(BaseModel):
 
 class ContactCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    # relationship (0..*)
+    # relationship (0..*) CodeableConcept → grandchild table
     relationship: Optional[List[ContactRelationshipCreate]] = None
+    # role (0..*) CodeableConcept → grandchild table (R5)
+    role: Optional[List[ContactRoleCreate]] = None
     # name (0..1 HumanName) — flattened
-    name_use: Optional[str] = None
+    name_use: Optional[HumanNameUse] = None
     name_text: Optional[str] = None
     name_family: Optional[str] = None
     name_given: Optional[List[str]] = None
     name_prefix: Optional[List[str]] = None
     name_suffix: Optional[List[str]] = None
-    # telecom (0..*)
+    # telecom (0..*) ContactPoint → grandchild table
     telecom: Optional[List[ContactTelecomCreate]] = None
+    # additionalName (0..*) HumanName → grandchild table (R5)
+    additional_name: Optional[List[ContactAdditionalNameCreate]] = None
     # address (0..1 Address) — flattened
-    address_use: Optional[str] = None
-    address_type: Optional[str] = None
+    address_use: Optional[AddressUse] = None
+    address_type: Optional[AddressType] = None
     address_text: Optional[str] = None
     address_line: Optional[List[str]] = None
     address_city: Optional[str] = None
@@ -119,9 +167,11 @@ class ContactCreate(BaseModel):
     address_country: Optional[str] = None
     address_period_start: Optional[datetime] = None
     address_period_end: Optional[datetime] = None
-    # other fields
-    gender: Optional[str] = Field(None, description="male|female|other|unknown")
-    organization_id: Optional[int] = Field(None, description="Public ID of the associated Organization.")
+    # additionalAddress (0..*) Address → grandchild table (R5)
+    additional_address: Optional[List[ContactAdditionalAddressCreate]] = None
+    # other scalar fields
+    gender: Optional[PatientGender] = Field(None, description="male|female|other|unknown")
+    organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")
     organization_display: Optional[str] = None
     period_start: Optional[datetime] = None
     period_end: Optional[datetime] = None
@@ -187,7 +237,7 @@ class PatientCreateSchema(BaseModel):
     marital_status_text: Optional[str] = None
     multiple_birth_boolean: Optional[bool] = None
     multiple_birth_integer: Optional[int] = None
-    managing_organization_id: Optional[int] = None
+    managing_organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")
     managing_organization_display: Optional[str] = None
 
 
@@ -205,5 +255,5 @@ class PatientPatchSchema(BaseModel):
     marital_status_text: Optional[str] = None
     multiple_birth_boolean: Optional[bool] = None
     multiple_birth_integer: Optional[int] = None
-    managing_organization_id: Optional[int] = None
+    managing_organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")
     managing_organization_display: Optional[str] = None

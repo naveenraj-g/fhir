@@ -48,6 +48,7 @@ class FHIRAnswer(BaseModel):
     valueQuantity: Optional[FHIRAnswerQuantity] = None
     valueReference: Optional[FHIRAnswerValueReference] = None
     valueAttachment: Optional[FHIRAnswerAttachment] = None
+    item: Optional[List["FHIRQRItem"]] = None
 
 
 class FHIRQRItem(BaseModel):
@@ -58,6 +59,7 @@ class FHIRQRItem(BaseModel):
     item: Optional[List["FHIRQRItem"]] = None
 
 
+FHIRAnswer.model_rebuild()
 FHIRQRItem.model_rebuild()
 
 
@@ -116,8 +118,8 @@ class PlainAnswerAttachment(BaseModel):
 
 
 class PlainQRAnswer(BaseModel):
-    value_type: str = Field(
-        ...,
+    value_type: Optional[str] = Field(
+        None,
         description="boolean | decimal | integer | date | dateTime | time | string | uri | coding | quantity | reference | attachment",
     )
     value_boolean: Optional[bool] = None
@@ -130,6 +132,7 @@ class PlainQRAnswer(BaseModel):
     value_reference: Optional[str] = None
     value_reference_display: Optional[str] = None
     value_attachment: Optional[PlainAnswerAttachment] = None
+    item: Optional[List["PlainQRItem"]] = None
 
 
 class PlainQRItem(BaseModel):
@@ -140,6 +143,7 @@ class PlainQRItem(BaseModel):
     item: Optional[List["PlainQRItem"]] = None
 
 
+PlainQRAnswer.model_rebuild()
 PlainQRItem.model_rebuild()
 
 

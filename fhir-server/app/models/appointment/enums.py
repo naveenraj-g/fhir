@@ -2,8 +2,6 @@ from enum import Enum
 
 
 class AppointmentStatus(str, Enum):
-    """FHIR R4 Appointment status value set."""
-
     proposed = "proposed"
     pending = "pending"
     booked = "booked"
@@ -16,17 +14,7 @@ class AppointmentStatus(str, Enum):
     waitlist = "waitlist"
 
 
-class AppointmentParticipantRequired(str, Enum):
-    """FHIR R4 participant.required — code type (R5 changed to boolean)."""
-
-    required = "required"
-    optional = "optional"
-    information_only = "information-only"
-
-
 class AppointmentParticipantStatus(str, Enum):
-    """FHIR R4 participant.status value set."""
-
     accepted = "accepted"
     declined = "declined"
     tentative = "tentative"
@@ -34,9 +22,6 @@ class AppointmentParticipantStatus(str, Enum):
 
 
 class AppointmentParticipantActorType(str, Enum):
-    """FHIR R4 reference types for Appointment.participant.actor.
-    R4 does NOT include Group or CareTeam — those are R5-only."""
-
     PATIENT = "Patient"
     PRACTITIONER = "Practitioner"
     PRACTITIONER_ROLE = "PractitionerRole"
@@ -44,3 +29,69 @@ class AppointmentParticipantActorType(str, Enum):
     DEVICE = "Device"
     HEALTHCARE_SERVICE = "HealthcareService"
     LOCATION = "Location"
+    GROUP = "Group"
+    CARE_TEAM = "CareTeam"
+
+
+class AppointmentReasonReferenceType(str, Enum):
+    """Allowed reference types for Appointment.reason.reference (CodeableReference)."""
+
+    CONDITION = "Condition"
+    PROCEDURE = "Procedure"
+    OBSERVATION = "Observation"
+    IMMUNIZATION_RECOMMENDATION = "ImmunizationRecommendation"
+    DIAGNOSTIC_REPORT = "DiagnosticReport"
+
+
+class AppointmentNoteAuthorReferenceType(str, Enum):
+    """Allowed reference types for Appointment.note.author[x] (Annotation.authorReference)."""
+
+    PRACTITIONER = "Practitioner"
+    PRACTITIONER_ROLE = "PractitionerRole"
+    PATIENT = "Patient"
+    RELATED_PERSON = "RelatedPerson"
+    ORGANIZATION = "Organization"
+
+
+class AppointmentPatientInstructionReferenceType(str, Enum):
+    """Allowed reference types for Appointment.patientInstruction.reference (CodeableReference)."""
+
+    DOCUMENT_REFERENCE = "DocumentReference"
+    BINARY = "Binary"
+    COMMUNICATION = "Communication"
+
+
+class AppointmentReplacesReferenceType(str, Enum):
+    """Allowed reference types for Appointment.replaces[]."""
+
+    APPOINTMENT = "Appointment"
+
+
+class AppointmentSlotReferenceType(str, Enum):
+    """Allowed reference types for Appointment.slot[]."""
+
+    SLOT = "Slot"
+
+
+class AppointmentAccountReferenceType(str, Enum):
+    """Allowed reference types for Appointment.account[]."""
+
+    ACCOUNT = "Account"
+
+
+class AppointmentServiceTypeReferenceType(str, Enum):
+    """Allowed reference types for Appointment.serviceType.reference (CodeableReference)."""
+
+    HEALTHCARE_SERVICE = "HealthcareService"
+
+
+class AppointmentBasedOnReferenceType(str, Enum):
+    """Allowed reference types for Appointment.basedOn (Reference)."""
+
+    CARE_PLAN = "CarePlan"
+    DEVICE_REQUEST = "DeviceRequest"
+    MEDICATION_REQUEST = "MedicationRequest"
+    SERVICE_REQUEST = "ServiceRequest"
+    REQUEST_ORCHESTRATION = "RequestOrchestration"
+    NUTRITION_ORDER = "NutritionOrder"
+    VISION_PRESCRIPTION = "VisionPrescription"

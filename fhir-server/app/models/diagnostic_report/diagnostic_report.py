@@ -1,5 +1,4 @@
 from sqlalchemy import (
-    Boolean,
     Column,
     DateTime,
     Enum,
@@ -14,7 +13,12 @@ from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.diagnostic_report.enums import (
+    DiagnosticReportBasedOnReferenceType,
+    DiagnosticReportImagingStudyReferenceType,
+    DiagnosticReportMediaLinkReferenceType,
     DiagnosticReportParticipantType,
+    DiagnosticReportResultReferenceType,
+    DiagnosticReportSpecimenReferenceType,
     DiagnosticReportStatus,
     DiagnosticReportSubjectType,
 )
@@ -41,13 +45,14 @@ class DiagnosticReportModel(Base):
     user_id = Column(String, nullable=True, index=True)
     org_id = Column(String, nullable=True, index=True)
 
-    # ── Required ───────────────────────────────────────────────────────────────
+    # ── status (1..1 code) ────────────────────────────────────────────────────
 
     status = Column(
         Enum(DiagnosticReportStatus, name="dr_status"), nullable=False, index=True
     )
 
-    # code (1..1 CodeableConcept) — what diagnostic was requested/performed
+    # ── code (1..1 CodeableConcept) — what diagnostic was requested/performed ─
+
     code_system = Column(String, nullable=True)
     code_code = Column(String, nullable=True, index=True)
     code_display = Column(String, nullable=True)
@@ -161,11 +166,11 @@ class DiagnosticReportIdentifier(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Full Identifier spec: use | type | system | value | period | assigner
-    use = Column(String, nullable=True)        # usual | official | temp | secondary | old
+    use = Column(String, nullable=True)
     type_system = Column(String, nullable=True)
     type_code = Column(String, nullable=True)
     type_display = Column(String, nullable=True)
+    type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=False)
     period_start = Column(DateTime(timezone=True), nullable=True)
@@ -186,8 +191,10 @@ class DiagnosticReportBasedOn(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: CarePlan | ImmunizationRecommendation | MedicationRequest | NutritionOrder | ServiceRequest
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(DiagnosticReportBasedOnReferenceType, name="dr_based_on_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -195,7 +202,7 @@ class DiagnosticReportBasedOn(Base):
 
 
 class DiagnosticReportCategory(Base):
-    """category[] — CodeableConcept classifying the diagnostic discipline (0..* in R4)."""
+    """category[] — CodeableConcept classifying the diagnostic discipline (0..*)."""
 
     __tablename__ = "diagnostic_report_category"
 
@@ -214,7 +221,7 @@ class DiagnosticReportCategory(Base):
 
 
 class DiagnosticReportPerformer(Base):
-    """performer[] — plain Reference (not BackboneElement in R4) to responsible diagnostic service."""
+    """performer[] — Reference(Practitioner|PractitionerRole|Organization|CareTeam)."""
 
     __tablename__ = "diagnostic_report_performer"
 
@@ -224,7 +231,6 @@ class DiagnosticReportPerformer(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Practitioner | PractitionerRole | Organization | CareTeam
     reference_type = Column(
         Enum(DiagnosticReportParticipantType, name="dr_performer_type"), nullable=True
     )
@@ -235,7 +241,7 @@ class DiagnosticReportPerformer(Base):
 
 
 class DiagnosticReportResultsInterpreter(Base):
-    """resultsInterpreter[] — who is responsible for the report's conclusions."""
+    """resultsInterpreter[] — Reference(Practitioner|PractitionerRole|Organization|CareTeam)."""
 
     __tablename__ = "diagnostic_report_results_interpreter"
 
@@ -245,7 +251,6 @@ class DiagnosticReportResultsInterpreter(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Practitioner | PractitionerRole | Organization | CareTeam
     reference_type = Column(
         Enum(DiagnosticReportParticipantType, name="dr_interpreter_type"), nullable=True
     )
@@ -268,8 +273,10 @@ class DiagnosticReportSpecimen(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Specimen is not a tracked resource; stored as type+id for forward-compat.
-    reference_type = Column(String, nullable=True, default="Specimen")
+    reference_type = Column(
+        Enum(DiagnosticReportSpecimenReferenceType, name="dr_specimen_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -287,8 +294,10 @@ class DiagnosticReportResult(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Observation is not a tracked resource; stored as type+id for forward-compat.
-    reference_type = Column(String, nullable=True, default="Observation")
+    reference_type = Column(
+        Enum(DiagnosticReportResultReferenceType, name="dr_result_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -296,7 +305,7 @@ class DiagnosticReportResult(Base):
 
 
 class DiagnosticReportImagingStudy(Base):
-    """imagingStudy[] — Reference(ImagingStudy) — R4 field name, not 'study' (R5)."""
+    """imagingStudy[] — Reference(ImagingStudy) imaging performed during investigation."""
 
     __tablename__ = "diagnostic_report_imaging_study"
 
@@ -306,8 +315,10 @@ class DiagnosticReportImagingStudy(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # ImagingStudy is not a tracked resource; stored as type+id for forward-compat.
-    reference_type = Column(String, nullable=True, default="ImagingStudy")
+    reference_type = Column(
+        Enum(DiagnosticReportImagingStudyReferenceType, name="dr_imaging_study_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -317,9 +328,9 @@ class DiagnosticReportImagingStudy(Base):
 class DiagnosticReportMedia(Base):
     """media[] BackboneElement — key images associated with this report.
 
-    BackboneElement fields (per spec):
-      - comment  (0..1 string)       — comment about the image
-      - link     (1..1 Reference(Media)) — reference to the image source (required)
+    BackboneElement fields:
+      - comment  (0..1 string)       — explanation for image inclusion
+      - link     (1..1 Reference(Media)) — reference to the image source
     """
 
     __tablename__ = "diagnostic_report_media"
@@ -333,10 +344,13 @@ class DiagnosticReportMedia(Base):
     # comment (0..1 string)
     comment = Column(String, nullable=True)
 
-    # link (1..1 Reference(Media)) — Media is not tracked; stored as type+id.
-    link_reference_type = Column(String, nullable=True, default="Media")
+    # link (1..1 Reference(Media))
+    link_reference_type = Column(
+        Enum(DiagnosticReportMediaLinkReferenceType, name="dr_media_link_ref_type"),
+        nullable=True,
+    )
     link_reference_id = Column(Integer, nullable=True)
-    link_display = Column(String, nullable=True)
+    link_reference_display = Column(String, nullable=True)
 
     diagnostic_report = relationship("DiagnosticReportModel", back_populates="media")
 
@@ -365,7 +379,7 @@ class DiagnosticReportConclusionCode(Base):
 class DiagnosticReportPresentedForm(Base):
     """presentedForm[] — Attachment with the full report content.
 
-    Attachment datatype fields (per spec):
+    Attachment datatype fields:
       - contentType  (0..1 code)          MIME type
       - language     (0..1 code)          BCP-47 language code
       - data         (0..1 base64Binary)  actual binary content
@@ -384,13 +398,13 @@ class DiagnosticReportPresentedForm(Base):
     )
     org_id = Column(String, nullable=True)
 
-    content_type = Column(String, nullable=True)   # MIME type e.g. "application/pdf"
-    language = Column(String, nullable=True)        # BCP-47 e.g. "en-US"
-    data = Column(Text, nullable=True)              # base64-encoded binary content
-    url = Column(String, nullable=True)             # external URL to the document
-    size = Column(Integer, nullable=True)           # byte size before base64 encoding
-    hash = Column(String, nullable=True)            # base64-encoded SHA-1 hash
-    title = Column(String, nullable=True)           # human-readable label
+    content_type = Column(String, nullable=True)
+    language = Column(String, nullable=True)
+    data = Column(Text, nullable=True)
+    url = Column(String, nullable=True)
+    size = Column(Integer, nullable=True)
+    hash = Column(String, nullable=True)
+    title = Column(String, nullable=True)
     creation = Column(DateTime(timezone=True), nullable=True)
 
     diagnostic_report = relationship(

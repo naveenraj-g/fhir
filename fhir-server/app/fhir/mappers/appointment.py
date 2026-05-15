@@ -50,7 +50,7 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
         if id_list:
             result["identifier"] = id_list
 
-    # cancelationReason (R4: single 'l')
+    # cancellationReason (R5 double-'l')
     cancelation_cc = _cc(
         appointment.cancelation_reason_system,
         appointment.cancelation_reason_code,
@@ -58,7 +58,17 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
         appointment.cancelation_reason_text,
     )
     if cancelation_cc:
-        result["cancelationReason"] = cancelation_cc
+        result["cancellationReason"] = cancelation_cc
+
+    if appointment.cancellation_date:
+        result["cancellationDate"] = appointment.cancellation_date.isoformat()
+
+    # class
+    if appointment.classes:
+        result["class"] = [
+            cc for cls in appointment.classes
+            if (cc := _cc(cls.coding_system, cls.coding_code, cls.coding_display, cls.text))
+        ]
 
     # serviceCategory
     if appointment.service_categories:
@@ -67,12 +77,23 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
             if (cc := _cc(sc.coding_system, sc.coding_code, sc.coding_display, sc.text))
         ]
 
-    # serviceType
+    # serviceType (CodeableReference)
     if appointment.service_types:
-        result["serviceType"] = [
-            cc for st in appointment.service_types
-            if (cc := _cc(st.coding_system, st.coding_code, st.coding_display, st.text))
-        ]
+        st_list = []
+        for st in appointment.service_types:
+            entry = {}
+            concept = _cc(st.coding_system, st.coding_code, st.coding_display, st.text)
+            if concept:
+                entry["concept"] = concept
+            if st.reference_type and st.reference_id:
+                ref = {"reference": f"{st.reference_type.value}/{st.reference_id}"}
+                if st.reference_display:
+                    ref["display"] = st.reference_display
+                entry["reference"] = ref
+            if entry:
+                st_list.append(entry)
+        if st_list:
+            result["serviceType"] = st_list
 
     # specialty
     if appointment.specialties:
@@ -91,24 +112,33 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
     if appt_type_cc:
         result["appointmentType"] = appt_type_cc
 
-    # reasonCode
-    if appointment.reason_codes:
-        result["reasonCode"] = [
-            cc for rc in appointment.reason_codes
-            if (cc := _cc(rc.coding_system, rc.coding_code, rc.coding_display, rc.text))
-        ]
+    # reason (0..*) CodeableReference — R5
+    if appointment.reasons:
+        reason_list = []
+        for r in appointment.reasons:
+            entry = {}
+            concept = _cc(r.coding_system, r.coding_code, r.coding_display, r.text)
+            if concept:
+                entry["concept"] = concept
+            if r.reference_type and r.reference_id:
+                ref = {"reference": f"{r.reference_type.value}/{r.reference_id}"}
+                if r.reference_display:
+                    ref["display"] = r.reference_display
+                entry["reference"] = ref
+            if entry:
+                reason_list.append(entry)
+        if reason_list:
+            result["reason"] = reason_list
 
-    # reasonReference
-    if appointment.reason_references:
-        refs = []
-        for rr in appointment.reason_references:
-            if rr.reference_type and rr.reference_id:
-                ref: dict = {"reference": f"{rr.reference_type}/{rr.reference_id}"}
-                if rr.reference_display:
-                    ref["display"] = rr.reference_display
-                refs.append(ref)
-        if refs:
-            result["reasonReference"] = refs
+    # priority (0..1 CodeableConcept) — R5
+    priority_cc = _cc(
+        appointment.priority_system,
+        appointment.priority_code,
+        appointment.priority_display,
+        appointment.priority_text,
+    )
+    if priority_cc:
+        result["priority"] = priority_cc
 
     # supportingInformation
     if appointment.supporting_informations:
@@ -122,38 +152,127 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
         if refs:
             result["supportingInformation"] = refs
 
-    if appointment.priority_value is not None:
-        result["priority"] = appointment.priority_value
-
     if appointment.description:
         result["description"] = appointment.description
+
+    # replaces (0..*) — R5 new
+    if appointment.replaces_list:
+        result["replaces"] = [
+            {k: v for k, v in {
+                "reference": f"{r.reference_type.value}/{r.reference_id}" if r.reference_type and r.reference_id else None,
+                "display": r.reference_display,
+            }.items() if v}
+            for r in appointment.replaces_list
+        ]
+
+    # virtualService (0..*) — R5 new
+    if appointment.virtual_services:
+        vs_list = []
+        for vs in appointment.virtual_services:
+            entry = {}
+            if vs.channel_type_code or vs.channel_type_system or vs.channel_type_display:
+                coding = {k: v for k, v in {
+                    "system": vs.channel_type_system,
+                    "code": vs.channel_type_code,
+                    "display": vs.channel_type_display,
+                }.items() if v}
+                if coding:
+                    entry["channelType"] = coding
+            if vs.address_url:
+                entry["addressUrl"] = vs.address_url
+            if vs.additional_info:
+                entry["additionalInfo"] = [u for u in vs.additional_info.split(",") if u]
+            if vs.max_participants is not None:
+                entry["maxParticipants"] = vs.max_participants
+            if vs.session_key:
+                entry["sessionKey"] = vs.session_key
+            if entry:
+                vs_list.append(entry)
+        if vs_list:
+            result["virtualService"] = vs_list
+
+    # previousAppointment (0..1) — R5 new
+    if appointment.previous_appointment_id:
+        prev: dict = {"reference": f"Appointment/{appointment.previous_appointment_id}"}
+        if appointment.previous_appointment_display:
+            prev["display"] = appointment.previous_appointment_display
+        result["previousAppointment"] = prev
+
+    # originatingAppointment (0..1) — R5 new
+    if appointment.originating_appointment_id:
+        orig: dict = {"reference": f"Appointment/{appointment.originating_appointment_id}"}
+        if appointment.originating_appointment_display:
+            orig["display"] = appointment.originating_appointment_display
+        result["originatingAppointment"] = orig
 
     # slot
     if appointment.slots:
         result["slot"] = [
             {k: v for k, v in {
-                "reference": f"Slot/{s.slot_id}" if s.slot_id else None,
-                "display": s.slot_display,
+                "reference": f"{s.reference_type.value}/{s.reference_id}" if s.reference_type and s.reference_id else None,
+                "display": s.reference_display,
             }.items() if v}
             for s in appointment.slots
+        ]
+
+    # account (0..*) — R5 new
+    if appointment.accounts:
+        result["account"] = [
+            {k: v for k, v in {
+                "reference": f"{a.reference_type.value}/{a.reference_id}" if a.reference_type and a.reference_id else None,
+                "display": a.reference_display,
+            }.items() if v}
+            for a in appointment.accounts
         ]
 
     # basedOn
     if appointment.based_ons:
         result["basedOn"] = [
             {k: v for k, v in {
-                "reference": f"ServiceRequest/{b.service_request_id}" if b.service_request_id else None,
-                "display": b.service_request_display,
+                "reference": f"{b.reference_type.value}/{b.reference_id}" if b.reference_type and b.reference_id else None,
+                "display": b.reference_display,
             }.items() if v}
             for b in appointment.based_ons
         ]
 
     if appointment.created:
         result["created"] = appointment.created.isoformat()
-    if appointment.comment:
-        result["comment"] = appointment.comment
-    if appointment.patient_instruction:
-        result["patientInstruction"] = appointment.patient_instruction
+
+    # note (0..*) Annotation — R5
+    if appointment.notes:
+        note_list = []
+        for n in appointment.notes:
+            entry = {"text": n.text}
+            if n.author_string:
+                entry["authorString"] = n.author_string
+            elif n.author_reference_type and n.author_reference_id:
+                ref = {"reference": f"{n.author_reference_type}/{n.author_reference_id}"}
+                if n.author_reference_display:
+                    ref["display"] = n.author_reference_display
+                entry["authorReference"] = ref
+            if n.time:
+                entry["time"] = n.time.isoformat()
+            note_list.append(entry)
+        if note_list:
+            result["note"] = note_list
+
+    # patientInstruction (0..*) CodeableReference — R5
+    if appointment.patient_instructions:
+        pi_list = []
+        for pi in appointment.patient_instructions:
+            entry = {}
+            concept = _cc(pi.coding_system, pi.coding_code, pi.coding_display, pi.text)
+            if concept:
+                entry["concept"] = concept
+            if pi.reference_type and pi.reference_id:
+                ref = {"reference": f"{pi.reference_type.value}/{pi.reference_id}"}
+                if pi.reference_display:
+                    ref["display"] = pi.reference_display
+                entry["reference"] = ref
+            if entry:
+                pi_list.append(entry)
+        if pi_list:
+            result["patientInstruction"] = pi_list
 
     # subject
     if appointment.subject_type and appointment.subject_id:
@@ -200,15 +319,15 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
             if type_list:
                 entry["type"] = type_list
 
-        if p.actor_type and p.actor_id:
+        if p.reference_type and p.reference_id:
             actor: dict = {
-                "reference": f"{p.actor_type.value}/{p.actor_id}"
+                "reference": f"{p.reference_type.value}/{p.reference_id}"
             }
-            if p.actor_display:
-                actor["display"] = p.actor_display
+            if p.reference_display:
+                actor["display"] = p.reference_display
             entry["actor"] = actor
 
-        if p.required:
+        if p.required is not None:
             entry["required"] = p.required
 
         if p.period_start or p.period_end:
@@ -219,6 +338,11 @@ def to_fhir_appointment(appointment: "AppointmentModel") -> dict:
 
         participant_list.append(entry)
     result["participant"] = participant_list
+
+    if appointment.recurrence_id is not None:
+        result["recurrenceId"] = appointment.recurrence_id
+    if appointment.occurrence_changed is not None:
+        result["occurrenceChanged"] = appointment.occurrence_changed
 
     # recurrenceTemplate (operational extension)
     rt = appointment.recurrence_template
@@ -293,10 +417,15 @@ def to_plain_appointment(appointment: "AppointmentModel") -> dict:
         "cancelation_reason_code": appointment.cancelation_reason_code,
         "cancelation_reason_display": appointment.cancelation_reason_display,
         "cancelation_reason_text": appointment.cancelation_reason_text,
+        "cancellation_date": appointment.cancellation_date.isoformat() if appointment.cancellation_date else None,
         "appointment_type_system": appointment.appointment_type_system,
         "appointment_type_code": appointment.appointment_type_code,
         "appointment_type_display": appointment.appointment_type_display,
         "appointment_type_text": appointment.appointment_type_text,
+        "priority_system": appointment.priority_system,
+        "priority_code": appointment.priority_code,
+        "priority_display": appointment.priority_display,
+        "priority_text": appointment.priority_text,
         "subject_type": appointment.subject_type.value if appointment.subject_type else None,
         "subject_id": appointment.subject_id,
         "subject_display": appointment.subject_display,
@@ -305,14 +434,17 @@ def to_plain_appointment(appointment: "AppointmentModel") -> dict:
             if appointment.encounter and appointment.encounter.encounter_id
             else None
         ),
+        "previous_appointment_id": appointment.previous_appointment_id,
+        "previous_appointment_display": appointment.previous_appointment_display,
+        "originating_appointment_id": appointment.originating_appointment_id,
+        "originating_appointment_display": appointment.originating_appointment_display,
         "start": appointment.start.isoformat() if appointment.start else None,
         "end": appointment.end.isoformat() if appointment.end else None,
         "minutes_duration": appointment.minutes_duration,
         "created": appointment.created.isoformat() if appointment.created else None,
         "description": appointment.description,
-        "comment": appointment.comment,
-        "patient_instruction": appointment.patient_instruction,
-        "priority_value": appointment.priority_value,
+        "recurrence_id": appointment.recurrence_id,
+        "occurrence_changed": appointment.occurrence_changed,
         "created_at": appointment.created_at.isoformat() if appointment.created_at else None,
         "updated_at": appointment.updated_at.isoformat() if appointment.updated_at else None,
         "created_by": appointment.created_by,
@@ -336,6 +468,13 @@ def to_plain_appointment(appointment: "AppointmentModel") -> dict:
             for i in appointment.identifiers
         ]
 
+    if appointment.classes:
+        result["class_"] = [
+            {"coding_system": cls.coding_system, "coding_code": cls.coding_code,
+             "coding_display": cls.coding_display, "text": cls.text}
+            for cls in appointment.classes
+        ]
+
     if appointment.service_categories:
         result["service_category"] = [
             {"coding_system": sc.coding_system, "coding_code": sc.coding_code,
@@ -345,8 +484,15 @@ def to_plain_appointment(appointment: "AppointmentModel") -> dict:
 
     if appointment.service_types:
         result["service_type"] = [
-            {"coding_system": st.coding_system, "coding_code": st.coding_code,
-             "coding_display": st.coding_display, "text": st.text}
+            {
+                "coding_system": st.coding_system,
+                "coding_code": st.coding_code,
+                "coding_display": st.coding_display,
+                "text": st.text,
+                "reference_type": st.reference_type.value if st.reference_type else None,
+                "reference_id": st.reference_id,
+                "reference_display": st.reference_display,
+            }
             for st in appointment.service_types
         ]
 
@@ -357,18 +503,18 @@ def to_plain_appointment(appointment: "AppointmentModel") -> dict:
             for sp in appointment.specialties
         ]
 
-    if appointment.reason_codes:
-        result["reason_code"] = [
-            {"coding_system": rc.coding_system, "coding_code": rc.coding_code,
-             "coding_display": rc.coding_display, "text": rc.text}
-            for rc in appointment.reason_codes
-        ]
-
-    if appointment.reason_references:
-        result["reason_reference"] = [
-            {"reference_type": rr.reference_type, "reference_id": rr.reference_id,
-             "reference_display": rr.reference_display}
-            for rr in appointment.reason_references
+    if appointment.reasons:
+        result["reason"] = [
+            {
+                "coding_system": r.coding_system,
+                "coding_code": r.coding_code,
+                "coding_display": r.coding_display,
+                "text": r.text,
+                "reference_type": r.reference_type.value if r.reference_type else None,
+                "reference_id": r.reference_id,
+                "reference_display": r.reference_display,
+            }
+            for r in appointment.reasons
         ]
 
     if appointment.supporting_informations:
@@ -380,23 +526,92 @@ def to_plain_appointment(appointment: "AppointmentModel") -> dict:
 
     if appointment.slots:
         result["slot"] = [
-            {"slot_id": s.slot_id, "slot_display": s.slot_display}
+            {
+                "reference_type": s.reference_type.value if s.reference_type else None,
+                "reference_id": s.reference_id,
+                "reference_display": s.reference_display,
+            }
             for s in appointment.slots
         ]
 
     if appointment.based_ons:
         result["based_on"] = [
-            {"service_request_id": b.service_request_id, "service_request_display": b.service_request_display}
+            {
+                "reference_type": b.reference_type.value if b.reference_type else None,
+                "reference_id": b.reference_id,
+                "reference_display": b.reference_display,
+            }
             for b in appointment.based_ons
+        ]
+
+    if appointment.replaces_list:
+        result["replaces"] = [
+            {
+                "reference_type": r.reference_type.value if r.reference_type else None,
+                "reference_id": r.reference_id,
+                "reference_display": r.reference_display,
+            }
+            for r in appointment.replaces_list
+        ]
+
+    if appointment.virtual_services:
+        result["virtual_service"] = [
+            {
+                "channel_type_system": vs.channel_type_system,
+                "channel_type_code": vs.channel_type_code,
+                "channel_type_display": vs.channel_type_display,
+                "address_url": vs.address_url,
+                "additional_info": [u for u in vs.additional_info.split(",") if u] if vs.additional_info else None,
+                "max_participants": vs.max_participants,
+                "session_key": vs.session_key,
+            }
+            for vs in appointment.virtual_services
+        ]
+
+    if appointment.accounts:
+        result["account"] = [
+            {
+                "reference_type": a.reference_type.value if a.reference_type else None,
+                "reference_id": a.reference_id,
+                "reference_display": a.reference_display,
+            }
+            for a in appointment.accounts
+        ]
+
+    if appointment.notes:
+        result["note"] = [
+            {
+                "author_string": n.author_string,
+                "author_reference_type": n.author_reference_type,
+                "author_reference_id": n.author_reference_id,
+                "author_reference_display": n.author_reference_display,
+                "time": n.time.isoformat() if n.time else None,
+                "text": n.text,
+            }
+            for n in appointment.notes
+        ]
+
+    if appointment.patient_instructions:
+        result["patient_instruction"] = [
+            {
+                "coding_system": pi.coding_system,
+                "coding_code": pi.coding_code,
+                "coding_display": pi.coding_display,
+                "text": pi.text,
+                "reference_type": pi.reference_type.value if pi.reference_type else None,
+                "reference_id": pi.reference_id,
+                "reference_display": pi.reference_display,
+            }
+            for pi in appointment.patient_instructions
         ]
 
     if appointment.participants:
         result["participant"] = []
         for p in appointment.participants:
             entry = {
-                "actor_type": p.actor_type.value if p.actor_type else None,
-                "actor_id": p.actor_id,
-                "actor_display": p.actor_display,
+                "reference_type": p.reference_type.value if p.reference_type else None,
+                "reference_id": p.reference_id,
+                "reference_display": p.reference_display,
                 "required": p.required,
                 "status": p.status,
                 "period_start": p.period_start.isoformat() if p.period_start else None,

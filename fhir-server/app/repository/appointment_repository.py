@@ -10,20 +10,35 @@ from sqlalchemy.orm import selectinload
 from app.models.appointment.appointment import (
     AppointmentModel,
     AppointmentIdentifier,
+    AppointmentClass,
     AppointmentServiceCategory,
     AppointmentServiceType,
     AppointmentSpecialty,
-    AppointmentReasonCode,
-    AppointmentReasonReference,
+    AppointmentReason,
     AppointmentSupportingInformation,
     AppointmentSlot,
     AppointmentBasedOn,
+    AppointmentReplaces,
+    AppointmentVirtualService,
+    AppointmentAccount,
+    AppointmentNote,
+    AppointmentPatientInstruction,
     AppointmentParticipant,
     AppointmentParticipantType,
     AppointmentRequestedPeriod,
     AppointmentRecurrenceTemplate,
 )
-from app.models.appointment.enums import AppointmentParticipantActorType
+from app.models.appointment.enums import (
+    AppointmentParticipantActorType,
+    AppointmentReasonReferenceType,
+    AppointmentNoteAuthorReferenceType,
+    AppointmentPatientInstructionReferenceType,
+    AppointmentServiceTypeReferenceType,
+    AppointmentBasedOnReferenceType,
+    AppointmentReplacesReferenceType,
+    AppointmentSlotReferenceType,
+    AppointmentAccountReferenceType,
+)
 from app.models.encounter.encounter import EncounterModel
 from app.models.enums import SubjectReferenceType
 from app.schemas.appointment import AppointmentCreateSchema, AppointmentPatchSchema
@@ -34,14 +49,19 @@ def _with_relationships(stmt):
     return stmt.options(
         selectinload(AppointmentModel.encounter),
         selectinload(AppointmentModel.identifiers),
+        selectinload(AppointmentModel.classes),
         selectinload(AppointmentModel.service_categories),
         selectinload(AppointmentModel.service_types),
         selectinload(AppointmentModel.specialties),
-        selectinload(AppointmentModel.reason_codes),
-        selectinload(AppointmentModel.reason_references),
+        selectinload(AppointmentModel.reasons),
         selectinload(AppointmentModel.supporting_informations),
         selectinload(AppointmentModel.slots),
         selectinload(AppointmentModel.based_ons),
+        selectinload(AppointmentModel.replaces_list),
+        selectinload(AppointmentModel.virtual_services),
+        selectinload(AppointmentModel.accounts),
+        selectinload(AppointmentModel.notes),
+        selectinload(AppointmentModel.patient_instructions),
         selectinload(AppointmentModel.participants).selectinload(AppointmentParticipant.types),
         selectinload(AppointmentModel.requested_periods),
         selectinload(AppointmentModel.recurrence_template),
@@ -62,6 +82,18 @@ def _parse_open_ref(ref: str) -> Tuple[str, int]:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid reference id in: '{ref}'. Id must be an integer.",
+        )
+
+
+def _cast_ref_type(value: str, enum_cls, field: str):
+    """Cast a parsed reference type string to the required enum, raising 422 for unknown values."""
+    try:
+        return enum_cls(value)
+    except ValueError:
+        allowed = [e.value for e in enum_cls]
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid reference type '{value}' for {field}. Allowed: {allowed}.",
         )
 
 
@@ -186,22 +218,30 @@ class AppointmentRepository:
                 cancelation_reason_code=payload.cancelation_reason_code,
                 cancelation_reason_display=payload.cancelation_reason_display,
                 cancelation_reason_text=payload.cancelation_reason_text,
+                cancellation_date=payload.cancellation_date,
                 appointment_type_system=payload.appointment_type_system,
                 appointment_type_code=payload.appointment_type_code,
                 appointment_type_display=payload.appointment_type_display,
                 appointment_type_text=payload.appointment_type_text,
+                priority_system=payload.priority_system,
+                priority_code=payload.priority_code,
+                priority_display=payload.priority_display,
+                priority_text=payload.priority_text,
                 subject_type=subject_type,
                 subject_id=subject_id,
                 subject_display=payload.subject_display,
                 encounter_id=internal_encounter_id,
+                previous_appointment_id=payload.previous_appointment_id,
+                previous_appointment_display=payload.previous_appointment_display,
+                originating_appointment_id=payload.originating_appointment_id,
+                originating_appointment_display=payload.originating_appointment_display,
                 start=payload.start,
                 end=payload.end,
                 minutes_duration=payload.minutes_duration,
                 created=payload.created,
                 description=payload.description,
-                comment=payload.comment,
-                patient_instruction=payload.patient_instruction,
-                priority_value=payload.priority_value,
+                recurrence_id=payload.recurrence_id,
+                occurrence_changed=payload.occurrence_changed,
             )
 
             # identifier
@@ -221,6 +261,17 @@ class AppointmentRepository:
                         assigner=i.assigner,
                     ))
 
+            # class
+            if payload.class_:
+                for cls in payload.class_:
+                    appointment.classes.append(AppointmentClass(
+                        org_id=org_id,
+                        coding_system=cls.coding_system,
+                        coding_code=cls.coding_code,
+                        coding_display=cls.coding_display,
+                        text=cls.text,
+                    ))
+
             # serviceCategory
             if payload.service_category:
                 for sc in payload.service_category:
@@ -232,15 +283,24 @@ class AppointmentRepository:
                         text=sc.text,
                     ))
 
-            # serviceType
+            # serviceType (CodeableReference)
             if payload.service_type:
                 for st in payload.service_type:
+                    st_ref_type_enum, st_ref_id = (None, None)
+                    if st.reference:
+                        st_ref_str, st_ref_id = _parse_open_ref(st.reference)
+                        st_ref_type_enum = _cast_ref_type(
+                            st_ref_str, AppointmentServiceTypeReferenceType, "serviceType.reference"
+                        )
                     appointment.service_types.append(AppointmentServiceType(
                         org_id=org_id,
                         coding_system=st.coding_system,
                         coding_code=st.coding_code,
                         coding_display=st.coding_display,
                         text=st.text,
+                        reference_type=st_ref_type_enum,
+                        reference_id=st_ref_id,
+                        reference_display=st.reference_display,
                     ))
 
             # specialty
@@ -254,26 +314,24 @@ class AppointmentRepository:
                         text=sp.text,
                     ))
 
-            # reasonCode
-            if payload.reason_code:
-                for rc in payload.reason_code:
-                    appointment.reason_codes.append(AppointmentReasonCode(
+            # reason (CodeableReference) — R5
+            if payload.reason:
+                for r in payload.reason:
+                    ref_type_enum, ref_id = (None, None)
+                    if r.reference:
+                        ref_type_str, ref_id = _parse_open_ref(r.reference)
+                        ref_type_enum = _cast_ref_type(
+                            ref_type_str, AppointmentReasonReferenceType, "reason.reference"
+                        )
+                    appointment.reasons.append(AppointmentReason(
                         org_id=org_id,
-                        coding_system=rc.coding_system,
-                        coding_code=rc.coding_code,
-                        coding_display=rc.coding_display,
-                        text=rc.text,
-                    ))
-
-            # reasonReference
-            if payload.reason_reference:
-                for rr in payload.reason_reference:
-                    ref_type, ref_id = _parse_open_ref(rr.reference)
-                    appointment.reason_references.append(AppointmentReasonReference(
-                        org_id=org_id,
-                        reference_type=ref_type,
+                        coding_system=r.coding_system,
+                        coding_code=r.coding_code,
+                        coding_display=r.coding_display,
+                        text=r.text,
+                        reference_type=ref_type_enum,
                         reference_id=ref_id,
-                        reference_display=rr.reference_display,
+                        reference_display=r.reference_display,
                     ))
 
             # supportingInformation
@@ -290,33 +348,124 @@ class AppointmentRepository:
             # slot
             if payload.slot:
                 for s in payload.slot:
+                    slot_ref_str, slot_ref_id = _parse_open_ref(s.reference)
+                    slot_ref_type_enum = _cast_ref_type(
+                        slot_ref_str, AppointmentSlotReferenceType, "slot.reference"
+                    )
                     appointment.slots.append(AppointmentSlot(
                         org_id=org_id,
-                        slot_id=s.slot_id,
-                        slot_display=s.slot_display,
+                        reference_type=slot_ref_type_enum,
+                        reference_id=slot_ref_id,
+                        reference_display=s.reference_display,
                     ))
 
             # basedOn
             if payload.based_on:
                 for b in payload.based_on:
+                    based_on_ref_str, based_on_ref_id = _parse_open_ref(b.reference)
+                    based_on_ref_type_enum = _cast_ref_type(
+                        based_on_ref_str, AppointmentBasedOnReferenceType, "basedOn.reference"
+                    )
                     appointment.based_ons.append(AppointmentBasedOn(
                         org_id=org_id,
-                        service_request_id=b.service_request_id,
-                        service_request_display=b.service_request_display,
+                        reference_type=based_on_ref_type_enum,
+                        reference_id=based_on_ref_id,
+                        reference_display=b.reference_display,
+                    ))
+
+            # replaces — R5 new
+            if payload.replaces:
+                for r in payload.replaces:
+                    rep_ref_str, rep_ref_id = _parse_open_ref(r.reference)
+                    rep_ref_type_enum = _cast_ref_type(
+                        rep_ref_str, AppointmentReplacesReferenceType, "replaces.reference"
+                    )
+                    appointment.replaces_list.append(AppointmentReplaces(
+                        org_id=org_id,
+                        reference_type=rep_ref_type_enum,
+                        reference_id=rep_ref_id,
+                        reference_display=r.reference_display,
+                    ))
+
+            # virtualService — R5 new
+            if payload.virtual_service:
+                for vs in payload.virtual_service:
+                    appointment.virtual_services.append(AppointmentVirtualService(
+                        org_id=org_id,
+                        channel_type_system=vs.channel_type_system,
+                        channel_type_code=vs.channel_type_code,
+                        channel_type_display=vs.channel_type_display,
+                        address_url=vs.address_url,
+                        additional_info=",".join(vs.additional_info) if vs.additional_info else None,
+                        max_participants=vs.max_participants,
+                        session_key=vs.session_key,
+                    ))
+
+            # account — R5 new
+            if payload.account:
+                for a in payload.account:
+                    acct_ref_str, acct_ref_id = _parse_open_ref(a.reference)
+                    acct_ref_type_enum = _cast_ref_type(
+                        acct_ref_str, AppointmentAccountReferenceType, "account.reference"
+                    )
+                    appointment.accounts.append(AppointmentAccount(
+                        org_id=org_id,
+                        reference_type=acct_ref_type_enum,
+                        reference_id=acct_ref_id,
+                        reference_display=a.reference_display,
+                    ))
+
+            # note (Annotation) — R5 new
+            if payload.note:
+                for n in payload.note:
+                    author_ref_type_enum, author_ref_id = (None, None)
+                    if n.author_reference:
+                        author_ref_str, author_ref_id = _parse_open_ref(n.author_reference)
+                        author_ref_type_enum = _cast_ref_type(
+                            author_ref_str, AppointmentNoteAuthorReferenceType, "note.authorReference"
+                        )
+                    appointment.notes.append(AppointmentNote(
+                        org_id=org_id,
+                        author_string=n.author_string,
+                        author_reference_type=author_ref_type_enum,
+                        author_reference_id=author_ref_id,
+                        author_reference_display=n.author_reference_display,
+                        time=n.time,
+                        text=n.text,
+                    ))
+
+            # patientInstruction (CodeableReference) — R5 new
+            if payload.patient_instruction:
+                for pi in payload.patient_instruction:
+                    pi_ref_type_enum, pi_ref_id = (None, None)
+                    if pi.reference:
+                        pi_ref_str, pi_ref_id = _parse_open_ref(pi.reference)
+                        pi_ref_type_enum = _cast_ref_type(
+                            pi_ref_str, AppointmentPatientInstructionReferenceType, "patientInstruction.reference"
+                        )
+                    appointment.patient_instructions.append(AppointmentPatientInstruction(
+                        org_id=org_id,
+                        coding_system=pi.coding_system,
+                        coding_code=pi.coding_code,
+                        coding_display=pi.coding_display,
+                        text=pi.text,
+                        reference_type=pi_ref_type_enum,
+                        reference_id=pi_ref_id,
+                        reference_display=pi.reference_display,
                     ))
 
             # participants
             for p in payload.participant:
-                actor_type, actor_id = (
-                    parse_reference(p.actor, AppointmentParticipantActorType)
-                    if p.actor else (None, None)
+                ref_type, ref_id = (
+                    parse_reference(p.reference, AppointmentParticipantActorType)
+                    if p.reference else (None, None)
                 )
                 participant = AppointmentParticipant(
                     org_id=org_id,
-                    actor_type=actor_type,
-                    actor_id=actor_id,
-                    actor_display=p.actor_display,
-                    required=p.required.value if p.required else None,
+                    reference_type=ref_type,
+                    reference_id=ref_id,
+                    reference_display=p.reference_display,
+                    required=p.required,
                     status=p.status.value if p.status else "needs-action",
                     period_start=p.period_start,
                     period_end=p.period_end,

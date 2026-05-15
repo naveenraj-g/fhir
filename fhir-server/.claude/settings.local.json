@@ -15,7 +15,9 @@
       "Bash(Invoke-WebRequest -Uri \"http://localhost:8000/openapi.json\" -UseBasicParsing)",
       "Bash(Select-Object -First 5)",
       "Bash(python3 -c \"import json,sys; spec=json.load\\(sys.stdin\\); qr_post=spec['paths'].get\\('/api/fhir/v1/questionnaire-responses/',{}\\); print\\('POST requestBody keys:', list\\(qr_post.get\\('post',{}\\).get\\('requestBody',{}\\).get\\('content',{}\\).get\\('application/json',{}\\).get\\('schema',{}\\).get\\('properties',{}\\).keys\\(\\)\\)[:10]\\)\")",
-      "Bash(just migrate *)"
+      "Bash(just migrate *)",
+      "WebFetch(domain:www.hl7.org)",
+      "WebFetch(domain:hl7.org)"
     ]
   }
 }

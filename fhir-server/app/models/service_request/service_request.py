@@ -15,10 +15,18 @@ from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 from app.models.service_request.enums import (
+    ServiceRequestBasedOnReferenceType,
+    ServiceRequestInsuranceReferenceType,
     ServiceRequestIntent,
+    ServiceRequestLocationReferenceType,
+    ServiceRequestNoteAuthorReferenceType,
     ServiceRequestPerformerReferenceType,
     ServiceRequestPriority,
+    ServiceRequestReasonReferenceType,
+    ServiceRequestRelevantHistoryReferenceType,
+    ServiceRequestReplacesReferenceType,
     ServiceRequestRequesterType,
+    ServiceRequestSpecimenReferenceType,
     ServiceRequestStatus,
     ServiceRequestSubjectType,
 )
@@ -94,6 +102,7 @@ class ServiceRequestModel(Base):
     as_needed_system = Column(String, nullable=True)
     as_needed_code = Column(String, nullable=True)
     as_needed_display = Column(String, nullable=True)
+    as_needed_text = Column(String, nullable=True)
 
     # ── Authored / Requester ──────────────────────────────────────────────────
 
@@ -133,10 +142,18 @@ class ServiceRequestModel(Base):
     quantity_range_high_value = Column(Float, nullable=True)
     quantity_range_high_unit = Column(String, nullable=True)
 
-    # ── Requisition identifier ────────────────────────────────────────────────
+    # ── Requisition identifier (full Identifier datatype) ─────────────────────
 
+    requisition_use = Column(String, nullable=True)
+    requisition_type_system = Column(String, nullable=True)
+    requisition_type_code = Column(String, nullable=True)
+    requisition_type_display = Column(String, nullable=True)
+    requisition_type_text = Column(String, nullable=True)
     requisition_system = Column(String, nullable=True)
     requisition_value = Column(String, nullable=True)
+    requisition_period_start = Column(DateTime(timezone=True), nullable=True)
+    requisition_period_end = Column(DateTime(timezone=True), nullable=True)
+    requisition_assigner = Column(String, nullable=True)
 
     # ── instantiates ─────────────────────────────────────────────────────────
     # Stored as comma-separated strings (rarely queried individually).
@@ -255,9 +272,15 @@ class ServiceRequestIdentifier(Base):
     )
     org_id = Column(String, nullable=True)
 
-    use = Column(String, nullable=True)       # usual | official | temp | secondary | old
+    use = Column(String, nullable=True)
+    type_system = Column(String, nullable=True)
+    type_code = Column(String, nullable=True)
+    type_display = Column(String, nullable=True)
+    type_text = Column(String, nullable=True)
     system = Column(String, nullable=True)
     value = Column(String, nullable=False)
+    period_start = Column(DateTime(timezone=True), nullable=True)
+    period_end = Column(DateTime(timezone=True), nullable=True)
     assigner = Column(String, nullable=True)
 
     service_request = relationship("ServiceRequestModel", back_populates="identifiers")
@@ -352,8 +375,10 @@ class ServiceRequestLocationReference(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Location is not a tracked resource in this server; stored as type+id for forward-compat.
-    reference_type = Column(String, nullable=True, default="Location")
+    reference_type = Column(
+        Enum(ServiceRequestLocationReferenceType, name="sr_location_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -390,8 +415,10 @@ class ServiceRequestReasonReference(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Condition | Observation | DiagnosticReport | DocumentReference
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(ServiceRequestReasonReferenceType, name="sr_reason_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -409,8 +436,10 @@ class ServiceRequestInsurance(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: Coverage | ClaimResponse
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(ServiceRequestInsuranceReferenceType, name="sr_insurance_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -428,7 +457,7 @@ class ServiceRequestSupportingInfo(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Any FHIR resource type
+    # Open reference — any FHIR resource type allowed
     reference_type = Column(String, nullable=True)
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
@@ -447,8 +476,10 @@ class ServiceRequestSpecimen(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Specimen is not a tracked resource; stored as type+id for forward-compat.
-    reference_type = Column(String, nullable=True, default="Specimen")
+    reference_type = Column(
+        Enum(ServiceRequestSpecimenReferenceType, name="sr_specimen_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -490,9 +521,12 @@ class ServiceRequestNote(Base):
 
     # author[x] — string | Reference(Practitioner|Patient|RelatedPerson|Organization)
     author_string = Column(String, nullable=True)
-    author_reference_type = Column(String, nullable=True)
+    author_reference_type = Column(
+        Enum(ServiceRequestNoteAuthorReferenceType, name="sr_note_author_ref_type"),
+        nullable=True,
+    )
     author_reference_id = Column(Integer, nullable=True)
-    author_display = Column(String, nullable=True)
+    author_reference_display = Column(String, nullable=True)
 
     service_request = relationship("ServiceRequestModel", back_populates="notes")
 
@@ -508,8 +542,10 @@ class ServiceRequestRelevantHistory(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Provenance is not a tracked resource; stored as type+id for forward-compat.
-    reference_type = Column(String, nullable=True, default="Provenance")
+    reference_type = Column(
+        Enum(ServiceRequestRelevantHistoryReferenceType, name="sr_relevant_history_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -527,8 +563,10 @@ class ServiceRequestBasedOn(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Allowed: CarePlan | ServiceRequest | MedicationRequest
-    reference_type = Column(String, nullable=True)
+    reference_type = Column(
+        Enum(ServiceRequestBasedOnReferenceType, name="sr_based_on_ref_type"),
+        nullable=True,
+    )
     reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
@@ -546,9 +584,11 @@ class ServiceRequestReplaces(Base):
     )
     org_id = Column(String, nullable=True)
 
-    # Public service_request_id of the replaced resource (not internal id).
-    # Stored as integer so mappers can reconstruct "ServiceRequest/{replaced_id}".
-    replaced_service_request_id = Column(Integer, nullable=True)
+    reference_type = Column(
+        Enum(ServiceRequestReplacesReferenceType, name="sr_replaces_ref_type"),
+        nullable=True,
+    )
+    reference_id = Column(Integer, nullable=True)
     reference_display = Column(String, nullable=True)
 
     service_request = relationship("ServiceRequestModel", back_populates="replaces")

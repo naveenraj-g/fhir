@@ -8,6 +8,7 @@ from app.schemas.enums import (
     ContactPointUse,
     AddressUse,
     AddressType,
+    HumanNameUse,
     IdentifierUse,
 )
 
@@ -16,7 +17,7 @@ from app.schemas.enums import (
 
 class PractitionerNameCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[str] = Field(None, description="usual|official|temp|nickname|anonymous|old|maiden")
+    use: Optional[HumanNameUse] = Field(None, description="usual|official|temp|nickname|anonymous|old|maiden")
     text: Optional[str] = Field(None, description="Full name as a display string.")
     family: Optional[str] = Field(None, description="Family (last) name.")
     given: Optional[List[str]] = Field(None, description="Given (first/middle) names.")
@@ -77,17 +78,36 @@ class PractitionerPhotoCreate(BaseModel):
     creation: Optional[datetime] = Field(None, description="When the image was created.")
 
 
+class QualificationIdentifierCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[IdentifierUse] = Field(None, description="usual|official|temp|secondary|old")
+    type_system: Optional[str] = Field(None, description="Coding system for identifier type.")
+    type_code: Optional[str] = Field(None, description="Code for identifier type.")
+    type_display: Optional[str] = Field(None, description="Display for identifier type.")
+    type_text: Optional[str] = Field(None, description="Plain-text description of identifier type.")
+    system: Optional[str] = Field(None, description="Namespace URI for the qualification identifier.")
+    value: str = Field(..., description="Qualification or license number.")
+    period_start: Optional[datetime] = Field(None, description="Start of identifier validity period.")
+    period_end: Optional[datetime] = Field(None, description="End of identifier validity period.")
+    assigner: Optional[str] = Field(None, description="Display name of the issuing organization.")
+
+
 class PractitionerQualificationCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    identifier_system: Optional[str] = Field(None, description="Namespace URI for the qualification identifier.")
-    identifier_value: Optional[str] = Field(None, description="Qualification or license number.")
+    identifier: Optional[List[QualificationIdentifierCreate]] = Field(
+        None, description="Identifiers for this qualification (e.g. license numbers)."
+    )
     code_system: Optional[str] = Field(None, description="Coding system for the qualification type (e.g. http://snomed.info/sct).")
     code_code: Optional[str] = Field(None, description="Coded qualification type (e.g. '394814009').")
     code_display: Optional[str] = Field(None, description="Display for the qualification code.")
     code_text: Optional[str] = Field(None, description="Human-readable qualification type, e.g. 'MD - Doctor of Medicine'.")
+    status_system: Optional[str] = Field(None, description="Coding system for qualification status.")
+    status_code: Optional[str] = Field(None, description="Status code (e.g. active, inactive, pending).")
+    status_display: Optional[str] = Field(None, description="Display for the status code.")
+    status_text: Optional[str] = Field(None, description="Human-readable qualification status.")
     period_start: Optional[datetime] = Field(None, description="Start of qualification validity period.")
     period_end: Optional[datetime] = Field(None, description="End of qualification validity period (expiry).")
-    issuer_id: Optional[int] = Field(None, description="Public Organization ID that issued the qualification.")
+    issuer: Optional[str] = Field(None, description="FHIR reference to the issuing organization, e.g. 'Organization/100'.")
     issuer_display: Optional[str] = Field(None, description="Display name of the issuing organization.")
 
 

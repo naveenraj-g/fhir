@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-from sqlalchemy import exists, func, select
+from fastapi import HTTPException
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.orm import selectinload
 
@@ -10,117 +11,105 @@ from app.models.encounter.encounter import (
     EncounterIdentifier,
     EncounterStatusHistory,
     EncounterClassHistory,
+    EncounterClass,
+    EncounterBusinessStatus,
+    EncounterServiceType,
     EncounterType,
     EncounterEpisodeOfCare,
     EncounterBasedOn,
+    EncounterCareTeam,
     EncounterParticipant,
     EncounterParticipantType,
     EncounterAppointmentRef,
-    EncounterReasonCode,
-    EncounterReasonReference,
+    EncounterVirtualService,
+    EncounterReason,
+    EncounterReasonUse,
+    EncounterReasonValue,
     EncounterDiagnosis,
+    EncounterDiagnosisCondition,
+    EncounterDiagnosisUse,
     EncounterAccount,
-    EncounterHospDietPreference,
-    EncounterHospSpecialArrangement,
-    EncounterHospSpecialCourtesy,
+    EncounterDietPreference,
+    EncounterSpecialArrangement,
+    EncounterSpecialCourtesy,
     EncounterLocation,
 )
 from app.models.encounter.enums import (
     EncounterBasedOnReferenceType,
     EncounterDiagnosisConditionType,
     EncounterParticipantReferenceType,
+    EncounterServiceTypeReferenceType,
+    EncounterReasonValueReferenceType,
+    EncounterEpisodeOfCareReferenceType,
+    EncounterCareTeamReferenceType,
+    EncounterAppointmentReferenceType,
+    EncounterAccountReferenceType,
+    EncounterLocationReferenceType,
 )
-from app.models.enums import SubjectReferenceType
+from app.models.enums import SubjectReferenceType, OrganizationReferenceType
 from app.schemas.encounter import EncounterCreateSchema, EncounterPatchSchema
 
 
 def _with_relationships(stmt):
-    """Attach eager-load options for all encounter sub-resources."""
+    """Attach eager-load options for all R5 encounter sub-resources."""
     return stmt.options(
         selectinload(EncounterModel.identifiers),
         selectinload(EncounterModel.status_history),
         selectinload(EncounterModel.class_history),
+        selectinload(EncounterModel.classes),
+        selectinload(EncounterModel.business_statuses),
+        selectinload(EncounterModel.service_types),
         selectinload(EncounterModel.types),
         selectinload(EncounterModel.episode_of_cares),
         selectinload(EncounterModel.based_ons),
+        selectinload(EncounterModel.care_teams),
         selectinload(EncounterModel.participants).selectinload(EncounterParticipant.types),
         selectinload(EncounterModel.appointment_refs),
-        selectinload(EncounterModel.reason_codes),
-        selectinload(EncounterModel.reason_references),
-        selectinload(EncounterModel.diagnoses),
+        selectinload(EncounterModel.virtual_services),
+        selectinload(EncounterModel.reasons).selectinload(EncounterReason.uses),
+        selectinload(EncounterModel.reasons).selectinload(EncounterReason.values),
+        selectinload(EncounterModel.diagnoses).selectinload(EncounterDiagnosis.conditions),
+        selectinload(EncounterModel.diagnoses).selectinload(EncounterDiagnosis.uses),
         selectinload(EncounterModel.accounts),
-        selectinload(EncounterModel.hosp_diet_preferences),
-        selectinload(EncounterModel.hosp_special_arrangements),
-        selectinload(EncounterModel.hosp_special_courtesies),
+        selectinload(EncounterModel.diet_preferences),
+        selectinload(EncounterModel.special_arrangements),
+        selectinload(EncounterModel.special_courtesies),
         selectinload(EncounterModel.locations),
     )
 
 
-def _parse_subject(subject_str: Optional[str]):
-    if not subject_str:
-        return None, None
-    parts = subject_str.split("/")
-    if len(parts) != 2:
-        return None, None
-    try:
-        return SubjectReferenceType(parts[0]), int(parts[1])
-    except (ValueError, KeyError):
-        return None, None
-
-
-def _parse_individual(individual_str: Optional[str]):
-    if not individual_str:
-        return None, None
-    parts = individual_str.split("/")
-    if len(parts) != 2:
-        return None, None
-    try:
-        return EncounterParticipantReferenceType(parts[0]), int(parts[1])
-    except (ValueError, KeyError):
-        return None, None
-
-
-def _parse_based_on(ref_str: str):
-    parts = ref_str.split("/")
-    if len(parts) != 2:
-        return None, None
-    try:
-        return EncounterBasedOnReferenceType(parts[0]), int(parts[1])
-    except (ValueError, KeyError):
-        return None, None
-
-
-def _parse_diagnosis_condition(ref_str: str):
-    parts = ref_str.split("/")
-    if len(parts) != 2:
-        return None, None
-    try:
-        return EncounterDiagnosisConditionType(parts[0]), int(parts[1])
-    except (ValueError, KeyError):
-        return None, None
-
-
-def _parse_reason_reference(ref_str: str):
-    parts = ref_str.split("/")
-    if len(parts) != 2:
-        return None, None
-    return parts[0], int(parts[1]) if parts[1].isdigit() else None
-
-
-def _parse_location_ref(ref_str: str):
-    parts = ref_str.split("/")
-    if len(parts) == 2 and parts[1].isdigit():
-        return int(parts[1])
-    return None
-
-
-def _parse_hosp_origin(ref_str: Optional[str]):
+def _parse_ref(ref_str: Optional[str]) -> tuple:
+    """Split 'ResourceType/123' → ('ResourceType', 123). Returns (None, None) on failure."""
     if not ref_str:
         return None, None
     parts = ref_str.split("/")
-    if len(parts) != 2:
+    if len(parts) != 2 or not parts[1].isdigit():
         return None, None
-    return parts[0], int(parts[1]) if parts[1].isdigit() else None
+    return parts[0], int(parts[1])
+
+
+def _cast_ref_type(type_str: Optional[str], enum_cls, field: str):
+    """Cast a string resource type to an enum; raises HTTP 422 if not valid."""
+    if not type_str:
+        return None
+    try:
+        return enum_cls(type_str)
+    except ValueError:
+        allowed = [e.value for e in enum_cls]
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid reference type '{type_str}' for {field}. Allowed: {allowed}",
+        )
+
+
+def _parse_subject(subject_str: Optional[str]):
+    type_str, ref_id = _parse_ref(subject_str)
+    if not type_str:
+        return None, None
+    try:
+        return SubjectReferenceType(type_str), ref_id
+    except ValueError:
+        return None, None
 
 
 class EncounterRepository:
@@ -136,7 +125,10 @@ class EncounterRepository:
             )
             return (await session.execute(stmt)).scalars().first()
 
-    def _apply_list_filters(self, stmt, user_id, org_id, status, patient_id, class_code, period_start_from, period_start_to):
+    def _apply_list_filters(
+        self, stmt, user_id, org_id, status, patient_id,
+        actual_period_start_from, actual_period_start_to,
+    ):
         if user_id:
             stmt = stmt.where(EncounterModel.user_id == user_id)
         if org_id:
@@ -148,12 +140,10 @@ class EncounterRepository:
                 EncounterModel.subject_type == SubjectReferenceType.PATIENT,
                 EncounterModel.subject_id == patient_id,
             )
-        if class_code:
-            stmt = stmt.where(EncounterModel.class_code == class_code)
-        if period_start_from is not None:
-            stmt = stmt.where(EncounterModel.period_start >= period_start_from)
-        if period_start_to is not None:
-            stmt = stmt.where(EncounterModel.period_start <= period_start_to)
+        if actual_period_start_from is not None:
+            stmt = stmt.where(EncounterModel.actual_period_start >= actual_period_start_from)
+        if actual_period_start_to is not None:
+            stmt = stmt.where(EncounterModel.actual_period_start <= actual_period_start_to)
         return stmt
 
     async def get_me(
@@ -162,24 +152,25 @@ class EncounterRepository:
         org_id: str,
         status: Optional[str] = None,
         patient_id: Optional[int] = None,
-        class_code: Optional[str] = None,
-        period_start_from: Optional[datetime] = None,
-        period_start_to: Optional[datetime] = None,
+        actual_period_start_from: Optional[datetime] = None,
+        actual_period_start_to: Optional[datetime] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[EncounterModel], int]:
         async with self.session_factory() as session:
             base = self._apply_list_filters(
                 _with_relationships(select(EncounterModel)),
-                user_id, org_id, status, patient_id, class_code, period_start_from, period_start_to,
+                user_id, org_id, status, patient_id,
+                actual_period_start_from, actual_period_start_to,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(EncounterModel),
-                user_id, org_id, status, patient_id, class_code, period_start_from, period_start_to,
+                user_id, org_id, status, patient_id,
+                actual_period_start_from, actual_period_start_to,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
-                base.order_by(EncounterModel.period_start.desc()).offset(offset).limit(limit)
+                base.order_by(EncounterModel.actual_period_start.desc()).offset(offset).limit(limit)
             )).scalars().all())
         return rows, total
 
@@ -189,24 +180,25 @@ class EncounterRepository:
         org_id: Optional[str] = None,
         status: Optional[str] = None,
         patient_id: Optional[int] = None,
-        class_code: Optional[str] = None,
-        period_start_from: Optional[datetime] = None,
-        period_start_to: Optional[datetime] = None,
+        actual_period_start_from: Optional[datetime] = None,
+        actual_period_start_to: Optional[datetime] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[EncounterModel], int]:
         async with self.session_factory() as session:
             base = self._apply_list_filters(
                 _with_relationships(select(EncounterModel)),
-                user_id, org_id, status, patient_id, class_code, period_start_from, period_start_to,
+                user_id, org_id, status, patient_id,
+                actual_period_start_from, actual_period_start_to,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(EncounterModel),
-                user_id, org_id, status, patient_id, class_code, period_start_from, period_start_to,
+                user_id, org_id, status, patient_id,
+                actual_period_start_from, actual_period_start_to,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
-                base.order_by(EncounterModel.period_start.desc()).offset(offset).limit(limit)
+                base.order_by(EncounterModel.actual_period_start.desc()).offset(offset).limit(limit)
             )).scalars().all())
         return rows, total
 
@@ -226,14 +218,6 @@ class EncounterRepository:
             user_id=user_id,
             org_id=org_id,
             status=payload.status,
-            class_system=payload.class_system,
-            class_version=payload.class_version,
-            class_code=payload.class_code,
-            class_display=payload.class_display,
-            service_type_system=payload.service_type_system,
-            service_type_code=payload.service_type_code,
-            service_type_display=payload.service_type_display,
-            service_type_text=payload.service_type_text,
             priority_system=payload.priority_system,
             priority_code=payload.priority_code,
             priority_display=payload.priority_display,
@@ -241,14 +225,30 @@ class EncounterRepository:
             subject_type=subject_type,
             subject_id=subject_id,
             subject_display=subject_display,
-            period_start=payload.period_start,
-            period_end=payload.period_end,
+            subject_status_system=payload.subject_status_system,
+            subject_status_code=payload.subject_status_code,
+            subject_status_display=payload.subject_status_display,
+            subject_status_text=payload.subject_status_text,
+            actual_period_start=payload.actual_period_start,
+            actual_period_end=payload.actual_period_end,
+            planned_start_date=payload.planned_start_date,
+            planned_end_date=payload.planned_end_date,
             length_value=payload.length_value,
             length_comparator=payload.length_comparator,
             length_unit=payload.length_unit,
             length_system=payload.length_system,
             length_code=payload.length_code,
-            service_provider_id=payload.service_provider_id,
+            service_provider_type=(
+                _cast_ref_type(
+                    _parse_open_ref(payload.service_provider)[0],
+                    OrganizationReferenceType,
+                    "serviceProvider",
+                ) if payload.service_provider else None
+            ),
+            service_provider_id=(
+                _parse_open_ref(payload.service_provider)[1]
+                if payload.service_provider else None
+            ),
             service_provider_display=payload.service_provider_display,
             part_of_id=payload.part_of_id,
             created_by=created_by,
@@ -260,14 +260,10 @@ class EncounterRepository:
                 encounter.identifiers.append(EncounterIdentifier(
                     org_id=org_id,
                     use=inp.use,
-                    type_system=inp.type_system,
-                    type_code=inp.type_code,
-                    type_display=inp.type_display,
-                    type_text=inp.type_text,
-                    system=inp.system,
-                    value=inp.value,
-                    period_start=inp.period_start,
-                    period_end=inp.period_end,
+                    type_system=inp.type_system, type_code=inp.type_code,
+                    type_display=inp.type_display, type_text=inp.type_text,
+                    system=inp.system, value=inp.value,
+                    period_start=inp.period_start, period_end=inp.period_end,
                     assigner=inp.assigner,
                 ))
 
@@ -275,203 +271,273 @@ class EncounterRepository:
         if payload.status_history:
             for sh in payload.status_history:
                 encounter.status_history.append(EncounterStatusHistory(
-                    org_id=org_id,
-                    status=sh.status,
-                    period_start=sh.period_start,
-                    period_end=sh.period_end,
+                    org_id=org_id, status=sh.status,
+                    period_start=sh.period_start, period_end=sh.period_end,
                 ))
 
-        # classHistory
+        # classHistory (backward-compat)
         if payload.class_history:
             for ch in payload.class_history:
                 encounter.class_history.append(EncounterClassHistory(
                     org_id=org_id,
-                    class_system=ch.class_system,
-                    class_version=ch.class_version,
-                    class_code=ch.class_code,
-                    class_display=ch.class_display,
-                    period_start=ch.period_start,
-                    period_end=ch.period_end,
+                    class_system=ch.class_system, class_version=ch.class_version,
+                    class_code=ch.class_code, class_display=ch.class_display,
+                    period_start=ch.period_start, period_end=ch.period_end,
                 ))
 
-        # type
+        # class[] (R5 0..* CodeableConcept)
+        class_payload = getattr(payload, "class_", None)
+        if class_payload:
+            for c in class_payload:
+                encounter.classes.append(EncounterClass(
+                    org_id=org_id,
+                    coding_system=c.coding_system, coding_code=c.coding_code,
+                    coding_display=c.coding_display, text=c.text,
+                ))
+
+        # businessStatus[]
+        if payload.business_status:
+            for bs in payload.business_status:
+                encounter.business_statuses.append(EncounterBusinessStatus(
+                    org_id=org_id,
+                    code_system=bs.code_system, code_code=bs.code_code,
+                    code_display=bs.code_display, code_text=bs.code_text,
+                    type_system=bs.type_system, type_code=bs.type_code,
+                    type_display=bs.type_display, effective_date=bs.effective_date,
+                ))
+
+        # serviceType[] (CodeableReference(HealthcareService))
+        if payload.service_type:
+            for st in payload.service_type:
+                st_ref_type = None
+                st_ref_id = None
+                if st.reference:
+                    st_type_str, st_ref_id = _parse_ref(st.reference)
+                    st_ref_type = _cast_ref_type(st_type_str, EncounterServiceTypeReferenceType, "serviceType.reference")
+                encounter.service_types.append(EncounterServiceType(
+                    org_id=org_id,
+                    coding_system=st.coding_system, coding_code=st.coding_code,
+                    coding_display=st.coding_display, text=st.text,
+                    reference_type=st_ref_type, reference_id=st_ref_id,
+                    reference_display=st.reference_display,
+                ))
+
+        # type[]
         if payload.type:
             for t in payload.type:
                 encounter.types.append(EncounterType(
                     org_id=org_id,
-                    coding_system=t.coding_system,
-                    coding_code=t.coding_code,
-                    coding_display=t.coding_display,
-                    text=t.text,
+                    coding_system=t.coding_system, coding_code=t.coding_code,
+                    coding_display=t.coding_display, text=t.text,
                 ))
 
-        # episodeOfCare
+        # episodeOfCare[]
         if payload.episode_of_care:
             for e in payload.episode_of_care:
+                eoc_type_str, eoc_id = _parse_ref(e.reference)
+                eoc_type = _cast_ref_type(eoc_type_str, EncounterEpisodeOfCareReferenceType, "episodeOfCare.reference")
                 encounter.episode_of_cares.append(EncounterEpisodeOfCare(
                     org_id=org_id,
-                    episode_of_care_id=e.episode_of_care_id,
-                    display=e.display,
+                    reference_type=eoc_type, reference_id=eoc_id,
+                    reference_display=e.reference_display,
                 ))
 
-        # basedOn
+        # basedOn[]
         if payload.based_on:
             for b in payload.based_on:
-                ref_type, ref_id = _parse_based_on(b.reference)
+                bo_type_str, bo_id = _parse_ref(b.reference)
+                bo_type = _cast_ref_type(bo_type_str, EncounterBasedOnReferenceType, "basedOn.reference")
                 encounter.based_ons.append(EncounterBasedOn(
-                    org_id=org_id,
-                    reference_type=ref_type,
-                    reference_id=ref_id,
-                    reference_display=b.display,
+                    org_id=org_id, reference_type=bo_type,
+                    reference_id=bo_id, reference_display=b.reference_display,
                 ))
 
-        # participant
+        # careTeam[] (R5 new)
+        if payload.care_team:
+            for ct in payload.care_team:
+                ct_type_str, ct_id = _parse_ref(ct.reference)
+                ct_type = _cast_ref_type(ct_type_str, EncounterCareTeamReferenceType, "careTeam.reference")
+                encounter.care_teams.append(EncounterCareTeam(
+                    org_id=org_id,
+                    reference_type=ct_type, reference_id=ct_id,
+                    reference_display=ct.reference_display,
+                ))
+
+        # participant[]
         if payload.participant:
             for p in payload.participant:
-                ind_type, ind_id = _parse_individual(p.individual)
+                ref_type = None
+                ref_id = None
+                if p.reference:
+                    ref_type_str, ref_id = _parse_ref(p.reference)
+                    ref_type = _cast_ref_type(ref_type_str, EncounterParticipantReferenceType, "participant.actor")
                 participant = EncounterParticipant(
                     org_id=org_id,
-                    individual_type=ind_type,
-                    individual_id=ind_id,
-                    period_start=p.period_start,
-                    period_end=p.period_end,
+                    reference_type=ref_type, reference_id=ref_id,
+                    reference_display=p.reference_display,
+                    period_start=p.period_start, period_end=p.period_end,
                 )
                 if p.type:
                     for pt in p.type:
                         participant.types.append(EncounterParticipantType(
                             org_id=org_id,
-                            coding_system=pt.coding_system,
-                            coding_code=pt.coding_code,
-                            coding_display=pt.coding_display,
-                            text=pt.text,
+                            coding_system=pt.coding_system, coding_code=pt.coding_code,
+                            coding_display=pt.coding_display, text=pt.text,
                         ))
                 encounter.participants.append(participant)
 
-        # appointment
+        # appointment[]
         if payload.appointment:
             for a in payload.appointment:
+                appt_type_str, appt_id = _parse_ref(a.reference)
+                appt_type = _cast_ref_type(appt_type_str, EncounterAppointmentReferenceType, "appointment.reference")
                 encounter.appointment_refs.append(EncounterAppointmentRef(
                     org_id=org_id,
-                    appointment_id=a.appointment_id,
-                    appointment_display=a.display,
+                    reference_type=appt_type, reference_id=appt_id,
+                    reference_display=a.reference_display,
                 ))
 
-        # reasonCode
-        if payload.reason_code:
-            for r in payload.reason_code:
-                encounter.reason_codes.append(EncounterReasonCode(
+        # virtualService[] (R5 new)
+        if payload.virtual_service:
+            for vs in payload.virtual_service:
+                encounter.virtual_services.append(EncounterVirtualService(
                     org_id=org_id,
-                    coding_system=r.coding_system,
-                    coding_code=r.coding_code,
-                    coding_display=r.coding_display,
-                    text=r.text,
+                    channel_type_system=vs.channel_type_system,
+                    channel_type_code=vs.channel_type_code,
+                    channel_type_display=vs.channel_type_display,
+                    address_url=vs.address_url,
+                    additional_info=vs.additional_info,
+                    max_participants=vs.max_participants,
+                    session_key=vs.session_key,
                 ))
 
-        # reasonReference
-        if payload.reason_reference:
-            for rr in payload.reason_reference:
-                rr_type, rr_id = _parse_reason_reference(rr.reference)
-                encounter.reason_references.append(EncounterReasonReference(
-                    org_id=org_id,
-                    reference_type=rr_type,
-                    reference_id=rr_id,
-                    reference_display=rr.display,
-                ))
+        # reason[] (R5 BackboneElement with grandchildren)
+        if payload.reason:
+            for r_inp in payload.reason:
+                reason = EncounterReason(org_id=org_id)
+                if r_inp.use:
+                    for ru in r_inp.use:
+                        reason.uses.append(EncounterReasonUse(
+                            org_id=org_id,
+                            coding_system=ru.coding_system, coding_code=ru.coding_code,
+                            coding_display=ru.coding_display, text=ru.text,
+                        ))
+                if r_inp.value:
+                    for rv in r_inp.value:
+                        rv_type = None
+                        rv_id = None
+                        if rv.reference:
+                            rv_type_str, rv_id = _parse_ref(rv.reference)
+                            rv_type = _cast_ref_type(rv_type_str, EncounterReasonValueReferenceType, "reason.value.reference")
+                        reason.values.append(EncounterReasonValue(
+                            org_id=org_id,
+                            coding_system=rv.coding_system, coding_code=rv.coding_code,
+                            coding_display=rv.coding_display, text=rv.text,
+                            reference_type=rv_type, reference_id=rv_id,
+                            reference_display=rv.reference_display,
+                        ))
+                encounter.reasons.append(reason)
 
-        # diagnosis
+        # diagnosis[] (BackboneElement with grandchildren)
         if payload.diagnosis:
-            for d in payload.diagnosis:
-                cond_type, cond_id = _parse_diagnosis_condition(d.condition)
-                encounter.diagnoses.append(EncounterDiagnosis(
-                    org_id=org_id,
-                    condition_type=cond_type,
-                    condition_id=cond_id,
-                    condition_display=d.condition_display,
-                    use_system=d.use_system,
-                    use_code=d.use_code,
-                    use_display=d.use_display,
-                    use_text=d.use_text,
-                    rank=d.rank,
-                ))
+            for d_inp in payload.diagnosis:
+                diagnosis = EncounterDiagnosis(org_id=org_id)
+                if d_inp.condition:
+                    for dc in d_inp.condition:
+                        dc_type = None
+                        dc_id = None
+                        if dc.reference:
+                            dc_type_str, dc_id = _parse_ref(dc.reference)
+                            dc_type = _cast_ref_type(dc_type_str, EncounterDiagnosisConditionType, "diagnosis.condition.reference")
+                        diagnosis.conditions.append(EncounterDiagnosisCondition(
+                            org_id=org_id,
+                            coding_system=dc.coding_system, coding_code=dc.coding_code,
+                            coding_display=dc.coding_display, text=dc.text,
+                            reference_type=dc_type, reference_id=dc_id,
+                            reference_display=dc.reference_display,
+                        ))
+                if d_inp.use:
+                    for du in d_inp.use:
+                        diagnosis.uses.append(EncounterDiagnosisUse(
+                            org_id=org_id,
+                            coding_system=du.coding_system, coding_code=du.coding_code,
+                            coding_display=du.coding_display, text=du.text,
+                        ))
+                encounter.diagnoses.append(diagnosis)
 
-        # account
+        # account[]
         if payload.account:
             for a in payload.account:
+                acct_type_str, acct_id = _parse_ref(a.reference)
+                acct_type = _cast_ref_type(acct_type_str, EncounterAccountReferenceType, "account.reference")
                 encounter.accounts.append(EncounterAccount(
                     org_id=org_id,
-                    account_id=a.account_id,
-                    account_display=a.display,
+                    reference_type=acct_type, reference_id=acct_id,
+                    reference_display=a.reference_display,
                 ))
 
-        # hospitalization
-        if payload.hospitalization:
-            h = payload.hospitalization
-            origin_type, origin_id = _parse_hosp_origin(h.origin)
-            dest_type, dest_id = _parse_hosp_origin(h.destination)
-            encounter.hosp_pre_admission_identifier_system = h.pre_admission_identifier_system
-            encounter.hosp_pre_admission_identifier_value = h.pre_admission_identifier_value
-            encounter.hosp_origin_type = origin_type
-            encounter.hosp_origin_id = origin_id
-            encounter.hosp_origin_display = h.origin_display
-            encounter.hosp_admit_source_system = h.admit_source_system
-            encounter.hosp_admit_source_code = h.admit_source_code
-            encounter.hosp_admit_source_display = h.admit_source_display
-            encounter.hosp_admit_source_text = h.admit_source_text
-            encounter.hosp_re_admission_system = h.re_admission_system
-            encounter.hosp_re_admission_code = h.re_admission_code
-            encounter.hosp_re_admission_display = h.re_admission_display
-            encounter.hosp_re_admission_text = h.re_admission_text
-            encounter.hosp_destination_type = dest_type
-            encounter.hosp_destination_id = dest_id
-            encounter.hosp_destination_display = h.destination_display
-            encounter.hosp_discharge_disposition_system = h.discharge_disposition_system
-            encounter.hosp_discharge_disposition_code = h.discharge_disposition_code
-            encounter.hosp_discharge_disposition_display = h.discharge_disposition_display
-            encounter.hosp_discharge_disposition_text = h.discharge_disposition_text
+        # admission (flat columns on main table)
+        if payload.admission:
+            adm = payload.admission
+            origin_type_str, origin_id = _parse_ref(adm.origin)
+            dest_type_str, dest_id = _parse_ref(adm.destination)
+            encounter.admission_pre_admission_identifier_system = adm.pre_admission_identifier_system
+            encounter.admission_pre_admission_identifier_value = adm.pre_admission_identifier_value
+            encounter.admission_origin_type = origin_type_str
+            encounter.admission_origin_id = origin_id
+            encounter.admission_origin_display = adm.origin_display
+            encounter.admission_admit_source_system = adm.admit_source_system
+            encounter.admission_admit_source_code = adm.admit_source_code
+            encounter.admission_admit_source_display = adm.admit_source_display
+            encounter.admission_admit_source_text = adm.admit_source_text
+            encounter.admission_re_admission_system = adm.re_admission_system
+            encounter.admission_re_admission_code = adm.re_admission_code
+            encounter.admission_re_admission_display = adm.re_admission_display
+            encounter.admission_re_admission_text = adm.re_admission_text
+            encounter.admission_destination_type = dest_type_str
+            encounter.admission_destination_id = dest_id
+            encounter.admission_destination_display = adm.destination_display
+            encounter.admission_discharge_disposition_system = adm.discharge_disposition_system
+            encounter.admission_discharge_disposition_code = adm.discharge_disposition_code
+            encounter.admission_discharge_disposition_display = adm.discharge_disposition_display
+            encounter.admission_discharge_disposition_text = adm.discharge_disposition_text
 
-            if h.diet_preference:
-                for dp in h.diet_preference:
-                    encounter.hosp_diet_preferences.append(EncounterHospDietPreference(
-                        org_id=org_id,
-                        coding_system=dp.coding_system,
-                        coding_code=dp.coding_code,
-                        coding_display=dp.coding_display,
-                        text=dp.text,
-                    ))
-            if h.special_arrangement:
-                for sa in h.special_arrangement:
-                    encounter.hosp_special_arrangements.append(EncounterHospSpecialArrangement(
-                        org_id=org_id,
-                        coding_system=sa.coding_system,
-                        coding_code=sa.coding_code,
-                        coding_display=sa.coding_display,
-                        text=sa.text,
-                    ))
-            if h.special_courtesy:
-                for sc in h.special_courtesy:
-                    encounter.hosp_special_courtesies.append(EncounterHospSpecialCourtesy(
-                        org_id=org_id,
-                        coding_system=sc.coding_system,
-                        coding_code=sc.coding_code,
-                        coding_display=sc.coding_display,
-                        text=sc.text,
-                    ))
+        # dietPreference[] / specialArrangement[] / specialCourtesy[] (top-level in R5)
+        if payload.diet_preference:
+            for dp in payload.diet_preference:
+                encounter.diet_preferences.append(EncounterDietPreference(
+                    org_id=org_id,
+                    coding_system=dp.coding_system, coding_code=dp.coding_code,
+                    coding_display=dp.coding_display, text=dp.text,
+                ))
+        if payload.special_arrangement:
+            for sa in payload.special_arrangement:
+                encounter.special_arrangements.append(EncounterSpecialArrangement(
+                    org_id=org_id,
+                    coding_system=sa.coding_system, coding_code=sa.coding_code,
+                    coding_display=sa.coding_display, text=sa.text,
+                ))
+        if payload.special_courtesy:
+            for sc in payload.special_courtesy:
+                encounter.special_courtesies.append(EncounterSpecialCourtesy(
+                    org_id=org_id,
+                    coding_system=sc.coding_system, coding_code=sc.coding_code,
+                    coding_display=sc.coding_display, text=sc.text,
+                ))
 
-        # location
+        # location[]
         if payload.location:
             for loc in payload.location:
-                loc_id = _parse_location_ref(loc.location)
+                loc_type_str, loc_id = _parse_ref(loc.reference)
+                loc_type = _cast_ref_type(loc_type_str, EncounterLocationReferenceType, "location.reference")
                 encounter.locations.append(EncounterLocation(
                     org_id=org_id,
-                    location_id=loc_id,
-                    location_display=loc.location_display,
+                    reference_type=loc_type, reference_id=loc_id,
+                    reference_display=loc.reference_display,
                     status=loc.status,
-                    physical_type_system=loc.physical_type_system,
-                    physical_type_code=loc.physical_type_code,
-                    physical_type_display=loc.physical_type_display,
-                    physical_type_text=loc.physical_type_text,
-                    period_start=loc.period_start,
-                    period_end=loc.period_end,
+                    form_system=loc.form_system, form_code=loc.form_code,
+                    form_display=loc.form_display, form_text=loc.form_text,
+                    period_start=loc.period_start, period_end=loc.period_end,
                 ))
 
         async with self.session_factory() as session:

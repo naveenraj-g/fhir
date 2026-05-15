@@ -3,6 +3,7 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    Enum,
     ForeignKey,
     Integer,
     Sequence,
@@ -13,6 +14,16 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import OrganizationReferenceType
+from app.schemas.enums import (
+    AdministrativeGender,
+    AddressType,
+    AddressUse,
+    ContactPointSystem,
+    ContactPointUse,
+    HumanNameUse,
+    IdentifierUse,
+)
 
 practitioner_id_seq = Sequence("practitioner_id_seq", start=30000, increment=1)
 
@@ -33,7 +44,7 @@ class PractitionerModel(Base):
     user_id = Column(String, nullable=True, index=True)
     org_id = Column(String, nullable=True)
     active = Column(Boolean, nullable=True)
-    gender = Column(String, nullable=True)
+    gender = Column(Enum(AdministrativeGender, name="administrative_gender"), nullable=True)
     birth_date = Column(Date, nullable=True)
     deceased_boolean = Column(Boolean, nullable=True)
     deceased_datetime = Column(DateTime(timezone=True), nullable=True)
@@ -60,7 +71,7 @@ class PractitionerName(Base):
     practitioner_id = Column(Integer, ForeignKey("practitioner.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    use = Column(String, nullable=True)
+    use = Column(Enum(HumanNameUse, name="human_name_use"), nullable=True)
     text = Column(String, nullable=True)
     family = Column(String, nullable=True)
     given = Column(Text, nullable=True)   # comma-separated
@@ -79,7 +90,7 @@ class PractitionerIdentifier(Base):
     practitioner_id = Column(Integer, ForeignKey("practitioner.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    use = Column(String, nullable=True)
+    use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
     type_system = Column(String, nullable=True)
     type_code = Column(String, nullable=True)
     type_display = Column(String, nullable=True)
@@ -100,9 +111,9 @@ class PractitionerTelecom(Base):
     practitioner_id = Column(Integer, ForeignKey("practitioner.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    system = Column(String, nullable=True)
+    system = Column(Enum(ContactPointSystem, name="contact_point_system"), nullable=True)
     value = Column(String, nullable=True)
-    use = Column(String, nullable=True)
+    use = Column(Enum(ContactPointUse, name="contact_point_use"), nullable=True)
     rank = Column(Integer, nullable=True)
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
@@ -117,8 +128,8 @@ class PractitionerAddress(Base):
     practitioner_id = Column(Integer, ForeignKey("practitioner.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    use = Column(String, nullable=True)
-    type = Column(String, nullable=True)
+    use = Column(Enum(AddressUse, name="address_use"), nullable=True)
+    type = Column(Enum(AddressType, name="address_type"), nullable=True)
     text = Column(String, nullable=True)
     line = Column(Text, nullable=True)  # comma-separated
     city = Column(String, nullable=True)
@@ -158,25 +169,54 @@ class PractitionerQualification(Base):
     practitioner_id = Column(Integer, ForeignKey("practitioner.id"), nullable=False, index=True)
     org_id = Column(String, nullable=True)
 
-    # qualification.identifier (one flat identifier per qualification — common case)
-    identifier_system = Column(String, nullable=True)
-    identifier_value = Column(String, nullable=True)
-
     # qualification.code (1..1 CodeableConcept — flattened)
     code_system = Column(String, nullable=True)
     code_code = Column(String, nullable=True)
     code_display = Column(String, nullable=True)
     code_text = Column(String, nullable=True)
 
+    # qualification.status (0..1 CodeableConcept — flattened)
+    status_system = Column(String, nullable=True)
+    status_code = Column(String, nullable=True)
+    status_display = Column(String, nullable=True)
+    status_text = Column(String, nullable=True)
+
     # qualification.period (0..1)
     period_start = Column(DateTime(timezone=True), nullable=True)
     period_end = Column(DateTime(timezone=True), nullable=True)
 
     # qualification.issuer (0..1 Reference(Organization) — flattened)
+    issuer_type = Column(Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False), nullable=True)
     issuer_id = Column(Integer, nullable=True)
     issuer_display = Column(String, nullable=True)
 
     practitioner = relationship("PractitionerModel", back_populates="qualifications")
+    identifiers = relationship(
+        "PractitionerQualificationIdentifier",
+        back_populates="qualification",
+        cascade="all, delete-orphan",
+    )
+
+
+class PractitionerQualificationIdentifier(Base):
+    __tablename__ = "practitioner_qualification_identifier"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    qualification_id = Column(Integer, ForeignKey("practitioner_qualification.id"), nullable=False, index=True)
+    org_id = Column(String, nullable=True)
+
+    use = Column(Enum(IdentifierUse, name="identifier_use"), nullable=True)
+    type_system = Column(String, nullable=True)
+    type_code = Column(String, nullable=True)
+    type_display = Column(String, nullable=True)
+    type_text = Column(String, nullable=True)
+    system = Column(String, nullable=True)
+    value = Column(String, nullable=True)
+    period_start = Column(DateTime(timezone=True), nullable=True)
+    period_end = Column(DateTime(timezone=True), nullable=True)
+    assigner = Column(String, nullable=True)
+
+    qualification = relationship("PractitionerQualification", back_populates="identifiers")
 
 
 class PractitionerCommunication(Base):

@@ -9,6 +9,14 @@ class SubjectReferenceType(str, Enum):
     GROUP = "Group"
 
 
+class OrganizationReferenceType(str, Enum):
+    """Shared enum for any FHIR field whose only allowed reference type is Organization.
+    Stored as DB type name 'organization_reference_type' (shared across all tables).
+    NOTE: this is a FHIR resource reference — distinct from the tenant org_id column."""
+
+    ORGANIZATION = "Organization"
+
+
 class IdentifierUse(str, Enum):
     """FHIR R4 IdentifierUse — used by any resource that stores an identifier.use column."""
 

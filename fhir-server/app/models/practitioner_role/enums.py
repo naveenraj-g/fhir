@@ -9,3 +9,21 @@ class DayOfWeek(str, Enum):
     fri = "fri"
     sat = "sat"
     sun = "sun"
+
+
+class PractitionerRoleLocationReferenceType(str, Enum):
+    """Allowed reference types for PractitionerRole.location[]."""
+
+    LOCATION = "Location"
+
+
+class PractitionerRoleHealthcareServiceReferenceType(str, Enum):
+    """Allowed reference types for PractitionerRole.healthcareService[]."""
+
+    HEALTHCARE_SERVICE = "HealthcareService"
+
+
+class PractitionerRoleEndpointReferenceType(str, Enum):
+    """Allowed reference types for PractitionerRole.endpoint[]."""
+
+    ENDPOINT = "Endpoint"

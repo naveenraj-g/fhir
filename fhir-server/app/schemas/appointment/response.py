@@ -14,10 +14,33 @@ from app.schemas.common.fhir import (
 # ── FHIR sub-types ─────────────────────────────────────────────────────────────
 
 
+class FHIRCodeableReference(BaseModel):
+    """R5 CodeableReference — concept (CodeableConcept) and/or reference (Reference)."""
+    concept: Optional[FHIRCodeableConcept] = None
+    reference: Optional[FHIRReference] = None
+
+
+class FHIRAnnotation(BaseModel):
+    """R5 Annotation datatype."""
+    authorString: Optional[str] = None
+    authorReference: Optional[FHIRReference] = None
+    time: Optional[str] = None
+    text: str
+
+
+class FHIRVirtualServiceDetail(BaseModel):
+    """R5 VirtualServiceDetail datatype."""
+    channelType: Optional[dict] = None
+    addressUrl: Optional[str] = None
+    additionalInfo: Optional[List[str]] = None
+    maxParticipants: Optional[int] = None
+    sessionKey: Optional[str] = None
+
+
 class FHIRAppointmentParticipant(BaseModel):
     type: Optional[List[FHIRCodeableConcept]] = None
     actor: Optional[FHIRReference] = None
-    required: Optional[str] = Field(None, description="required | optional | information-only")
+    required: Optional[bool] = Field(None, description="True if participation is required (R5 boolean).")
     status: str = Field(..., description="accepted | declined | tentative | needs-action")
     period: Optional[FHIRPeriod] = None
 
@@ -67,21 +90,27 @@ class FHIRAppointmentSchema(BaseModel):
         description="proposed | pending | booked | arrived | fulfilled | cancelled | noshow | entered-in-error | checked-in | waitlist",
     )
     identifier: Optional[List[FHIRIdentifier]] = None
-    cancelationReason: Optional[FHIRCodeableConcept] = None
+    cancellationReason: Optional[FHIRCodeableConcept] = None
+    class_: Optional[List[FHIRCodeableConcept]] = Field(None, alias="class")
     serviceCategory: Optional[List[FHIRCodeableConcept]] = None
     serviceType: Optional[List[FHIRCodeableConcept]] = None
     specialty: Optional[List[FHIRCodeableConcept]] = None
     appointmentType: Optional[FHIRCodeableConcept] = None
-    reasonCode: Optional[List[FHIRCodeableConcept]] = None
-    reasonReference: Optional[List[FHIRReference]] = None
+    reason: Optional[List[FHIRCodeableReference]] = None
+    priority: Optional[FHIRCodeableConcept] = None
     supportingInformation: Optional[List[FHIRReference]] = None
-    priority: Optional[int] = Field(None, description="Unsigned integer — 0 = not prioritized.")
     description: Optional[str] = None
+    replaces: Optional[List[FHIRReference]] = None
+    virtualService: Optional[List[FHIRVirtualServiceDetail]] = None
+    previousAppointment: Optional[FHIRReference] = None
+    originatingAppointment: Optional[FHIRReference] = None
     slot: Optional[List[FHIRReference]] = None
-    basedOn: Optional[List[FHIRReference]] = None
+    account: Optional[List[FHIRReference]] = None
     created: Optional[str] = None
-    comment: Optional[str] = None
-    patientInstruction: Optional[str] = None
+    cancellationDate: Optional[str] = None
+    note: Optional[List[FHIRAnnotation]] = None
+    patientInstruction: Optional[List[FHIRCodeableReference]] = None
+    basedOn: Optional[List[FHIRReference]] = None
     subject: Optional[FHIRReference] = None
     encounter: Optional[FHIRReference] = None
     start: Optional[str] = None
@@ -89,7 +118,11 @@ class FHIRAppointmentSchema(BaseModel):
     minutesDuration: Optional[int] = None
     requestedPeriod: Optional[List[FHIRPeriod]] = None
     participant: List[FHIRAppointmentParticipant] = Field(..., description="At least one participant is required.")
+    recurrenceId: Optional[int] = None
+    occurrenceChanged: Optional[bool] = None
     recurrenceTemplate: Optional[FHIRRecurrenceTemplate] = None
+
+    model_config = {"populate_by_name": True}
 
 
 class FHIRAppointmentBundleEntry(BaseModel):
@@ -116,6 +149,13 @@ class PlainAppointmentIdentifier(BaseModel):
     assigner: Optional[str] = None
 
 
+class PlainAppointmentClass(BaseModel):
+    coding_system: Optional[str] = None
+    coding_code: Optional[str] = None
+    coding_display: Optional[str] = None
+    text: Optional[str] = None
+
+
 class PlainAppointmentServiceCategory(BaseModel):
     coding_system: Optional[str] = None
     coding_code: Optional[str] = None
@@ -137,14 +177,11 @@ class PlainAppointmentSpecialty(BaseModel):
     text: Optional[str] = None
 
 
-class PlainAppointmentReasonCode(BaseModel):
+class PlainAppointmentReason(BaseModel):
     coding_system: Optional[str] = None
     coding_code: Optional[str] = None
     coding_display: Optional[str] = None
     text: Optional[str] = None
-
-
-class PlainAppointmentReasonReference(BaseModel):
     reference_type: Optional[str] = None
     reference_id: Optional[int] = None
     reference_display: Optional[str] = None
@@ -157,13 +194,56 @@ class PlainAppointmentSupportingInformation(BaseModel):
 
 
 class PlainAppointmentSlot(BaseModel):
-    slot_id: Optional[int] = None
-    slot_display: Optional[str] = None
+    reference_type: Optional[str] = None
+    reference_id: Optional[int] = None
+    reference_display: Optional[str] = None
 
 
 class PlainAppointmentBasedOn(BaseModel):
-    service_request_id: Optional[int] = None
-    service_request_display: Optional[str] = None
+    reference_type: Optional[str] = None
+    reference_id: Optional[int] = None
+    reference_display: Optional[str] = None
+
+
+class PlainAppointmentReplaces(BaseModel):
+    reference_type: Optional[str] = None
+    reference_id: Optional[int] = None
+    reference_display: Optional[str] = None
+
+
+class PlainAppointmentVirtualService(BaseModel):
+    channel_type_system: Optional[str] = None
+    channel_type_code: Optional[str] = None
+    channel_type_display: Optional[str] = None
+    address_url: Optional[str] = None
+    additional_info: Optional[List[str]] = None
+    max_participants: Optional[int] = None
+    session_key: Optional[str] = None
+
+
+class PlainAppointmentAccount(BaseModel):
+    reference_type: Optional[str] = None
+    reference_id: Optional[int] = None
+    reference_display: Optional[str] = None
+
+
+class PlainAppointmentNote(BaseModel):
+    author_string: Optional[str] = None
+    author_reference_type: Optional[str] = None
+    author_reference_id: Optional[int] = None
+    author_reference_display: Optional[str] = None
+    time: Optional[str] = None
+    text: str
+
+
+class PlainAppointmentPatientInstruction(BaseModel):
+    coding_system: Optional[str] = None
+    coding_code: Optional[str] = None
+    coding_display: Optional[str] = None
+    text: Optional[str] = None
+    reference_type: Optional[str] = None
+    reference_id: Optional[int] = None
+    reference_display: Optional[str] = None
 
 
 class PlainAppointmentParticipantType(BaseModel):
@@ -174,11 +254,11 @@ class PlainAppointmentParticipantType(BaseModel):
 
 
 class PlainAppointmentParticipant(BaseModel):
-    actor_type: Optional[str] = Field(None, description="e.g. 'Practitioner' | 'Patient'")
-    actor_id: Optional[int] = None
-    actor_display: Optional[str] = None
+    reference_type: Optional[str] = Field(None, description="e.g. 'Practitioner' | 'Patient'")
+    reference_id: Optional[int] = None
+    reference_display: Optional[str] = None
     types: Optional[List[PlainAppointmentParticipantType]] = None
-    required: Optional[str] = Field(None, description="required | optional | information-only")
+    required: Optional[bool] = Field(None, description="True if participation is required.")
     status: Optional[str] = Field(None, description="accepted | declined | tentative | needs-action")
     period_start: Optional[str] = None
     period_end: Optional[str] = None
@@ -237,22 +317,33 @@ class PlainAppointmentResponse(BaseModel):
     user_id: Optional[str] = None
     org_id: Optional[str] = None
     status: Optional[str] = None
-    # cancelationReason fields (R4 single 'l')
+    # cancellationReason fields
     cancelation_reason_system: Optional[str] = None
     cancelation_reason_code: Optional[str] = None
     cancelation_reason_display: Optional[str] = None
     cancelation_reason_text: Optional[str] = None
+    cancellation_date: Optional[str] = None
     # appointmentType fields
     appointment_type_system: Optional[str] = None
     appointment_type_code: Optional[str] = None
     appointment_type_display: Optional[str] = None
     appointment_type_text: Optional[str] = None
+    # priority (CodeableConcept)
+    priority_system: Optional[str] = None
+    priority_code: Optional[str] = None
+    priority_display: Optional[str] = None
+    priority_text: Optional[str] = None
     # subject
     subject_type: Optional[str] = None
     subject_id: Optional[int] = None
     subject_display: Optional[str] = None
     # encounter
     encounter_id: Optional[int] = Field(None, description="Public encounter_id of the linked Encounter.")
+    # previousAppointment / originatingAppointment
+    previous_appointment_id: Optional[int] = None
+    previous_appointment_display: Optional[str] = None
+    originating_appointment_id: Optional[int] = None
+    originating_appointment_display: Optional[str] = None
     # scheduling
     start: Optional[str] = None
     end: Optional[str] = None
@@ -260,19 +351,23 @@ class PlainAppointmentResponse(BaseModel):
     created: Optional[str] = None
     # descriptive
     description: Optional[str] = None
-    comment: Optional[str] = None
-    patient_instruction: Optional[str] = None
-    priority_value: Optional[int] = None
+    recurrence_id: Optional[int] = None
+    occurrence_changed: Optional[bool] = None
     # sub-resources
     identifier: Optional[List[PlainAppointmentIdentifier]] = None
+    class_: Optional[List[PlainAppointmentClass]] = None
     service_category: Optional[List[PlainAppointmentServiceCategory]] = None
     service_type: Optional[List[PlainAppointmentServiceType]] = None
     specialty: Optional[List[PlainAppointmentSpecialty]] = None
-    reason_code: Optional[List[PlainAppointmentReasonCode]] = None
-    reason_reference: Optional[List[PlainAppointmentReasonReference]] = None
+    reason: Optional[List[PlainAppointmentReason]] = None
     supporting_information: Optional[List[PlainAppointmentSupportingInformation]] = None
     slot: Optional[List[PlainAppointmentSlot]] = None
     based_on: Optional[List[PlainAppointmentBasedOn]] = None
+    replaces: Optional[List[PlainAppointmentReplaces]] = None
+    virtual_service: Optional[List[PlainAppointmentVirtualService]] = None
+    account: Optional[List[PlainAppointmentAccount]] = None
+    note: Optional[List[PlainAppointmentNote]] = None
+    patient_instruction: Optional[List[PlainAppointmentPatientInstruction]] = None
     participant: Optional[List[PlainAppointmentParticipant]] = None
     requested_period: Optional[List[PlainAppointmentRequestedPeriod]] = None
     recurrence_template: Optional[PlainRecurrenceTemplate] = None

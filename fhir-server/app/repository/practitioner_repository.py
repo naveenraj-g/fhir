@@ -12,8 +12,10 @@ from app.models.practitioner import (
     PractitionerAddress,
     PractitionerPhoto,
     PractitionerQualification,
+    PractitionerQualificationIdentifier,
     PractitionerCommunication,
 )
+from app.models.enums import OrganizationReferenceType
 from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
@@ -22,9 +24,27 @@ from app.schemas.practitioner import (
     PractitionerTelecomCreate,
     PractitionerAddressCreate,
     PractitionerPhotoCreate,
+    QualificationIdentifierCreate,
     PractitionerQualificationCreate,
     PractitionerCommunicationCreate,
 )
+
+
+def _parse_org_ref(ref: str) -> tuple:
+    """Parse 'Organization/123' → (OrganizationReferenceType.ORGANIZATION, 123)."""
+    from fastapi import HTTPException
+    parts = ref.split("/", 1)
+    if len(parts) != 2:
+        raise HTTPException(status_code=422, detail=f"Invalid reference format: '{ref}'.")
+    try:
+        ref_id = int(parts[1])
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"Invalid reference id in: '{ref}'.")
+    try:
+        ref_type = OrganizationReferenceType(parts[0])
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"Invalid reference type '{parts[0]}'. Allowed: ['Organization'].")
+    return ref_type, ref_id
 
 
 def _with_relationships(stmt):
@@ -35,7 +55,7 @@ def _with_relationships(stmt):
         selectinload(PractitionerModel.telecoms),
         selectinload(PractitionerModel.addresses),
         selectinload(PractitionerModel.photos),
-        selectinload(PractitionerModel.qualifications),
+        selectinload(PractitionerModel.qualifications).selectinload(PractitionerQualification.identifiers),
         selectinload(PractitionerModel.communications),
     )
 
@@ -229,7 +249,7 @@ class PractitionerRepository:
             row = PractitionerIdentifier(
                 practitioner_id=practitioner.id,
                 org_id=practitioner.org_id,
-                use=payload.use.value if payload.use else None,
+                use=payload.use,
                 type_system=payload.type_system,
                 type_code=payload.type_code,
                 type_display=payload.type_display,
@@ -259,9 +279,9 @@ class PractitionerRepository:
             row = PractitionerTelecom(
                 practitioner_id=practitioner.id,
                 org_id=practitioner.org_id,
-                system=payload.system.value if payload.system else None,
+                system=payload.system,
                 value=payload.value,
-                use=payload.use.value if payload.use else None,
+                use=payload.use,
                 rank=payload.rank,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
@@ -285,8 +305,8 @@ class PractitionerRepository:
             row = PractitionerAddress(
                 practitioner_id=practitioner.id,
                 org_id=practitioner.org_id,
-                use=payload.use.value if payload.use else None,
-                type=payload.type.value if payload.type else None,
+                use=payload.use,
+                type=payload.type,
                 text=payload.text,
                 line=",".join(payload.line) if payload.line else None,
                 city=payload.city,
@@ -341,22 +361,44 @@ class PractitionerRepository:
             practitioner = (await session.execute(stmt)).scalars().first()
             if not practitioner:
                 return None
-            row = PractitionerQualification(
+            qualification = PractitionerQualification(
                 practitioner_id=practitioner.id,
                 org_id=practitioner.org_id,
-                identifier_system=payload.identifier_system,
-                identifier_value=payload.identifier_value,
                 code_system=payload.code_system,
                 code_code=payload.code_code,
                 code_display=payload.code_display,
                 code_text=payload.code_text,
+                status_system=payload.status_system,
+                status_code=payload.status_code,
+                status_display=payload.status_display,
+                status_text=payload.status_text,
                 period_start=payload.period_start,
                 period_end=payload.period_end,
-                issuer_id=payload.issuer_id,
+                issuer_type=(_parse_org_ref(payload.issuer)[0] if payload.issuer else None),
+                issuer_id=(_parse_org_ref(payload.issuer)[1] if payload.issuer else None),
                 issuer_display=payload.issuer_display,
             )
+            session.add(qualification)
+            await session.flush()  # get qualification.id before adding grandchildren
+
+            if payload.identifier:
+                for qi in payload.identifier:
+                    session.add(PractitionerQualificationIdentifier(
+                        qualification_id=qualification.id,
+                        org_id=practitioner.org_id,
+                        use=qi.use,
+                        type_system=qi.type_system,
+                        type_code=qi.type_code,
+                        type_display=qi.type_display,
+                        type_text=qi.type_text,
+                        system=qi.system,
+                        value=qi.value,
+                        period_start=qi.period_start,
+                        period_end=qi.period_end,
+                        assigner=qi.assigner,
+                    ))
+
             try:
-                session.add(row)
                 await session.commit()
             except Exception:
                 await session.rollback()

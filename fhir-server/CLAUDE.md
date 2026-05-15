@@ -1,10 +1,13 @@
 # FHIR Server — Architecture & Agent Guide
 
 ## FHIR References
-- QuestionnaireResponse spec: https://www.hl7.org/fhir/questionnaireresponse.html
+
+**This project targets FHIR R4. Always use R4 spec URLs. Never model from the default `https://www.hl7.org/fhir/` URL — that serves R5.**
+
 - FHIR R4 base spec: https://www.hl7.org/fhir/R4/
-- FHIR R5 base spec: https://www.hl7.org/fhir/ (default page — verify version before modeling)
-- Metadata/complex datatypes (ExtendedContactDetail, Availability): https://www.hl7.org/fhir/metadatatypes-definitions.html
+- QuestionnaireResponse R4: https://www.hl7.org/fhir/R4/questionnaireresponse.html
+- Datatypes R4: https://www.hl7.org/fhir/R4/datatypes.html
+- Resource index R4: https://www.hl7.org/fhir/R4/resourcelist.html
 
 ---
 
@@ -688,13 +691,17 @@ When given a FHIR resource URL (e.g. `https://www.hl7.org/fhir/procedure.html`),
 
 3. **Every BackboneElement** in the resource — these have their own sub-fields that must be read, not assumed. Backbone elements with `0..*` cardinality become child tables; their internal `0..*` sub-fields become grandchild tables.
 
-4. **Verify R4 vs R5** — the spec site (`https://www.hl7.org/fhir/`) serves R5 by default. Always cross-check against the R4 URL (`https://www.hl7.org/fhir/R4/`). Known R4→R5 differences:
-   - Merged fields: R5 often collapses `reasonCode[]` + `reasonReference[]` into a single `reason[]` CodeableReference — keep them **separate** in R4
-   - Same for `complication[]`/`complicationDetail[]`, `usedReference[]`/`usedCode[]`
-   - `category` is often **0..1** in R4 but **0..*` in R5
-   - Choice types (`performed[x]`, `medication[x]`, `reported[x]`) may differ between versions
-   - Extra R5-only fields: `focus`, `recorded`, `supportingInfo`, `informationSource`, `device`, `renderedDosageInstruction`, `statusChanged`
-   - **PractitionerRole specifically**: R4 uses `telecom` (ContactPoint) + `availableTime`/`notAvailable`/`availabilityExceptions` BackboneElements; R5 replaces all of these with `contact` (ExtendedContactDetail) + `availability` (Availability datatype) and adds `characteristic[]` and `communication[]`. This project models PractitionerRole using the R5 structure.
+4. **Always use R4 spec** — fetch from `https://www.hl7.org/fhir/R4/<resource>.html`. Never use `https://www.hl7.org/fhir/<resource>.html` (that is R5). Key R4 patterns to remember:
+   - `reasonCode[]` + `reasonReference[]` are **separate** arrays in R4 (R5 merges them into `reason[]` CodeableReference)
+   - `complication[]` + `complicationDetail[]` are separate in R4
+   - `usedReference[]` + `usedCode[]` are separate in R4
+   - `category` is **0..1** in R4 for most resources (R5 changes to 0..*)
+   - `CodeableReference` does **not exist** in R4 — it is an R5 datatype
+   - `QuestionnaireResponse.identifier` is **0..1** in R4 (flat columns), **0..\*** in R5 (child table)
+   - `QuestionnaireResponse.questionnaire` is **0..1** in R4 (optional), **1..1** in R5
+   - `QuestionnaireResponse.source` in R4: Reference(Patient | Practitioner | PractitionerRole | RelatedPerson) — Device and Organization are R5-only
+   - `QuestionnaireResponse.author` in R4: Reference(Device | Practitioner | PractitionerRole | Patient | RelatedPerson | Organization) — Group is R5-only
+   - **PractitionerRole**: this project intentionally models PractitionerRole using the R5 structure (contact + availability) as an exception — do not revert it
 
 **The rule:** if a field's type is a named FHIR datatype (not a primitive like `string`, `boolean`, `dateTime`, `integer`), fetch its spec page before deciding how to store it. Never assume structure from the type name alone.
 
@@ -749,6 +756,125 @@ subject_display = Column(String, nullable=True)                       # optional
 A repeated reference (0..*) gets a child table with `reference_type`, `reference_id`, `reference_display`.
 
 Use an **Enum** for `reference_type` when the allowed resource types are a closed, known set (e.g. subject can only be Patient or Group). Use a plain **String** when the type is open (e.g. `supportingInfo[]` allows any resource type).
+
+### Shared PostgreSQL enum types
+
+Some FHIR reference types appear across many resources and reuse a **single shared PostgreSQL enum type** to avoid duplicate type creation. Always import from `app.models.enums` and use `create_type=False`:
+
+| Python class | DB type name | Allowed value | Used by |
+|---|---|---|---|
+| `OrganizationReferenceType` | `organization_reference_type` | `"Organization"` | Patient, Encounter, Practitioner, PractitionerRole, HealthcareService, … |
+| `SubjectReferenceType` | `subject_reference_type` | `"Patient"`, `"Group"` | Encounter, Appointment, QuestionnaireResponse |
+
+```python
+from app.models.enums import OrganizationReferenceType
+
+# Correct — always create_type=False because the PG type already exists
+organization_type = Column(
+    Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
+    nullable=True,
+)
+organization_id      = Column(Integer, nullable=True)
+organization_display = Column(String, nullable=True)
+```
+
+**Never** store an Organization reference as a plain `String` column. The `organization_reference_type` PG enum was created by the first migration that used it (Patient); every subsequent table reuses it with `create_type=False`. The `ContactPointSystem` and `ContactPointUse` enums in `app/schemas/enums.py` follow the same shared-type pattern.
+
+### CodeableReference flattening (R5)
+
+`CodeableReference` is an R5 datatype that combines a `CodeableConcept` (concept) and a `Reference` (reference) in a single field. Both halves are optional — callers may provide either or both.
+
+**Rule:** Every `CodeableReference` column in a child table gets **both** the concept columns AND the reference columns:
+
+```python
+class AppointmentReason(Base):
+    __tablename__ = "appointment_reason"
+    id             = Column(Integer, primary_key=True, autoincrement=True)
+    appointment_id = Column(Integer, ForeignKey("appointment.id"), nullable=False, index=True)
+    org_id         = Column(String, nullable=True)
+
+    # concept (CodeableConcept)
+    coding_system  = Column(String, nullable=True)
+    coding_code    = Column(String, nullable=True)
+    coding_display = Column(String, nullable=True)
+    text           = Column(String, nullable=True)
+
+    # reference (Reference — closed set → Enum; open set → String)
+    reference_type = Column(
+        Enum(AppointmentReasonReferenceType, name="appointment_reason_reference_type"),
+        nullable=True,
+    )
+    reference_id      = Column(Integer, nullable=True)
+    reference_display = Column(String, nullable=True)
+```
+
+**Enum naming convention:** `<Resource><Field>ReferenceType` in Python, `<table_name>_reference_type` as the PostgreSQL type name.
+
+**FHIR R5 output:**
+```python
+entry = {}
+concept = _cc(r.coding_system, r.coding_code, r.coding_display, r.text)
+if concept:
+    entry["concept"] = concept
+if r.reference_type and r.reference_id:
+    ref = {"reference": f"{r.reference_type.value}/{r.reference_id}"}
+    if r.reference_display:
+        ref["display"] = r.reference_display
+    entry["reference"] = ref
+```
+
+### PostgreSQL Enum migration rules
+
+Alembic autogenerate is unreliable for enum columns. **Always manually fix generated migrations** before applying:
+
+1. **Use `postgresql.ENUM` not `sa.Enum`** — autogenerate emits `sa.Enum('MEMBER_NAME', ...)` using Python uppercase member names; replace with `postgresql.ENUM('TitleCaseValue', ...)` matching actual FHIR values.
+
+2. **Create the type explicitly** — call `.create(op.get_bind(), checkfirst=True)` before the first `alter_column` or `add_column` that uses it; use `create_type=False` on the column definition to avoid double-creation:
+```python
+from sqlalchemy.dialects import postgresql
+
+_my_enum = postgresql.ENUM('Condition', 'Procedure', name='my_enum_type')
+
+def upgrade() -> None:
+    _my_enum.create(op.get_bind(), checkfirst=True)
+    op.add_column('my_table', sa.Column(
+        'reference_type',
+        postgresql.ENUM('Condition', 'Procedure', name='my_enum_type', create_type=False),
+        nullable=True,
+    ))
+```
+
+3. **VARCHAR → Enum requires USING clause** — when converting an existing VARCHAR column:
+```python
+op.alter_column('my_table', 'reference_type',
+    existing_type=sa.VARCHAR(),
+    type_=postgresql.ENUM('Condition', 'Procedure', name='my_enum_type', create_type=False),
+    existing_nullable=True,
+    postgresql_using='reference_type::my_enum_type',
+)
+```
+
+4. **Downgrade must drop the type** — call `.drop(op.get_bind(), checkfirst=True)` after reverting the column.
+
+### `_cast_ref_type` helper in repository
+
+When a CodeableReference input arrives as a plain string reference (e.g. `"Condition/12345"`), validate the resource type against the closed enum at the repository layer:
+
+```python
+def _cast_ref_type(value: str, enum_cls, field: str):
+    try:
+        return enum_cls(value)
+    except ValueError:
+        allowed = [e.value for e in enum_cls]
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid reference type '{value}' for {field}. Allowed: {allowed}.",
+        )
+
+# Usage in create():
+ref_type_str, ref_id = _parse_open_ref(r.reference)   # splits "Condition/123" → ("Condition", 123)
+ref_type_enum = _cast_ref_type(ref_type_str, AppointmentReasonReferenceType, "reason.reference")
+```
 
 ### Child table conventions
 

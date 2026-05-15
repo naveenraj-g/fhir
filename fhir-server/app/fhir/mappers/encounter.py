@@ -6,8 +6,29 @@ if TYPE_CHECKING:
     from app.models.encounter.encounter import EncounterModel
 
 
+def _cc(coding_system, coding_code, coding_display, text=None) -> dict | None:
+    """Build a CodeableConcept dict from flat columns; returns None if all empty."""
+    coding = {k: v for k, v in {
+        "system": coding_system, "code": coding_code, "display": coding_display,
+    }.items() if v}
+    cc: dict = {}
+    if coding:
+        cc["coding"] = [coding]
+    if text:
+        cc["text"] = text
+    return cc or None
+
+
+def _period(start, end) -> dict | None:
+    p = {k: v for k, v in {
+        "start": start.isoformat() if start else None,
+        "end": end.isoformat() if end else None,
+    }.items() if v}
+    return p or None
+
+
 def to_fhir_encounter(encounter: "EncounterModel") -> dict:
-    """Convert EncounterModel (with relationships loaded) to a FHIR R4 Encounter dict."""
+    """Convert EncounterModel (with relationships loaded) to a FHIR R5 Encounter dict."""
     result: dict = {
         "resourceType": "Encounter",
         "id": str(encounter.encounter_id),
@@ -21,23 +42,16 @@ def to_fhir_encounter(encounter: "EncounterModel") -> dict:
             entry: dict = {}
             if i.use:
                 entry["use"] = i.use
-            if i.type_system or i.type_code or i.type_display or i.type_text:
-                type_coding = {k: v for k, v in {
-                    "system": i.type_system, "code": i.type_code, "display": i.type_display,
-                }.items() if v}
-                entry["type"] = {k: v for k, v in {
-                    "coding": [type_coding] if type_coding else None,
-                    "text": i.type_text,
-                }.items() if v}
+            type_cc = _cc(i.type_system, i.type_code, i.type_display, i.type_text)
+            if type_cc:
+                entry["type"] = type_cc
             if i.system:
                 entry["system"] = i.system
             if i.value:
                 entry["value"] = i.value
-            if i.period_start or i.period_end:
-                entry["period"] = {k: v for k, v in {
-                    "start": i.period_start.isoformat() if i.period_start else None,
-                    "end": i.period_end.isoformat() if i.period_end else None,
-                }.items() if v}
+            period = _period(i.period_start, i.period_end)
+            if period:
+                entry["period"] = period
             if i.assigner:
                 entry["assigner"] = {"display": i.assigner}
             if entry:
@@ -45,157 +59,166 @@ def to_fhir_encounter(encounter: "EncounterModel") -> dict:
         if id_list:
             result["identifier"] = id_list
 
-    # statusHistory
+    # statusHistory (R4 backward-compat)
     if encounter.status_history:
         result["statusHistory"] = [
             {k: v for k, v in {
                 "status": sh.status,
-                "period": {k2: v2 for k2, v2 in {
-                    "start": sh.period_start.isoformat() if sh.period_start else None,
-                    "end": sh.period_end.isoformat() if sh.period_end else None,
-                }.items() if v2} or None,
+                "period": _period(sh.period_start, sh.period_end),
             }.items() if v}
             for sh in encounter.status_history
         ]
 
-    # class (1..1 Coding)
-    if encounter.class_code or encounter.class_system:
-        result["class"] = {k: v for k, v in {
-            "system": encounter.class_system,
-            "version": encounter.class_version,
-            "code": encounter.class_code,
-            "display": encounter.class_display,
-        }.items() if v}
+    # class[] (0..* CodeableConcept) — R5
+    if encounter.classes:
+        class_list = []
+        for c in encounter.classes:
+            cc = _cc(c.coding_system, c.coding_code, c.coding_display, c.text)
+            if cc:
+                class_list.append(cc)
+        if class_list:
+            result["class"] = class_list
 
-    # classHistory
+    # classHistory (R4 backward-compat)
     if encounter.class_history:
-        result["classHistory"] = []
+        ch_list = []
         for ch in encounter.class_history:
             entry = {}
             cls = {k: v for k, v in {
-                "system": ch.class_system,
-                "version": ch.class_version,
-                "code": ch.class_code,
-                "display": ch.class_display,
+                "system": ch.class_system, "version": ch.class_version,
+                "code": ch.class_code, "display": ch.class_display,
             }.items() if v}
             if cls:
                 entry["class"] = cls
-            if ch.period_start or ch.period_end:
-                entry["period"] = {k: v for k, v in {
-                    "start": ch.period_start.isoformat() if ch.period_start else None,
-                    "end": ch.period_end.isoformat() if ch.period_end else None,
-                }.items() if v}
+            period = _period(ch.period_start, ch.period_end)
+            if period:
+                entry["period"] = period
             if entry:
-                result["classHistory"].append(entry)
+                ch_list.append(entry)
+        if ch_list:
+            result["classHistory"] = ch_list
 
-    # type
+    # businessStatus[]
+    if encounter.business_statuses:
+        bs_list = []
+        for bs in encounter.business_statuses:
+            entry = {}
+            code_cc = _cc(bs.code_system, bs.code_code, bs.code_display, bs.code_text)
+            if code_cc:
+                entry["code"] = code_cc
+            type_coding = {k: v for k, v in {
+                "system": bs.type_system, "code": bs.type_code, "display": bs.type_display,
+            }.items() if v}
+            if type_coding:
+                entry["type"] = type_coding
+            if bs.effective_date:
+                entry["effectiveDate"] = bs.effective_date.isoformat()
+            if entry:
+                bs_list.append(entry)
+        if bs_list:
+            result["businessStatus"] = bs_list
+
+    # type[]
     if encounter.types:
         type_list = []
         for t in encounter.types:
-            entry = {}
-            coding = {k: v for k, v in {
-                "system": t.coding_system, "code": t.coding_code, "display": t.coding_display,
-            }.items() if v}
-            if coding:
-                entry["coding"] = [coding]
-            if t.text:
-                entry["text"] = t.text
-            if entry:
-                type_list.append(entry)
+            cc = _cc(t.coding_system, t.coding_code, t.coding_display, t.text)
+            if cc:
+                type_list.append(cc)
         if type_list:
             result["type"] = type_list
 
-    # serviceType
-    if encounter.service_type_code or encounter.service_type_system or encounter.service_type_text:
-        coding = {k: v for k, v in {
-            "system": encounter.service_type_system,
-            "code": encounter.service_type_code,
-            "display": encounter.service_type_display,
-        }.items() if v}
-        st: dict = {}
-        if coding:
-            st["coding"] = [coding]
-        if encounter.service_type_text:
-            st["text"] = encounter.service_type_text
-        if st:
-            result["serviceType"] = st
+    # serviceType[] (0..* CodeableReference)
+    if encounter.service_types:
+        st_list = []
+        for st in encounter.service_types:
+            entry = {}
+            concept = _cc(st.coding_system, st.coding_code, st.coding_display, st.text)
+            if concept:
+                entry["concept"] = concept
+            if st.reference_type and st.reference_id:
+                ref: dict = {"reference": f"{st.reference_type.value}/{st.reference_id}"}
+                if st.reference_display:
+                    ref["display"] = st.reference_display
+                entry["reference"] = ref
+            if entry:
+                st_list.append(entry)
+        if st_list:
+            result["serviceType"] = st_list
 
     # priority
-    if encounter.priority_code or encounter.priority_system or encounter.priority_text:
-        coding = {k: v for k, v in {
-            "system": encounter.priority_system,
-            "code": encounter.priority_code,
-            "display": encounter.priority_display,
-        }.items() if v}
-        pr: dict = {}
-        if coding:
-            pr["coding"] = [coding]
-        if encounter.priority_text:
-            pr["text"] = encounter.priority_text
-        if pr:
-            result["priority"] = pr
+    priority_cc = _cc(encounter.priority_system, encounter.priority_code,
+                      encounter.priority_display, encounter.priority_text)
+    if priority_cc:
+        result["priority"] = priority_cc
 
     # subject
     if encounter.subject_type and encounter.subject_id:
-        subject: dict = {"reference": f"{encounter.subject_type.value}/{encounter.subject_id}"}
+        subj: dict = {"reference": f"{encounter.subject_type.value}/{encounter.subject_id}"}
         if encounter.subject_display:
-            subject["display"] = encounter.subject_display
-        result["subject"] = subject
+            subj["display"] = encounter.subject_display
+        result["subject"] = subj
+
+    # subjectStatus (R5 new)
+    subject_status_cc = _cc(encounter.subject_status_system, encounter.subject_status_code,
+                            encounter.subject_status_display, encounter.subject_status_text)
+    if subject_status_cc:
+        result["subjectStatus"] = subject_status_cc
 
     # episodeOfCare
     if encounter.episode_of_cares:
-        result["episodeOfCare"] = [
-            {k: v for k, v in {
-                "reference": f"EpisodeOfCare/{e.episode_of_care_id}" if e.episode_of_care_id else None,
-                "display": e.display,
-            }.items() if v}
-            for e in encounter.episode_of_cares
-        ]
+        eoc_list = []
+        for e in encounter.episode_of_cares:
+            if e.reference_type and e.reference_id:
+                entry: dict = {"reference": f"{e.reference_type.value}/{e.reference_id}"}
+                if e.reference_display:
+                    entry["display"] = e.reference_display
+                eoc_list.append(entry)
+        if eoc_list:
+            result["episodeOfCare"] = eoc_list
 
     # basedOn
     if encounter.based_ons:
-        based_on_list = []
+        bo_list = []
         for b in encounter.based_ons:
             if b.reference_type and b.reference_id:
                 entry = {"reference": f"{b.reference_type.value}/{b.reference_id}"}
                 if b.reference_display:
                     entry["display"] = b.reference_display
-                based_on_list.append(entry)
-        if based_on_list:
-            result["basedOn"] = based_on_list
+                bo_list.append(entry)
+        if bo_list:
+            result["basedOn"] = bo_list
 
-    # participant
+    # careTeam (R5 new)
+    if encounter.care_teams:
+        ct_list = []
+        for ct in encounter.care_teams:
+            if ct.reference_type and ct.reference_id:
+                ct_entry: dict = {"reference": f"{ct.reference_type.value}/{ct.reference_id}"}
+                if ct.reference_display:
+                    ct_entry["display"] = ct.reference_display
+                ct_list.append(ct_entry)
+        if ct_list:
+            result["careTeam"] = ct_list
+
+    # participant (actor, not individual)
     if encounter.participants:
         participant_list = []
         for p in encounter.participants:
             entry = {}
             if p.types:
-                type_cc_list = []
-                for pt in p.types:
-                    cc: dict = {}
-                    coding = {k: v for k, v in {
-                        "system": pt.coding_system,
-                        "code": pt.coding_code,
-                        "display": pt.coding_display,
-                    }.items() if v}
-                    if coding:
-                        cc["coding"] = [coding]
-                    if pt.text:
-                        cc["text"] = pt.text
-                    if cc:
-                        type_cc_list.append(cc)
+                type_cc_list = [cc for pt in p.types
+                                if (cc := _cc(pt.coding_system, pt.coding_code, pt.coding_display, pt.text))]
                 if type_cc_list:
                     entry["type"] = type_cc_list
-            if p.individual_type and p.individual_id:
-                ind: dict = {"reference": f"{p.individual_type.value}/{p.individual_id}"}
-                if p.individual_display:
-                    ind["display"] = p.individual_display
-                entry["individual"] = ind
-            if p.period_start or p.period_end:
-                entry["period"] = {k: v for k, v in {
-                    "start": p.period_start.isoformat() if p.period_start else None,
-                    "end": p.period_end.isoformat() if p.period_end else None,
-                }.items() if v}
+            if p.reference_type and p.reference_id:
+                actor: dict = {"reference": f"{p.reference_type.value}/{p.reference_id}"}
+                if p.reference_display:
+                    actor["display"] = p.reference_display
+                entry["actor"] = actor
+            period = _period(p.period_start, p.period_end)
+            if period:
+                entry["period"] = period
             if entry:
                 participant_list.append(entry)
         if participant_list:
@@ -203,20 +226,51 @@ def to_fhir_encounter(encounter: "EncounterModel") -> dict:
 
     # appointment
     if encounter.appointment_refs:
-        result["appointment"] = [
-            {k: v for k, v in {
-                "reference": f"Appointment/{a.appointment_id}" if a.appointment_id else None,
-                "display": a.appointment_display,
-            }.items() if v}
-            for a in encounter.appointment_refs
-        ]
+        appt_list = []
+        for a in encounter.appointment_refs:
+            if a.reference_type and a.reference_id:
+                appt_entry: dict = {"reference": f"{a.reference_type.value}/{a.reference_id}"}
+                if a.reference_display:
+                    appt_entry["display"] = a.reference_display
+                appt_list.append(appt_entry)
+        if appt_list:
+            result["appointment"] = appt_list
 
-    # period
-    if encounter.period_start or encounter.period_end:
-        result["period"] = {k: v for k, v in {
-            "start": encounter.period_start.isoformat() if encounter.period_start else None,
-            "end": encounter.period_end.isoformat() if encounter.period_end else None,
-        }.items() if v}
+    # virtualService (R5 new)
+    if encounter.virtual_services:
+        vs_list = []
+        for vs in encounter.virtual_services:
+            entry = {}
+            channel = {k: v for k, v in {
+                "system": vs.channel_type_system,
+                "code": vs.channel_type_code,
+                "display": vs.channel_type_display,
+            }.items() if v}
+            if channel:
+                entry["channelType"] = channel
+            if vs.address_url:
+                entry["addressUrl"] = vs.address_url
+            if vs.additional_info:
+                entry["additionalInfo"] = [u.strip() for u in vs.additional_info.split(",") if u.strip()]
+            if vs.max_participants is not None:
+                entry["maxParticipants"] = vs.max_participants
+            if vs.session_key:
+                entry["sessionKey"] = vs.session_key
+            if entry:
+                vs_list.append(entry)
+        if vs_list:
+            result["virtualService"] = vs_list
+
+    # actualPeriod (R5 renamed from period)
+    period = _period(encounter.actual_period_start, encounter.actual_period_end)
+    if period:
+        result["actualPeriod"] = period
+
+    # plannedStartDate / plannedEndDate (R5 new)
+    if encounter.planned_start_date:
+        result["plannedStartDate"] = encounter.planned_start_date.isoformat()
+    if encounter.planned_end_date:
+        result["plannedEndDate"] = encounter.planned_end_date.isoformat()
 
     # length (Duration)
     if encounter.length_value is not None or encounter.length_code:
@@ -228,58 +282,63 @@ def to_fhir_encounter(encounter: "EncounterModel") -> dict:
             "code": encounter.length_code,
         }.items() if v is not None}
 
-    # reasonCode
-    if encounter.reason_codes:
+    # reason[] (R5 BackboneElement)
+    if encounter.reasons:
         reason_list = []
-        for r in encounter.reason_codes:
+        for r in encounter.reasons:
             entry = {}
-            coding = {k: v for k, v in {
-                "system": r.coding_system, "code": r.coding_code, "display": r.coding_display,
-            }.items() if v}
-            if coding:
-                entry["coding"] = [coding]
-            if r.text:
-                entry["text"] = r.text
+            if r.uses:
+                use_list = [cc for ru in r.uses
+                            if (cc := _cc(ru.coding_system, ru.coding_code, ru.coding_display, ru.text))]
+                if use_list:
+                    entry["use"] = use_list
+            if r.values:
+                val_list = []
+                for rv in r.values:
+                    val_entry = {}
+                    concept = _cc(rv.coding_system, rv.coding_code, rv.coding_display, rv.text)
+                    if concept:
+                        val_entry["concept"] = concept
+                    if rv.reference_type and rv.reference_id:
+                        ref: dict = {"reference": f"{rv.reference_type.value}/{rv.reference_id}"}
+                        if rv.reference_display:
+                            ref["display"] = rv.reference_display
+                        val_entry["reference"] = ref
+                    if val_entry:
+                        val_list.append(val_entry)
+                if val_list:
+                    entry["value"] = val_list
             if entry:
                 reason_list.append(entry)
         if reason_list:
-            result["reasonCode"] = reason_list
+            result["reason"] = reason_list
 
-    # reasonReference
-    if encounter.reason_references:
-        rr_list = []
-        for rr in encounter.reason_references:
-            if rr.reference_type and rr.reference_id:
-                entry = {"reference": f"{rr.reference_type}/{rr.reference_id}"}
-                if rr.reference_display:
-                    entry["display"] = rr.reference_display
-                rr_list.append(entry)
-        if rr_list:
-            result["reasonReference"] = rr_list
-
-    # diagnosis
+    # diagnosis[]
     if encounter.diagnoses:
         diag_list = []
         for d in encounter.diagnoses:
             entry = {}
-            if d.condition_type and d.condition_id:
-                cond: dict = {"reference": f"{d.condition_type.value}/{d.condition_id}"}
-                if d.condition_display:
-                    cond["display"] = d.condition_display
-                entry["condition"] = cond
-            if d.use_system or d.use_code or d.use_text:
-                use_coding = {k: v for k, v in {
-                    "system": d.use_system, "code": d.use_code, "display": d.use_display,
-                }.items() if v}
-                use_cc: dict = {}
-                if use_coding:
-                    use_cc["coding"] = [use_coding]
-                if d.use_text:
-                    use_cc["text"] = d.use_text
-                if use_cc:
-                    entry["use"] = use_cc
-            if d.rank is not None:
-                entry["rank"] = d.rank
+            if d.conditions:
+                cond_list = []
+                for dc in d.conditions:
+                    cond_entry = {}
+                    concept = _cc(dc.coding_system, dc.coding_code, dc.coding_display, dc.text)
+                    if concept:
+                        cond_entry["concept"] = concept
+                    if dc.reference_type and dc.reference_id:
+                        ref: dict = {"reference": f"{dc.reference_type.value}/{dc.reference_id}"}
+                        if dc.reference_display:
+                            ref["display"] = dc.reference_display
+                        cond_entry["reference"] = ref
+                    if cond_entry:
+                        cond_list.append(cond_entry)
+                if cond_list:
+                    entry["condition"] = cond_list
+            if d.uses:
+                use_list = [cc for du in d.uses
+                            if (cc := _cc(du.coding_system, du.coding_code, du.coding_display, du.text))]
+                if use_list:
+                    entry["use"] = use_list
             if entry:
                 diag_list.append(entry)
         if diag_list:
@@ -287,57 +346,64 @@ def to_fhir_encounter(encounter: "EncounterModel") -> dict:
 
     # account
     if encounter.accounts:
-        result["account"] = [
-            {k: v for k, v in {
-                "reference": f"Account/{a.account_id}" if a.account_id else None,
-                "display": a.account_display,
-            }.items() if v}
-            for a in encounter.accounts
-        ]
+        acct_list = []
+        for a in encounter.accounts:
+            if a.reference_type and a.reference_id:
+                acct_entry: dict = {"reference": f"{a.reference_type.value}/{a.reference_id}"}
+                if a.reference_display:
+                    acct_entry["display"] = a.reference_display
+                acct_list.append(acct_entry)
+        if acct_list:
+            result["account"] = acct_list
 
-    # hospitalization
-    hosp = _build_fhir_hospitalization(encounter)
-    if hosp:
-        result["hospitalization"] = hosp
+    # admission (R5 renamed from hospitalization)
+    admission = _build_fhir_admission(encounter)
+    if admission:
+        result["admission"] = admission
+
+    # dietPreference / specialArrangement / specialCourtesy (top-level in R5)
+    if encounter.diet_preferences:
+        result["dietPreference"] = [
+            cc for dp in encounter.diet_preferences
+            if (cc := _cc(dp.coding_system, dp.coding_code, dp.coding_display, dp.text))
+        ]
+    if encounter.special_arrangements:
+        result["specialArrangement"] = [
+            cc for sa in encounter.special_arrangements
+            if (cc := _cc(sa.coding_system, sa.coding_code, sa.coding_display, sa.text))
+        ]
+    if encounter.special_courtesies:
+        result["specialCourtesy"] = [
+            cc for sc in encounter.special_courtesies
+            if (cc := _cc(sc.coding_system, sc.coding_code, sc.coding_display, sc.text))
+        ]
 
     # location
     if encounter.locations:
         loc_list = []
         for loc in encounter.locations:
             entry = {}
-            if loc.location_id:
-                lref: dict = {"reference": f"Location/{loc.location_id}"}
-                if loc.location_display:
-                    lref["display"] = loc.location_display
+            if loc.reference_type and loc.reference_id:
+                lref: dict = {"reference": f"{loc.reference_type.value}/{loc.reference_id}"}
+                if loc.reference_display:
+                    lref["display"] = loc.reference_display
                 entry["location"] = lref
             if loc.status:
                 entry["status"] = loc.status.value if hasattr(loc.status, "value") else loc.status
-            if loc.physical_type_system or loc.physical_type_code or loc.physical_type_text:
-                pt_coding = {k: v for k, v in {
-                    "system": loc.physical_type_system,
-                    "code": loc.physical_type_code,
-                    "display": loc.physical_type_display,
-                }.items() if v}
-                pt_cc: dict = {}
-                if pt_coding:
-                    pt_cc["coding"] = [pt_coding]
-                if loc.physical_type_text:
-                    pt_cc["text"] = loc.physical_type_text
-                if pt_cc:
-                    entry["physicalType"] = pt_cc
-            if loc.period_start or loc.period_end:
-                entry["period"] = {k: v for k, v in {
-                    "start": loc.period_start.isoformat() if loc.period_start else None,
-                    "end": loc.period_end.isoformat() if loc.period_end else None,
-                }.items() if v}
+            form_cc = _cc(loc.form_system, loc.form_code, loc.form_display, loc.form_text)
+            if form_cc:
+                entry["form"] = form_cc
+            period = _period(loc.period_start, loc.period_end)
+            if period:
+                entry["period"] = period
             if entry:
                 loc_list.append(entry)
         if loc_list:
             result["location"] = loc_list
 
     # serviceProvider
-    if encounter.service_provider_id:
-        sp: dict = {"reference": f"Organization/{encounter.service_provider_id}"}
+    if encounter.service_provider_type and encounter.service_provider_id:
+        sp: dict = {"reference": f"{encounter.service_provider_type.value}/{encounter.service_provider_id}"}
         if encounter.service_provider_display:
             sp["display"] = encounter.service_provider_display
         result["serviceProvider"] = sp
@@ -349,85 +415,52 @@ def to_fhir_encounter(encounter: "EncounterModel") -> dict:
     return {k: v for k, v in result.items() if v is not None}
 
 
-def _build_fhir_hospitalization(encounter: "EncounterModel") -> dict:
-    hosp: dict = {}
+def _build_fhir_admission(encounter: "EncounterModel") -> dict:
+    admission: dict = {}
 
-    if encounter.hosp_pre_admission_identifier_value:
-        pre_id: dict = {"value": encounter.hosp_pre_admission_identifier_value}
-        if encounter.hosp_pre_admission_identifier_system:
-            pre_id["system"] = encounter.hosp_pre_admission_identifier_system
-        hosp["preAdmissionIdentifier"] = pre_id
+    if encounter.admission_pre_admission_identifier_value:
+        pre_id: dict = {"value": encounter.admission_pre_admission_identifier_value}
+        if encounter.admission_pre_admission_identifier_system:
+            pre_id["system"] = encounter.admission_pre_admission_identifier_system
+        admission["preAdmissionIdentifier"] = pre_id
 
-    if encounter.hosp_origin_id:
-        orig: dict = {
-            "reference": f"{encounter.hosp_origin_type}/{encounter.hosp_origin_id}" if encounter.hosp_origin_type else f"Location/{encounter.hosp_origin_id}"
-        }
-        if encounter.hosp_origin_display:
-            orig["display"] = encounter.hosp_origin_display
-        hosp["origin"] = orig
+    if encounter.admission_origin_id:
+        ref_str = (
+            f"{encounter.admission_origin_type}/{encounter.admission_origin_id}"
+            if encounter.admission_origin_type
+            else f"Location/{encounter.admission_origin_id}"
+        )
+        orig: dict = {"reference": ref_str}
+        if encounter.admission_origin_display:
+            orig["display"] = encounter.admission_origin_display
+        admission["origin"] = orig
 
-    for field_prefix, fhir_key in [
-        ("hosp_admit_source", "admitSource"),
-        ("hosp_re_admission", "reAdmission"),
-        ("hosp_discharge_disposition", "dischargeDisposition"),
+    for prefix, fhir_key in [
+        ("admission_admit_source", "admitSource"),
+        ("admission_re_admission", "reAdmission"),
+        ("admission_discharge_disposition", "dischargeDisposition"),
     ]:
-        sys_val = getattr(encounter, f"{field_prefix}_system", None)
-        code_val = getattr(encounter, f"{field_prefix}_code", None)
-        display_val = getattr(encounter, f"{field_prefix}_display", None)
-        text_val = getattr(encounter, f"{field_prefix}_text", None)
-        if sys_val or code_val or text_val:
-            coding = {k: v for k, v in {
-                "system": sys_val, "code": code_val, "display": display_val,
-            }.items() if v}
-            cc: dict = {}
-            if coding:
-                cc["coding"] = [coding]
-            if text_val:
-                cc["text"] = text_val
-            if cc:
-                hosp[fhir_key] = cc
+        cc = _cc(
+            getattr(encounter, f"{prefix}_system", None),
+            getattr(encounter, f"{prefix}_code", None),
+            getattr(encounter, f"{prefix}_display", None),
+            getattr(encounter, f"{prefix}_text", None),
+        )
+        if cc:
+            admission[fhir_key] = cc
 
-    if encounter.hosp_diet_preferences:
-        hosp["dietPreference"] = [
-            _codeable_concept_from_row(dp)
-            for dp in encounter.hosp_diet_preferences
-        ]
+    if encounter.admission_destination_id:
+        ref_str = (
+            f"{encounter.admission_destination_type}/{encounter.admission_destination_id}"
+            if encounter.admission_destination_type
+            else f"Location/{encounter.admission_destination_id}"
+        )
+        dest: dict = {"reference": ref_str}
+        if encounter.admission_destination_display:
+            dest["display"] = encounter.admission_destination_display
+        admission["destination"] = dest
 
-    if encounter.hosp_special_arrangements:
-        hosp["specialArrangement"] = [
-            _codeable_concept_from_row(sa)
-            for sa in encounter.hosp_special_arrangements
-        ]
-
-    if encounter.hosp_special_courtesies:
-        hosp["specialCourtesy"] = [
-            _codeable_concept_from_row(sc)
-            for sc in encounter.hosp_special_courtesies
-        ]
-
-    if encounter.hosp_destination_id:
-        dest: dict = {
-            "reference": f"{encounter.hosp_destination_type}/{encounter.hosp_destination_id}" if encounter.hosp_destination_type else f"Location/{encounter.hosp_destination_id}"
-        }
-        if encounter.hosp_destination_display:
-            dest["display"] = encounter.hosp_destination_display
-        hosp["destination"] = dest
-
-    return hosp
-
-
-def _codeable_concept_from_row(row) -> dict:
-    coding = {k: v for k, v in {
-        "system": row.coding_system,
-        "code": row.coding_code,
-        "display": row.coding_display,
-    }.items() if v}
-    cc: dict = {}
-    if coding:
-        cc["coding"] = [coding]
-    if row.text:
-        cc["text"] = row.text
-    return cc
+    return admission
 
 
 def to_plain_encounter(encounter: "EncounterModel") -> dict:
@@ -437,14 +470,6 @@ def to_plain_encounter(encounter: "EncounterModel") -> dict:
         "user_id": encounter.user_id,
         "org_id": encounter.org_id,
         "status": encounter.status.value if encounter.status else None,
-        "class_system": encounter.class_system,
-        "class_version": encounter.class_version,
-        "class_code": encounter.class_code,
-        "class_display": encounter.class_display,
-        "service_type_system": encounter.service_type_system,
-        "service_type_code": encounter.service_type_code,
-        "service_type_display": encounter.service_type_display,
-        "service_type_text": encounter.service_type_text,
         "priority_system": encounter.priority_system,
         "priority_code": encounter.priority_code,
         "priority_display": encounter.priority_display,
@@ -452,8 +477,15 @@ def to_plain_encounter(encounter: "EncounterModel") -> dict:
         "subject_type": encounter.subject_type.value if encounter.subject_type else None,
         "subject_id": encounter.subject_id,
         "subject_display": encounter.subject_display,
-        "period_start": encounter.period_start.isoformat() if encounter.period_start else None,
-        "period_end": encounter.period_end.isoformat() if encounter.period_end else None,
+        "subject_status_system": encounter.subject_status_system,
+        "subject_status_code": encounter.subject_status_code,
+        "subject_status_display": encounter.subject_status_display,
+        "subject_status_text": encounter.subject_status_text,
+        "actual_period_start": encounter.actual_period_start.isoformat() if encounter.actual_period_start else None,
+        "actual_period_end": encounter.actual_period_end.isoformat() if encounter.actual_period_end else None,
+        "planned_start_date": encounter.planned_start_date.isoformat() if encounter.planned_start_date else None,
+        "planned_end_date": encounter.planned_end_date.isoformat() if encounter.planned_end_date else None,
+        "service_provider_type": encounter.service_provider_type.value if encounter.service_provider_type else None,
         "service_provider_id": encounter.service_provider_id,
         "service_provider_display": encounter.service_provider_display,
         "part_of_id": encounter.part_of_id,
@@ -473,16 +505,48 @@ def to_plain_encounter(encounter: "EncounterModel") -> dict:
             "code": encounter.length_code,
         }
 
+    # admission (flat columns → nested plain object)
+    admission_fields = [
+        "admission_pre_admission_identifier_system", "admission_pre_admission_identifier_value",
+        "admission_origin_type", "admission_origin_id", "admission_origin_display",
+        "admission_admit_source_system", "admission_admit_source_code",
+        "admission_admit_source_display", "admission_admit_source_text",
+        "admission_re_admission_system", "admission_re_admission_code",
+        "admission_re_admission_display", "admission_re_admission_text",
+        "admission_destination_type", "admission_destination_id", "admission_destination_display",
+        "admission_discharge_disposition_system", "admission_discharge_disposition_code",
+        "admission_discharge_disposition_display", "admission_discharge_disposition_text",
+    ]
+    if any(getattr(encounter, f, None) for f in admission_fields):
+        result["admission"] = {
+            "pre_admission_identifier_system": encounter.admission_pre_admission_identifier_system,
+            "pre_admission_identifier_value": encounter.admission_pre_admission_identifier_value,
+            "origin_type": encounter.admission_origin_type,
+            "origin_id": encounter.admission_origin_id,
+            "origin_display": encounter.admission_origin_display,
+            "admit_source_system": encounter.admission_admit_source_system,
+            "admit_source_code": encounter.admission_admit_source_code,
+            "admit_source_display": encounter.admission_admit_source_display,
+            "admit_source_text": encounter.admission_admit_source_text,
+            "re_admission_system": encounter.admission_re_admission_system,
+            "re_admission_code": encounter.admission_re_admission_code,
+            "re_admission_display": encounter.admission_re_admission_display,
+            "re_admission_text": encounter.admission_re_admission_text,
+            "destination_type": encounter.admission_destination_type,
+            "destination_id": encounter.admission_destination_id,
+            "destination_display": encounter.admission_destination_display,
+            "discharge_disposition_system": encounter.admission_discharge_disposition_system,
+            "discharge_disposition_code": encounter.admission_discharge_disposition_code,
+            "discharge_disposition_display": encounter.admission_discharge_disposition_display,
+            "discharge_disposition_text": encounter.admission_discharge_disposition_text,
+        }
+
     if encounter.identifiers:
         result["identifier"] = [
             {
-                "use": i.use,
-                "type_system": i.type_system,
-                "type_code": i.type_code,
-                "type_display": i.type_display,
-                "type_text": i.type_text,
-                "system": i.system,
-                "value": i.value,
+                "use": i.use, "type_system": i.type_system, "type_code": i.type_code,
+                "type_display": i.type_display, "type_text": i.type_text,
+                "system": i.system, "value": i.value,
                 "period_start": i.period_start.isoformat() if i.period_start else None,
                 "period_end": i.period_end.isoformat() if i.period_end else None,
                 "assigner": i.assigner,
@@ -503,30 +567,59 @@ def to_plain_encounter(encounter: "EncounterModel") -> dict:
     if encounter.class_history:
         result["class_history"] = [
             {
-                "class_system": ch.class_system,
-                "class_version": ch.class_version,
-                "class_code": ch.class_code,
-                "class_display": ch.class_display,
+                "class_system": ch.class_system, "class_version": ch.class_version,
+                "class_code": ch.class_code, "class_display": ch.class_display,
                 "period_start": ch.period_start.isoformat() if ch.period_start else None,
                 "period_end": ch.period_end.isoformat() if ch.period_end else None,
             }
             for ch in encounter.class_history
         ]
 
+    if encounter.classes:
+        result["class"] = [
+            {"coding_system": c.coding_system, "coding_code": c.coding_code,
+             "coding_display": c.coding_display, "text": c.text}
+            for c in encounter.classes
+        ]
+
+    if encounter.business_statuses:
+        result["business_status"] = [
+            {
+                "code_system": bs.code_system, "code_code": bs.code_code,
+                "code_display": bs.code_display, "code_text": bs.code_text,
+                "type_system": bs.type_system, "type_code": bs.type_code,
+                "type_display": bs.type_display,
+                "effective_date": bs.effective_date.isoformat() if bs.effective_date else None,
+            }
+            for bs in encounter.business_statuses
+        ]
+
+    if encounter.service_types:
+        result["service_type"] = [
+            {
+                "coding_system": st.coding_system, "coding_code": st.coding_code,
+                "coding_display": st.coding_display, "text": st.text,
+                "reference_type": st.reference_type.value if st.reference_type else None,
+                "reference_id": st.reference_id,
+                "reference_display": st.reference_display,
+            }
+            for st in encounter.service_types
+        ]
+
     if encounter.types:
         result["type"] = [
-            {
-                "coding_system": t.coding_system,
-                "coding_code": t.coding_code,
-                "coding_display": t.coding_display,
-                "text": t.text,
-            }
+            {"coding_system": t.coding_system, "coding_code": t.coding_code,
+             "coding_display": t.coding_display, "text": t.text}
             for t in encounter.types
         ]
 
     if encounter.episode_of_cares:
         result["episode_of_care"] = [
-            {"episode_of_care_id": e.episode_of_care_id, "display": e.display}
+            {
+                "reference_type": e.reference_type.value if e.reference_type else None,
+                "reference_id": e.reference_id,
+                "reference_display": e.reference_display,
+            }
             for e in encounter.episode_of_cares
         ]
 
@@ -540,21 +633,27 @@ def to_plain_encounter(encounter: "EncounterModel") -> dict:
             for b in encounter.based_ons
         ]
 
+    if encounter.care_teams:
+        result["care_team"] = [
+            {
+                "reference_type": ct.reference_type.value if ct.reference_type else None,
+                "reference_id": ct.reference_id,
+                "reference_display": ct.reference_display,
+            }
+            for ct in encounter.care_teams
+        ]
+
     if encounter.participants:
         result["participant"] = [
             {
                 "type": [
-                    {
-                        "coding_system": pt.coding_system,
-                        "coding_code": pt.coding_code,
-                        "coding_display": pt.coding_display,
-                        "text": pt.text,
-                    }
+                    {"coding_system": pt.coding_system, "coding_code": pt.coding_code,
+                     "coding_display": pt.coding_display, "text": pt.text}
                     for pt in p.types
                 ] if p.types else None,
-                "individual_type": p.individual_type.value if p.individual_type else None,
-                "individual_id": p.individual_id,
-                "individual_display": p.individual_display,
+                "reference_type": p.reference_type.value if p.reference_type else None,
+                "reference_id": p.reference_id,
+                "reference_display": p.reference_display,
                 "period_start": p.period_start.isoformat() if p.period_start else None,
                 "period_end": p.period_end.isoformat() if p.period_end else None,
             }
@@ -563,66 +662,114 @@ def to_plain_encounter(encounter: "EncounterModel") -> dict:
 
     if encounter.appointment_refs:
         result["appointment"] = [
-            {"appointment_id": a.appointment_id, "display": a.appointment_display}
+            {
+                "reference_type": a.reference_type.value if a.reference_type else None,
+                "reference_id": a.reference_id,
+                "reference_display": a.reference_display,
+            }
             for a in encounter.appointment_refs
         ]
 
-    if encounter.reason_codes:
-        result["reason_code"] = [
+    if encounter.virtual_services:
+        result["virtual_service"] = [
             {
-                "coding_system": r.coding_system,
-                "coding_code": r.coding_code,
-                "coding_display": r.coding_display,
-                "text": r.text,
+                "channel_type_system": vs.channel_type_system,
+                "channel_type_code": vs.channel_type_code,
+                "channel_type_display": vs.channel_type_display,
+                "address_url": vs.address_url,
+                "additional_info": vs.additional_info,
+                "max_participants": vs.max_participants,
+                "session_key": vs.session_key,
             }
-            for r in encounter.reason_codes
+            for vs in encounter.virtual_services
         ]
 
-    if encounter.reason_references:
-        result["reason_reference"] = [
+    if encounter.reasons:
+        result["reason"] = [
             {
-                "reference_type": rr.reference_type,
-                "reference_id": rr.reference_id,
-                "reference_display": rr.reference_display,
+                "use": [
+                    {"coding_system": ru.coding_system, "coding_code": ru.coding_code,
+                     "coding_display": ru.coding_display, "text": ru.text}
+                    for ru in r.uses
+                ] if r.uses else None,
+                "value": [
+                    {
+                        "coding_system": rv.coding_system, "coding_code": rv.coding_code,
+                        "coding_display": rv.coding_display, "text": rv.text,
+                        "reference_type": rv.reference_type.value if rv.reference_type else None,
+                        "reference_id": rv.reference_id,
+                        "reference_display": rv.reference_display,
+                    }
+                    for rv in r.values
+                ] if r.values else None,
             }
-            for rr in encounter.reason_references
+            for r in encounter.reasons
         ]
 
     if encounter.diagnoses:
         result["diagnosis"] = [
             {
-                "condition_type": d.condition_type.value if d.condition_type else None,
-                "condition_id": d.condition_id,
-                "condition_display": d.condition_display,
-                "use_system": d.use_system,
-                "use_code": d.use_code,
-                "use_display": d.use_display,
-                "use_text": d.use_text,
-                "rank": d.rank,
+                "condition": [
+                    {
+                        "coding_system": dc.coding_system, "coding_code": dc.coding_code,
+                        "coding_display": dc.coding_display, "text": dc.text,
+                        "reference_type": dc.reference_type.value if dc.reference_type else None,
+                        "reference_id": dc.reference_id,
+                        "reference_display": dc.reference_display,
+                    }
+                    for dc in d.conditions
+                ] if d.conditions else None,
+                "use": [
+                    {"coding_system": du.coding_system, "coding_code": du.coding_code,
+                     "coding_display": du.coding_display, "text": du.text}
+                    for du in d.uses
+                ] if d.uses else None,
             }
             for d in encounter.diagnoses
         ]
 
     if encounter.accounts:
         result["account"] = [
-            {"account_id": a.account_id, "display": a.account_display}
+            {
+                "reference_type": a.reference_type.value if a.reference_type else None,
+                "reference_id": a.reference_id,
+                "reference_display": a.reference_display,
+            }
             for a in encounter.accounts
         ]
 
-    hosp_plain = _build_plain_hospitalization(encounter)
-    if hosp_plain:
-        result["hospitalization"] = hosp_plain
+    if encounter.diet_preferences:
+        result["diet_preference"] = [
+            {"coding_system": dp.coding_system, "coding_code": dp.coding_code,
+             "coding_display": dp.coding_display, "text": dp.text}
+            for dp in encounter.diet_preferences
+        ]
+
+    if encounter.special_arrangements:
+        result["special_arrangement"] = [
+            {"coding_system": sa.coding_system, "coding_code": sa.coding_code,
+             "coding_display": sa.coding_display, "text": sa.text}
+            for sa in encounter.special_arrangements
+        ]
+
+    if encounter.special_courtesies:
+        result["special_courtesy"] = [
+            {"coding_system": sc.coding_system, "coding_code": sc.coding_code,
+             "coding_display": sc.coding_display, "text": sc.text}
+            for sc in encounter.special_courtesies
+        ]
 
     if encounter.locations:
         result["location"] = [
             {
-                "location_id": loc.location_id,
-                "location_display": loc.location_display,
+                "reference_type": loc.reference_type.value if loc.reference_type else None,
+                "reference_id": loc.reference_id,
+                "reference_display": loc.reference_display,
                 "status": loc.status.value if loc.status else None,
-                "physical_type_system": loc.physical_type_system,
-                "physical_type_code": loc.physical_type_code,
-                "physical_type_display": loc.physical_type_display,
-                "physical_type_text": loc.physical_type_text,
+                "form_system": loc.form_system,
+                "form_code": loc.form_code,
+                "form_display": loc.form_display,
+                "form_text": loc.form_text,
                 "period_start": loc.period_start.isoformat() if loc.period_start else None,
                 "period_end": loc.period_end.isoformat() if loc.period_end else None,
             }
@@ -630,67 +777,3 @@ def to_plain_encounter(encounter: "EncounterModel") -> dict:
         ]
 
     return {k: v for k, v in result.items() if v is not None}
-
-
-def _build_plain_hospitalization(encounter: "EncounterModel") -> dict:
-    fields = [
-        "hosp_pre_admission_identifier_system", "hosp_pre_admission_identifier_value",
-        "hosp_origin_type", "hosp_origin_id", "hosp_origin_display",
-        "hosp_admit_source_system", "hosp_admit_source_code", "hosp_admit_source_display", "hosp_admit_source_text",
-        "hosp_re_admission_system", "hosp_re_admission_code", "hosp_re_admission_display", "hosp_re_admission_text",
-        "hosp_destination_type", "hosp_destination_id", "hosp_destination_display",
-        "hosp_discharge_disposition_system", "hosp_discharge_disposition_code",
-        "hosp_discharge_disposition_display", "hosp_discharge_disposition_text",
-    ]
-    has_any = any(getattr(encounter, f, None) for f in fields)
-    has_children = bool(
-        encounter.hosp_diet_preferences
-        or encounter.hosp_special_arrangements
-        or encounter.hosp_special_courtesies
-    )
-    if not has_any and not has_children:
-        return {}
-
-    hosp: dict = {
-        "pre_admission_identifier_system": encounter.hosp_pre_admission_identifier_system,
-        "pre_admission_identifier_value": encounter.hosp_pre_admission_identifier_value,
-        "origin_type": encounter.hosp_origin_type,
-        "origin_id": encounter.hosp_origin_id,
-        "origin_display": encounter.hosp_origin_display,
-        "admit_source_system": encounter.hosp_admit_source_system,
-        "admit_source_code": encounter.hosp_admit_source_code,
-        "admit_source_display": encounter.hosp_admit_source_display,
-        "admit_source_text": encounter.hosp_admit_source_text,
-        "re_admission_system": encounter.hosp_re_admission_system,
-        "re_admission_code": encounter.hosp_re_admission_code,
-        "re_admission_display": encounter.hosp_re_admission_display,
-        "re_admission_text": encounter.hosp_re_admission_text,
-        "destination_type": encounter.hosp_destination_type,
-        "destination_id": encounter.hosp_destination_id,
-        "destination_display": encounter.hosp_destination_display,
-        "discharge_disposition_system": encounter.hosp_discharge_disposition_system,
-        "discharge_disposition_code": encounter.hosp_discharge_disposition_code,
-        "discharge_disposition_display": encounter.hosp_discharge_disposition_display,
-        "discharge_disposition_text": encounter.hosp_discharge_disposition_text,
-    }
-
-    if encounter.hosp_diet_preferences:
-        hosp["diet_preference"] = [
-            {"coding_system": dp.coding_system, "coding_code": dp.coding_code,
-             "coding_display": dp.coding_display, "text": dp.text}
-            for dp in encounter.hosp_diet_preferences
-        ]
-    if encounter.hosp_special_arrangements:
-        hosp["special_arrangement"] = [
-            {"coding_system": sa.coding_system, "coding_code": sa.coding_code,
-             "coding_display": sa.coding_display, "text": sa.text}
-            for sa in encounter.hosp_special_arrangements
-        ]
-    if encounter.hosp_special_courtesies:
-        hosp["special_courtesy"] = [
-            {"coding_system": sc.coding_system, "coding_code": sc.coding_code,
-             "coding_display": sc.coding_display, "text": sc.text}
-            for sc in encounter.hosp_special_courtesies
-        ]
-
-    return {k: v for k, v in hosp.items() if v is not None}

@@ -30,6 +30,7 @@ class FHIRAttachment(BaseModel):
 class FHIRQualification(BaseModel):
     identifier: Optional[List[FHIRIdentifier]] = None
     code: Optional[FHIRCodeableConcept] = Field(None, description="Coded qualification type.")
+    status: Optional[FHIRCodeableConcept] = Field(None, description="Status of the qualification (e.g. active, inactive, pending).")
     period: Optional[FHIRPeriod] = Field(None, description="Qualification validity period.")
     issuer: Optional[FHIRReference] = Field(None, description="Issuing organization reference.")
 
@@ -47,8 +48,6 @@ class FHIRPractitionerSchema(BaseModel):
     birthDate: Optional[str] = Field(None, description="ISO 8601 date string.")
     deceasedBoolean: Optional[bool] = None
     deceasedDateTime: Optional[str] = Field(None, description="ISO 8601 dateTime string.")
-    role: Optional[str] = Field(None, description="App-specific practitioner role (e.g. doctor, nurse).")
-    specialty: Optional[str] = Field(None, description="App-specific clinical specialty.")
     identifier: Optional[List[FHIRIdentifier]] = Field(None, description="Business identifiers (NPI, license, DEA, etc.).")
     name: Optional[List[FHIRHumanName]] = Field(None, description="Name(s) associated with the practitioner.")
     telecom: Optional[List[FHIRContactPoint]] = Field(None, description="Contact details applying to all roles.")
@@ -127,15 +126,34 @@ class PlainPractitionerPhoto(BaseModel):
     creation: Optional[str] = Field(None, description="ISO 8601 datetime string.")
 
 
+class PlainQualificationIdentifier(BaseModel):
+    use: Optional[str] = Field(None, description="usual | official | temp | secondary | old")
+    type_system: Optional[str] = Field(None, description="Coding system URI for identifier type.")
+    type_code: Optional[str] = Field(None, description="Identifier type code.")
+    type_display: Optional[str] = Field(None, description="Human-readable identifier type.")
+    type_text: Optional[str] = Field(None, description="Plain-text description of identifier type.")
+    system: Optional[str] = Field(None, description="Namespace URI for the qualification identifier.")
+    value: Optional[str] = Field(None, description="Qualification or license number.")
+    period_start: Optional[str] = Field(None, description="ISO 8601 datetime string.")
+    period_end: Optional[str] = Field(None, description="ISO 8601 datetime string.")
+    assigner: Optional[str] = Field(None, description="Display name of the issuing organization.")
+
+
 class PlainQualification(BaseModel):
-    identifier_system: Optional[str] = Field(None, description="Namespace URI for the qualification identifier.")
-    identifier_value: Optional[str] = Field(None, description="Qualification or license number.")
+    identifier: Optional[List[PlainQualificationIdentifier]] = Field(
+        None, description="Identifiers for this qualification (e.g. license numbers)."
+    )
     code_system: Optional[str] = Field(None, description="Coding system URI for qualification type.")
     code_code: Optional[str] = Field(None, description="Coded qualification type.")
     code_display: Optional[str] = Field(None, description="Display for the qualification code.")
     code_text: Optional[str] = Field(None, description="Human-readable qualification type.")
+    status_system: Optional[str] = Field(None, description="Coding system URI for qualification status.")
+    status_code: Optional[str] = Field(None, description="Status code (e.g. active, inactive, pending).")
+    status_display: Optional[str] = Field(None, description="Display for the status code.")
+    status_text: Optional[str] = Field(None, description="Human-readable qualification status.")
     period_start: Optional[str] = Field(None, description="ISO 8601 datetime string.")
     period_end: Optional[str] = Field(None, description="ISO 8601 datetime string — qualification expiry.")
+    issuer_type: Optional[str] = Field(None, description="Reference type for issuer, always 'Organization'.")
     issuer_id: Optional[int] = Field(None, description="Public Organization ID that issued the qualification.")
     issuer_display: Optional[str] = Field(None, description="Display name of the issuing organization.")
 
@@ -160,8 +178,6 @@ class PlainPractitionerResponse(BaseModel):
     birth_date: Optional[str] = Field(None, description="ISO 8601 date string.")
     deceased_boolean: Optional[bool] = None
     deceased_datetime: Optional[str] = Field(None, description="ISO 8601 datetime string.")
-    role: Optional[str] = None
-    specialty: Optional[str] = None
     name: Optional[List[PlainPractitionerName]] = None
     identifier: Optional[List[PlainPractitionerIdentifier]] = None
     telecom: Optional[List[PlainPractitionerTelecom]] = None
