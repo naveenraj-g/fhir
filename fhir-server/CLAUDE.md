@@ -3,6 +3,8 @@
 ## FHIR References
 - QuestionnaireResponse spec: https://www.hl7.org/fhir/questionnaireresponse.html
 - FHIR R4 base spec: https://www.hl7.org/fhir/R4/
+- FHIR R5 base spec: https://www.hl7.org/fhir/ (default page — verify version before modeling)
+- Metadata/complex datatypes (ExtendedContactDetail, Availability): https://www.hl7.org/fhir/metadatatypes-definitions.html
 
 ---
 
@@ -678,15 +680,21 @@ When given a FHIR resource URL (e.g. `https://www.hl7.org/fhir/procedure.html`),
 | `Range` | `.../datatypes.html#Range` | `low` and `high` are SimpleQuantity |
 | `Ratio` | `.../datatypes.html#Ratio` | `numerator` is Quantity; `denominator` is SimpleQuantity |
 | `Period` | `.../datatypes.html#Period` | `start` and `end` are dateTime |
+| `ExtendedContactDetail` | `.../metadatatypes-definitions.html` | Has `purpose` (CodeableConcept), `name[]` (HumanName, 0..*), `telecom[]` (ContactPoint, 0..*), `address` (0..1 Address), `organization` (Reference), `period` — **name[] and telecom[] are 0..* so they become grandchild tables** |
+| `Availability` | `.../metadatatypes-definitions.html` | Has `availableTime[]` (0..*, BackboneElement) and `notAvailableTime[]` (0..*, BackboneElement) — the Availability row itself is a grouping parent; its two arrays are child tables |
+| `HumanName` | `.../datatypes.html#HumanName` | `given[]`, `prefix[]`, `suffix[]` are 0..* — store comma-separated since they are ordered display strings, never individually filtered |
+| `ContactPoint` | `.../datatypes.html#ContactPoint` | `system`, `value`, `use`, `rank`, `period` — all scalar; one row per contact point |
+| `Address` | `.../datatypes.html#Address` | `line[]` is 0..* — store comma-separated; all other fields are scalar and flatten to columns |
 
 3. **Every BackboneElement** in the resource — these have their own sub-fields that must be read, not assumed. Backbone elements with `0..*` cardinality become child tables; their internal `0..*` sub-fields become grandchild tables.
 
-4. **Verify R4 vs R5** — the spec site may serve R5 content. Check for known R4→R5 differences:
+4. **Verify R4 vs R5** — the spec site (`https://www.hl7.org/fhir/`) serves R5 by default. Always cross-check against the R4 URL (`https://www.hl7.org/fhir/R4/`). Known R4→R5 differences:
    - Merged fields: R5 often collapses `reasonCode[]` + `reasonReference[]` into a single `reason[]` CodeableReference — keep them **separate** in R4
    - Same for `complication[]`/`complicationDetail[]`, `usedReference[]`/`usedCode[]`
    - `category` is often **0..1** in R4 but **0..*` in R5
    - Choice types (`performed[x]`, `medication[x]`, `reported[x]`) may differ between versions
    - Extra R5-only fields: `focus`, `recorded`, `supportingInfo`, `informationSource`, `device`, `renderedDosageInstruction`, `statusChanged`
+   - **PractitionerRole specifically**: R4 uses `telecom` (ContactPoint) + `availableTime`/`notAvailable`/`availabilityExceptions` BackboneElements; R5 replaces all of these with `contact` (ExtendedContactDetail) + `availability` (Availability datatype) and adds `characteristic[]` and `communication[]`. This project models PractitionerRole using the R5 structure.
 
 **The rule:** if a field's type is a named FHIR datatype (not a primitive like `string`, `boolean`, `dateTime`, `integer`), fetch its spec page before deciding how to store it. Never assume structure from the type name alone.
 
@@ -701,7 +709,11 @@ The cardinality in the FHIR spec directly determines where a field lives in the 
 | `1..1` or `0..1` | Flat column(s) on the main model table |
 | `0..*` | Separate child table + one-to-many relationship |
 
-**Never put a repeating (0..*) field in a single column** (e.g. comma-separated text). Each array element needs its own row so it can be queried, filtered, and individually deleted. The only allowed exception is `instantiatesCanonical[]` / `instantiatesUri[]` — simple URI lists that are never filtered — stored as comma-separated `Text`.
+**Never put a repeating (0..*) field in a single column** (e.g. comma-separated text). Each array element needs its own row so it can be queried, filtered, and individually deleted. Allowed exceptions (stored as comma-separated `Text` because they are never individually filtered):
+- `instantiatesCanonical[]` / `instantiatesUri[]` — simple URI lists
+- `availableTime.daysOfWeek[]` — ordered code list (`mon,tue,wed`); always read/written as a unit
+- `HumanName.given[]` / `HumanName.prefix[]` / `HumanName.suffix[]` — display-only ordered strings
+- `Address.line[]` — ordered street address lines
 
 ```python
 # ✓ 0..1  →  flat columns on main table
@@ -748,6 +760,58 @@ Every child table must have:
 
 The parent model declares the relationship with `cascade="all, delete-orphan"`.
 
+### Multi-level nesting (grandchild tables)
+
+When a `0..*` field's type is itself a complex datatype that contains `0..*` sub-fields, you need **three levels of tables**: main → child → grandchild. Never flatten grandchild arrays into the child row.
+
+**Example — PractitionerRole `contact[]` (ExtendedContactDetail):**
+
+```
+practitioner_role                        ← main table
+  └── practitioner_role_contact          ← child: one row per ExtendedContactDetail entry
+        ├── practitioner_role_contact_name[]    ← grandchild: HumanName (0..*)
+        └── practitioner_role_contact_telecom[] ← grandchild: ContactPoint (0..*)
+```
+
+```python
+# Child table: one row per contact entry
+class PractitionerRoleContact(Base):
+    __tablename__ = "practitioner_role_contact"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    practitioner_role_id = Column(Integer, ForeignKey("practitioner_role.id"), nullable=False, index=True)
+    # flat fields: purpose (CodeableConcept), address, organization ref, period
+    names   = relationship("PractitionerRoleContactName",   back_populates="contact", cascade="all, delete-orphan")
+    telecoms = relationship("PractitionerRoleContactTelecom", back_populates="contact", cascade="all, delete-orphan")
+
+# Grandchild table: one row per HumanName within a contact
+class PractitionerRoleContactName(Base):
+    __tablename__ = "practitioner_role_contact_name"
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    contact_id = Column(Integer, ForeignKey("practitioner_role_contact.id"), nullable=False, index=True)
+    ...
+```
+
+**Example — PractitionerRole `availability[]` (Availability datatype):**
+
+```
+practitioner_role
+  └── practitioner_role_availability          ← grouping row (one per Availability entry)
+        ├── practitioner_role_availability_time[]      ← availableTime BackboneElement
+        └── practitioner_role_not_available_time[]     ← notAvailableTime BackboneElement
+```
+
+The Availability grouping row carries no scalar fields of its own — it exists only to anchor the two `0..*` child arrays. Do not collapse available_times and not_available_times into a single flat table.
+
+### No redundant columns on parent tables
+
+Do not add flat columns to a parent resource's table for data that belongs to a dedicated child resource. If a field is properly modeled as a child/related resource, access it via join — never duplicate it as a shortcut column.
+
+**Wrong:** adding `role` and `specialty` columns to `PractitionerModel` because "it's convenient" when `PractitionerRoleModel` already owns that data via `codes[]` and `specialties[]`.
+
+**Right:** query role/specialty through `practitioner.roles` → `PractitionerRoleCode` / `PractitionerRoleSpecialty`.
+
+This also applies to filtering: remove `role` as a filter param from `PractitionerRepository.list()` and instead filter via a join to `practitioner_role_code` when needed.
+
 ### Sequence allocation
 
 Each new resource picks a start value that does not collide with existing sequences:
@@ -766,6 +830,7 @@ Each new resource picks a start value that does not collide with existing sequen
 | DiagnosticReport | 110000 |
 | Condition | 120000 |
 | DeviceRequest | 130000 |
+| PractitionerRole | 140000 |
 
 Pick the next available block of 10000 for any new resource.
 

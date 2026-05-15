@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
 
 from app.auth.dependencies import get_current_user
-from app.core.config import settings
 from app.routers.vitals import router as vitals_router
 from app.core.database import Database
 from app.core.logging import get_logger, setup_logging

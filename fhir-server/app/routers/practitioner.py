@@ -71,7 +71,7 @@ _LIST_200 = {
     operation_id="create_practitioner",
     summary="Create a new Practitioner resource",
     description=(
-        "Creates a Practitioner with core demographics (active status, gender, birth date, role, specialty). "
+        "Creates a Practitioner with core demographics (active status, gender, birth date). "
         "The caller's `sub` claim and `activeOrganizationId` from the JWT are automatically bound to the record. "
         "Names, identifiers, telecom, addresses, photos, qualifications, and communications must be added "
         "via the dedicated sub-resource endpoints after creation. "
@@ -169,7 +169,7 @@ async def get_practitioner(
     summary="Partially update a Practitioner resource",
     description=(
         "Only supplied fields are written; omitted fields are left unchanged. "
-        "Patchable fields: active, gender, birth_date, deceased_boolean, deceased_datetime, role, specialty. "
+        "Patchable fields: active, gender, birth_date, deceased_boolean, deceased_datetime. "
         "To modify names, identifiers, telecom, addresses, photos, qualifications, or communications, "
         "use the dedicated sub-resource endpoints. "
         + _CONTENT_NEG
@@ -205,7 +205,7 @@ async def patch_practitioner(
     description=(
         "Returns a paginated list of Practitioners. "
         "Filter by `family_name` or `given_name` (searches across the practitioner_name table), "
-        "`role`, `active`, `user_id`, or `org_id`. "
+        "`active`, `user_id`, or `org_id`. "
         "Use `limit` and `offset` for pagination. "
         + _CONTENT_NEG
     ),
@@ -216,7 +216,6 @@ async def list_practitioners(
     request: Request,
     family_name: Optional[str] = Query(None, description="Filter by family (last) name — partial match, case-insensitive."),
     given_name: Optional[str] = Query(None, description="Filter by given (first) name — partial match, case-insensitive."),
-    role: Optional[str] = Query(None, description="Filter by practitioner role (e.g. doctor, nurse)."),
     active: Optional[bool] = Query(None, description="Filter by active status."),
     user_id: Optional[str] = Query(None, description="Filter by user_id (JWT sub claim)."),
     org_id: Optional[str] = Query(None, description="Filter by organization ID."),
@@ -226,7 +225,7 @@ async def list_practitioners(
 ):
     practitioners, total = await practitioner_service.list_practitioners(
         user_id=user_id, org_id=org_id, family_name=family_name,
-        given_name=given_name, role=role, active=active,
+        given_name=given_name, active=active,
         limit=limit, offset=offset,
     )
     return format_paginated_response(

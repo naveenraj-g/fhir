@@ -1,4 +1,3 @@
-from app.models.practitioner.enums import PractitionerRole
 from app.models.practitioner.practitioner import (
     PractitionerModel,
     PractitionerName,
@@ -11,7 +10,6 @@ from app.models.practitioner.practitioner import (
 )
 
 __all__ = [
-    "PractitionerRole",
     "PractitionerModel",
     "PractitionerName",
     "PractitionerIdentifier",

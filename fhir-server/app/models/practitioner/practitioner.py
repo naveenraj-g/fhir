@@ -3,7 +3,6 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
-    Enum,
     ForeignKey,
     Integer,
     Sequence,
@@ -14,7 +13,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
-from app.models.practitioner.enums import PractitionerRole
 
 practitioner_id_seq = Sequence("practitioner_id_seq", start=30000, increment=1)
 
@@ -40,10 +38,6 @@ class PractitionerModel(Base):
     deceased_boolean = Column(Boolean, nullable=True)
     deceased_datetime = Column(DateTime(timezone=True), nullable=True)
 
-    # App-specific (not in FHIR spec — kept for operational convenience)
-    role = Column(Enum(PractitionerRole, name="practitioner_role"), nullable=True)
-    specialty = Column(String, nullable=True)
-
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_by = Column(String, nullable=True)
@@ -56,6 +50,7 @@ class PractitionerModel(Base):
     photos = relationship("PractitionerPhoto", back_populates="practitioner", cascade="all, delete-orphan")
     qualifications = relationship("PractitionerQualification", back_populates="practitioner", cascade="all, delete-orphan")
     communications = relationship("PractitionerCommunication", back_populates="practitioner", cascade="all, delete-orphan")
+    roles = relationship("PractitionerRoleModel", back_populates="practitioner", cascade="all, delete-orphan")
 
 
 class PractitionerName(Base):

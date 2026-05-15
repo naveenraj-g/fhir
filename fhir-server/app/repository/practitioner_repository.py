@@ -70,7 +70,7 @@ class PractitionerRepository:
             )
             return (await session.execute(stmt)).scalars().first()
 
-    def _apply_list_filters(self, stmt, user_id, org_id, family_name, given_name, role, active):
+    def _apply_list_filters(self, stmt, user_id, org_id, family_name, given_name, active):
         if user_id:
             stmt = stmt.where(PractitionerModel.user_id == user_id)
         if org_id:
@@ -93,8 +93,6 @@ class PractitionerRepository:
                     )
                 )
             )
-        if role is not None:
-            stmt = stmt.where(PractitionerModel.role == role)
         if active is not None:
             stmt = stmt.where(PractitionerModel.active == active)
         return stmt
@@ -105,7 +103,6 @@ class PractitionerRepository:
         org_id: Optional[str] = None,
         family_name: Optional[str] = None,
         given_name: Optional[str] = None,
-        role: Optional[str] = None,
         active: Optional[bool] = None,
         limit: int = 50,
         offset: int = 0,
@@ -113,11 +110,11 @@ class PractitionerRepository:
         async with self.session_factory() as session:
             base = self._apply_list_filters(
                 _with_relationships(select(PractitionerModel)),
-                user_id, org_id, family_name, given_name, role, active,
+                user_id, org_id, family_name, given_name, active,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(PractitionerModel),
-                user_id, org_id, family_name, given_name, role, active,
+                user_id, org_id, family_name, given_name, active,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
@@ -143,8 +140,6 @@ class PractitionerRepository:
                 birth_date=payload.birth_date,
                 deceased_boolean=payload.deceased_boolean,
                 deceased_datetime=payload.deceased_datetime,
-                role=payload.role,
-                specialty=payload.specialty,
                 created_by=created_by,
             )
             try:

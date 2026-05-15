@@ -10,8 +10,6 @@ from app.schemas.enums import (
     AddressType,
     IdentifierUse,
 )
-from app.models.practitioner.enums import PractitionerRole
-
 
 # ── Sub-resource create schemas ────────────────────────────────────────────────
 
@@ -115,8 +113,6 @@ class PractitionerCreateSchema(BaseModel):
                 "active": True,
                 "gender": "female",
                 "birth_date": "1978-03-15",
-                "role": "doctor",
-                "specialty": "Cardiology",
             }
         },
     )
@@ -128,8 +124,6 @@ class PractitionerCreateSchema(BaseModel):
     birth_date: Optional[date] = None
     deceased_boolean: Optional[bool] = None
     deceased_datetime: Optional[datetime] = None
-    role: Optional[PractitionerRole] = None
-    specialty: Optional[str] = Field(None, max_length=200)
 
 
 class PractitionerPatchSchema(BaseModel):
@@ -140,5 +134,3 @@ class PractitionerPatchSchema(BaseModel):
     birth_date: Optional[date] = None
     deceased_boolean: Optional[bool] = None
     deceased_datetime: Optional[datetime] = None
-    role: Optional[PractitionerRole] = None
-    specialty: Optional[str] = Field(None, max_length=200)
