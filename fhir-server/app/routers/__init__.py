@@ -8,6 +8,7 @@ from .questionnaire_response import router as questionnaire_response_router
 from .condition import router as condition_router
 from .service_request import router as service_request_router
 from .device_request import router as device_request_router
+from .diagnostic_report import router as diagnostic_report_router
 
 api_router = APIRouter()
 
@@ -37,4 +38,8 @@ api_router.include_router(
 
 api_router.include_router(
     device_request_router, prefix="/device-requests", tags=["DeviceRequests"]
+)
+
+api_router.include_router(
+    diagnostic_report_router, prefix="/diagnostic-reports", tags=["DiagnosticReports"]
 )

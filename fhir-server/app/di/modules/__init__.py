@@ -7,6 +7,7 @@ from .vitals import VitalsContainer
 from .condition import ConditionContainer
 from .service_request import ServiceRequestContainer
 from .device_request import DeviceRequestContainer
+from .diagnostic_report import DiagnosticReportContainer
 
 __all__ = [
     "PatientContainer",
@@ -18,4 +19,5 @@ __all__ = [
     "ConditionContainer",
     "ServiceRequestContainer",
     "DeviceRequestContainer",
+    "DiagnosticReportContainer",
 ]
