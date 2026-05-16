@@ -17,7 +17,8 @@
       "Bash(python3 -c \"import json,sys; spec=json.load\\(sys.stdin\\); qr_post=spec['paths'].get\\('/api/fhir/v1/questionnaire-responses/',{}\\); print\\('POST requestBody keys:', list\\(qr_post.get\\('post',{}\\).get\\('requestBody',{}\\).get\\('content',{}\\).get\\('application/json',{}\\).get\\('schema',{}\\).get\\('properties',{}\\).keys\\(\\)\\)[:10]\\)\")",
       "Bash(just migrate *)",
       "WebFetch(domain:www.hl7.org)",
-      "WebFetch(domain:hl7.org)"
+      "WebFetch(domain:hl7.org)",
+      "PowerShell($content = Get-Content \"E:\\\\work\\\\code\\\\fhir\\\\fhir-server\\\\CLAUDE.md\" -Raw; \"Characters: $\\($content.Length\\)\"; \"Lines: $\\(\\(Get-Content 'E:\\\\work\\\\code\\\\fhir\\\\fhir-server\\\\CLAUDE.md'\\).Count\\)\")"
     ]
   }
 }

@@ -206,3 +206,11 @@ Observability:
  _ Traces
 """
 # python.analysis.typeCheckingMode
+
+# observability
+# deterministic execution
+# auditability
+# retries
+# tracing
+# idempotency
+# failure recovery

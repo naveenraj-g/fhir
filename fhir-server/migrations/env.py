@@ -28,6 +28,12 @@ import app.models.condition.condition  # noqa: F401
 import app.models.device_request.device_request  # noqa: F401
 import app.models.practitioner_role.practitioner_role  # noqa: F401
 import app.models.healthcare_service.healthcare_service  # noqa: F401
+import app.models.observation.observation  # noqa: F401
+import app.models.claim.claim  # noqa: F401
+import app.models.claim_response.claim_response  # noqa: F401
+import app.models.organization.organization  # noqa: F401
+import app.models.schedule.schedule  # noqa: F401
+import app.models.invoice.invoice  # noqa: F401
 
 # Read alembic.ini logging config
 config = context.config
