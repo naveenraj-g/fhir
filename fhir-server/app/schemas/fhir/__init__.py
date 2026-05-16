@@ -76,6 +76,25 @@ from app.schemas.appointment.response import (
     PlainAppointmentParticipantType, PlainAppointmentParticipant, PlainAppointmentRequestedPeriod,
     PlainWeeklyTemplate, PlainMonthlyTemplate, PlainYearlyTemplate, PlainRecurrenceTemplate,
 )
+from app.schemas.condition.response import (
+    FHIRConditionSchema,
+    FHIRConditionBundle,
+    FHIRConditionBundleEntry,
+    FHIRConditionStage,
+    FHIRConditionEvidence,
+    FHIRAnnotation,
+    PaginatedConditionResponse,
+    PlainConditionResponse,
+    PlainConditionIdentifier,
+    PlainConditionCategory,
+    PlainConditionBodySite,
+    PlainConditionStageAssessment,
+    PlainConditionStage,
+    PlainConditionEvidenceCode,
+    PlainConditionEvidenceDetail,
+    PlainConditionEvidence,
+    PlainConditionNote,
+)
 from app.schemas.questionnaire_response.response import (
     FHIRQuestionnaireResponseSchema, FHIRQuestionnaireResponseBundle,
     FHIRQuestionnaireResponseBundleEntry, FHIRQRItem, FHIRAnswer,
@@ -148,6 +167,14 @@ __all__ = [
     "PlainAppointmentNote", "PlainAppointmentPatientInstruction",
     "PlainAppointmentParticipantType", "PlainAppointmentParticipant", "PlainAppointmentRequestedPeriod",
     "PlainWeeklyTemplate", "PlainMonthlyTemplate", "PlainYearlyTemplate", "PlainRecurrenceTemplate",
+    # Condition
+    "FHIRConditionSchema", "FHIRConditionBundle", "FHIRConditionBundleEntry",
+    "FHIRConditionStage", "FHIRConditionEvidence", "FHIRAnnotation",
+    "PaginatedConditionResponse", "PlainConditionResponse",
+    "PlainConditionIdentifier", "PlainConditionCategory", "PlainConditionBodySite",
+    "PlainConditionStageAssessment", "PlainConditionStage",
+    "PlainConditionEvidenceCode", "PlainConditionEvidenceDetail",
+    "PlainConditionEvidence", "PlainConditionNote",
     # QuestionnaireResponse
     "FHIRQuestionnaireResponseSchema", "FHIRQuestionnaireResponseBundle",
     "FHIRQuestionnaireResponseBundleEntry", "FHIRQRItem", "FHIRAnswer",

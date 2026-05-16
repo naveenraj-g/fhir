@@ -5,6 +5,7 @@ from .practitioner import router as practitioner_router
 from .encounter import router as encounter_router
 from .appointment import router as appointment_router
 from .questionnaire_response import router as questionnaire_response_router
+from .condition import router as condition_router
 
 api_router = APIRouter()
 
@@ -25,3 +26,5 @@ api_router.include_router(
     prefix="/questionnaire-responses",
     tags=["QuestionnaireResponses"],
 )
+
+api_router.include_router(condition_router, prefix="/conditions", tags=["Conditions"])
