@@ -3,7 +3,114 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.models.condition.condition import ConditionModel
+    from app.models.condition.condition import (
+        ConditionModel,
+        ConditionIdentifier,
+        ConditionCategory,
+        ConditionBodySite,
+        ConditionStage,
+        ConditionEvidence,
+        ConditionNote,
+    )
+
+
+def plain_condition_identifier(i: "ConditionIdentifier") -> dict:
+    return {
+        "id": i.id,
+        "use": i.use,
+        "type_system": i.type_system,
+        "type_code": i.type_code,
+        "type_display": i.type_display,
+        "type_text": i.type_text,
+        "system": i.system,
+        "value": i.value,
+        "period_start": i.period_start.isoformat() if i.period_start else None,
+        "period_end": i.period_end.isoformat() if i.period_end else None,
+        "assigner": i.assigner,
+    }
+
+
+def plain_condition_category(cat: "ConditionCategory") -> dict:
+    return {
+        "id": cat.id,
+        "coding_system": cat.coding_system,
+        "coding_code": cat.coding_code,
+        "coding_display": cat.coding_display,
+        "text": cat.text,
+    }
+
+
+def plain_condition_body_site(bs: "ConditionBodySite") -> dict:
+    return {
+        "id": bs.id,
+        "coding_system": bs.coding_system,
+        "coding_code": bs.coding_code,
+        "coding_display": bs.coding_display,
+        "text": bs.text,
+    }
+
+
+def plain_condition_stage(s: "ConditionStage") -> dict:
+    entry: dict = {
+        "id": s.id,
+        "summary_system": s.summary_system,
+        "summary_code": s.summary_code,
+        "summary_display": s.summary_display,
+        "summary_text": s.summary_text,
+        "type_system": s.type_system,
+        "type_code": s.type_code,
+        "type_display": s.type_display,
+        "type_text": s.type_text,
+    }
+    if s.assessments:
+        entry["assessment"] = [
+            {
+                "id": a.id,
+                "reference_type": a.reference_type.value if a.reference_type else None,
+                "reference_id": a.reference_id,
+                "reference_display": a.reference_display,
+            }
+            for a in s.assessments
+        ]
+    return entry
+
+
+def plain_condition_evidence(e: "ConditionEvidence") -> dict:
+    entry: dict = {"id": e.id}
+    if e.codes:
+        entry["code"] = [
+            {
+                "id": ec.id,
+                "coding_system": ec.coding_system,
+                "coding_code": ec.coding_code,
+                "coding_display": ec.coding_display,
+                "text": ec.text,
+            }
+            for ec in e.codes
+        ]
+    if e.details:
+        entry["detail"] = [
+            {
+                "id": d.id,
+                "reference_type": d.reference_type,
+                "reference_id": d.reference_id,
+                "reference_display": d.reference_display,
+            }
+            for d in e.details
+        ]
+    return entry
+
+
+def plain_condition_note(n: "ConditionNote") -> dict:
+    return {
+        "id": n.id,
+        "text": n.text,
+        "time": n.time.isoformat() if n.time else None,
+        "author_string": n.author_string,
+        "author_reference_type": n.author_reference_type.value if n.author_reference_type else None,
+        "author_reference_id": n.author_reference_id,
+        "author_reference_display": n.author_reference_display,
+    }
 
 
 def to_plain_condition(condition: "ConditionModel") -> dict:
@@ -76,109 +183,16 @@ def to_plain_condition(condition: "ConditionModel") -> dict:
     }
 
     if condition.identifiers:
-        result["identifier"] = [
-            {
-                "use": i.use,
-                "type_system": i.type_system,
-                "type_code": i.type_code,
-                "type_display": i.type_display,
-                "type_text": i.type_text,
-                "system": i.system,
-                "value": i.value,
-                "period_start": i.period_start.isoformat() if i.period_start else None,
-                "period_end": i.period_end.isoformat() if i.period_end else None,
-                "assigner": i.assigner,
-            }
-            for i in condition.identifiers
-        ]
-
+        result["identifier"] = [plain_condition_identifier(i) for i in condition.identifiers]
     if condition.categories:
-        result["category"] = [
-            {
-                "coding_system": c.coding_system,
-                "coding_code": c.coding_code,
-                "coding_display": c.coding_display,
-                "text": c.text,
-            }
-            for c in condition.categories
-        ]
-
+        result["category"] = [plain_condition_category(c) for c in condition.categories]
     if condition.body_sites:
-        result["body_site"] = [
-            {
-                "coding_system": bs.coding_system,
-                "coding_code": bs.coding_code,
-                "coding_display": bs.coding_display,
-                "text": bs.text,
-            }
-            for bs in condition.body_sites
-        ]
-
+        result["body_site"] = [plain_condition_body_site(bs) for bs in condition.body_sites]
     if condition.stages:
-        stage_list = []
-        for s in condition.stages:
-            stage_entry: dict = {
-                "id": s.id,
-                "summary_system": s.summary_system,
-                "summary_code": s.summary_code,
-                "summary_display": s.summary_display,
-                "summary_text": s.summary_text,
-                "type_system": s.type_system,
-                "type_code": s.type_code,
-                "type_display": s.type_display,
-                "type_text": s.type_text,
-            }
-            if s.assessments:
-                stage_entry["assessment"] = [
-                    {
-                        "id": a.id,
-                        "reference_type": a.reference_type.value if a.reference_type else None,
-                        "reference_id": a.reference_id,
-                        "reference_display": a.reference_display,
-                    }
-                    for a in s.assessments
-                ]
-            stage_list.append(stage_entry)
-        result["stage"] = stage_list
-
+        result["stage"] = [plain_condition_stage(s) for s in condition.stages]
     if condition.evidence:
-        ev_list = []
-        for e in condition.evidence:
-            ev_entry: dict = {"id": e.id}
-            if e.codes:
-                ev_entry["code"] = [
-                    {
-                        "coding_system": ec.coding_system,
-                        "coding_code": ec.coding_code,
-                        "coding_display": ec.coding_display,
-                        "text": ec.text,
-                    }
-                    for ec in e.codes
-                ]
-            if e.details:
-                ev_entry["detail"] = [
-                    {
-                        "reference_type": d.reference_type,
-                        "reference_id": d.reference_id,
-                        "reference_display": d.reference_display,
-                    }
-                    for d in e.details
-                ]
-            ev_list.append(ev_entry)
-        result["evidence"] = ev_list
-
+        result["evidence"] = [plain_condition_evidence(e) for e in condition.evidence]
     if condition.notes:
-        result["note"] = [
-            {
-                "id": n.id,
-                "text": n.text,
-                "time": n.time.isoformat() if n.time else None,
-                "author_string": n.author_string,
-                "author_reference_type": n.author_reference_type.value if n.author_reference_type else None,
-                "author_reference_id": n.author_reference_id,
-                "author_reference_display": n.author_reference_display,
-            }
-            for n in condition.notes
-        ]
+        result["note"] = [plain_condition_note(n) for n in condition.notes]
 
     return {k: v for k, v in result.items() if v is not None}

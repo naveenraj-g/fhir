@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     )
 
 
-def _map_answer_to_fhir(answer: "QuestionnaireResponseAnswerModel") -> dict:
+def fhir_qr_answer(answer: "QuestionnaireResponseAnswerModel") -> dict:
     vt = answer.value_type
     data: dict = {}
 
@@ -77,21 +77,21 @@ def _map_answer_to_fhir(answer: "QuestionnaireResponseAnswerModel") -> dict:
             data["valueAttachment"] = att
 
     if answer.answer_items:
-        data["item"] = [_map_item_to_fhir(sub) for sub in answer.answer_items]
+        data["item"] = [fhir_qr_item(sub) for sub in answer.answer_items]
 
     return data
 
 
-def _map_item_to_fhir(item: "QuestionnaireResponseItemModel") -> dict:
+def fhir_qr_item(item: "QuestionnaireResponseItemModel") -> dict:
     data: dict = {"linkId": item.link_id}
     if item.text:
         data["text"] = item.text
     if item.definition:
         data["definition"] = item.definition
     if item.answers:
-        data["answer"] = [_map_answer_to_fhir(a) for a in item.answers]
+        data["answer"] = [fhir_qr_answer(a) for a in item.answers]
     if item.sub_items:
-        data["item"] = [_map_item_to_fhir(sub) for sub in item.sub_items]
+        data["item"] = [fhir_qr_item(sub) for sub in item.sub_items]
     return data
 
 
@@ -174,6 +174,6 @@ def to_fhir_questionnaire_response(qr: "QuestionnaireResponseModel") -> dict:
 
     top_level = [i for i in qr.items if i.parent_item_id is None]
     if top_level:
-        result["item"] = [_map_item_to_fhir(i) for i in top_level]
+        result["item"] = [fhir_qr_item(i) for i in top_level]
 
     return {k: v for k, v in result.items() if v is not None}
