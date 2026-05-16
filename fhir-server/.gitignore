@@ -50,4 +50,6 @@ Thumbs.db
 .idea/
 
 # ── Claude Code ───────────────────────────────────────────────────────────────
-.claude/
+# Track .claude/commands/ (shared skill definitions); ignore local settings
+.claude/settings.local.json
+.claude/settings.json
