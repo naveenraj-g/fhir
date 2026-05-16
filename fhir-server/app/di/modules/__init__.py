@@ -8,6 +8,7 @@ from .condition import ConditionContainer
 from .service_request import ServiceRequestContainer
 from .device_request import DeviceRequestContainer
 from .diagnostic_report import DiagnosticReportContainer
+from .medication_request import MedicationRequestContainer
 
 __all__ = [
     "PatientContainer",
@@ -20,4 +21,5 @@ __all__ = [
     "ServiceRequestContainer",
     "DeviceRequestContainer",
     "DiagnosticReportContainer",
+    "MedicationRequestContainer",
 ]

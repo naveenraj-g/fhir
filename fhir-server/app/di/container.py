@@ -1,6 +1,6 @@
 from dependency_injector import containers, providers
 from app.di.core import CoreContainer
-from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer
+from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer, MedicationRequestContainer
 
 
 class Container(containers.DeclarativeContainer):
@@ -56,6 +56,11 @@ class Container(containers.DeclarativeContainer):
 
     diagnostic_report = providers.Container(
         DiagnosticReportContainer,
+        core=core,
+    )
+
+    medication_request = providers.Container(
+        MedicationRequestContainer,
         core=core,
     )
 

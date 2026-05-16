@@ -9,6 +9,7 @@ from .condition import router as condition_router
 from .service_request import router as service_request_router
 from .device_request import router as device_request_router
 from .diagnostic_report import router as diagnostic_report_router
+from .medication_request import router as medication_request_router
 
 api_router = APIRouter()
 
@@ -42,4 +43,8 @@ api_router.include_router(
 
 api_router.include_router(
     diagnostic_report_router, prefix="/diagnostic-reports", tags=["DiagnosticReports"]
+)
+
+api_router.include_router(
+    medication_request_router, prefix="/medication-requests", tags=["MedicationRequests"]
 )
