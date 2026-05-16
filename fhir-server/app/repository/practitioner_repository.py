@@ -30,6 +30,12 @@ from app.schemas.practitioner import (
 )
 
 
+def _split(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [s.strip() for s in value.split(",") if s.strip()]
+
+
 def _parse_org_ref(ref: str) -> tuple:
     """Parse 'Organization/123' → (OrganizationReferenceType.ORGANIZATION, 123)."""
     from fastapi import HTTPException
@@ -429,3 +435,136 @@ class PractitionerRepository:
                 await session.rollback()
                 raise
         return await self.get_by_practitioner_id(practitioner_id)
+
+    # ── Sub-resource reads ────────────────────────────────────────────────────
+
+    async def _get_internal(self, session, practitioner_id: int) -> Optional[PractitionerModel]:
+        stmt = select(PractitionerModel).where(PractitionerModel.practitioner_id == practitioner_id)
+        return (await session.execute(stmt)).scalars().first()
+
+    async def get_names(self, practitioner_id: int) -> list:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return []
+            return list((await session.execute(
+                select(PractitionerName).where(PractitionerName.practitioner_id == practitioner.id)
+            )).scalars().all())
+
+    async def get_identifiers(self, practitioner_id: int) -> list:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return []
+            return list((await session.execute(
+                select(PractitionerIdentifier).where(PractitionerIdentifier.practitioner_id == practitioner.id)
+            )).scalars().all())
+
+    async def get_telecoms(self, practitioner_id: int) -> list:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return []
+            return list((await session.execute(
+                select(PractitionerTelecom).where(PractitionerTelecom.practitioner_id == practitioner.id)
+            )).scalars().all())
+
+    async def get_addresses(self, practitioner_id: int) -> list:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return []
+            return list((await session.execute(
+                select(PractitionerAddress).where(PractitionerAddress.practitioner_id == practitioner.id)
+            )).scalars().all())
+
+    async def get_photos(self, practitioner_id: int) -> list:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return []
+            return list((await session.execute(
+                select(PractitionerPhoto).where(PractitionerPhoto.practitioner_id == practitioner.id)
+            )).scalars().all())
+
+    async def get_qualifications(self, practitioner_id: int) -> list:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return []
+            stmt = (
+                select(PractitionerQualification)
+                .where(PractitionerQualification.practitioner_id == practitioner.id)
+                .options(selectinload(PractitionerQualification.identifiers))
+            )
+            return list((await session.execute(stmt)).scalars().all())
+
+    async def get_communications(self, practitioner_id: int) -> list:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return []
+            return list((await session.execute(
+                select(PractitionerCommunication).where(PractitionerCommunication.practitioner_id == practitioner.id)
+            )).scalars().all())
+
+    # ── Sub-resource deletes ──────────────────────────────────────────────────
+
+    async def _delete_child(self, session, model_class, child_id: int, parent_internal_id: int) -> bool:
+        row = (await session.execute(
+            select(model_class).where(model_class.id == child_id)
+        )).scalars().first()
+        if not row or row.practitioner_id != parent_internal_id:
+            return False
+        await session.delete(row)
+        await session.commit()
+        return True
+
+    async def delete_name(self, practitioner_id: int, name_id: int) -> bool:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return False
+            return await self._delete_child(session, PractitionerName, name_id, practitioner.id)
+
+    async def delete_identifier(self, practitioner_id: int, identifier_id: int) -> bool:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return False
+            return await self._delete_child(session, PractitionerIdentifier, identifier_id, practitioner.id)
+
+    async def delete_telecom(self, practitioner_id: int, telecom_id: int) -> bool:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return False
+            return await self._delete_child(session, PractitionerTelecom, telecom_id, practitioner.id)
+
+    async def delete_address(self, practitioner_id: int, address_id: int) -> bool:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return False
+            return await self._delete_child(session, PractitionerAddress, address_id, practitioner.id)
+
+    async def delete_photo(self, practitioner_id: int, photo_id: int) -> bool:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return False
+            return await self._delete_child(session, PractitionerPhoto, photo_id, practitioner.id)
+
+    async def delete_qualification(self, practitioner_id: int, qualification_id: int) -> bool:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return False
+            return await self._delete_child(session, PractitionerQualification, qualification_id, practitioner.id)
+
+    async def delete_communication(self, practitioner_id: int, comm_id: int) -> bool:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return False
+            return await self._delete_child(session, PractitionerCommunication, comm_id, practitioner.id)

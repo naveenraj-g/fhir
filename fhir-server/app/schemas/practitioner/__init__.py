@@ -27,6 +27,20 @@ from app.schemas.practitioner.response import (
     PlainQualificationIdentifier,
     PlainQualification,
     PlainPractitionerCommunication,
+    PractitionerNamesListResponse,
+    PractitionerIdentifiersListResponse,
+    PractitionerTelecomListResponse,
+    PractitionerAddressesListResponse,
+    PractitionerPhotosListResponse,
+    PractitionerQualificationsListResponse,
+    PractitionerCommunicationsListResponse,
+    FHIRPractitionerNamesListResponse,
+    FHIRPractitionerIdentifiersListResponse,
+    FHIRPractitionerTelecomListResponse,
+    FHIRPractitionerAddressesListResponse,
+    FHIRPractitionerPhotosListResponse,
+    FHIRPractitionerQualificationsListResponse,
+    FHIRPractitionerCommunicationsListResponse,
 )
 
 __all__ = [
@@ -58,4 +72,20 @@ __all__ = [
     "PlainQualificationIdentifier",
     "PlainQualification",
     "PlainPractitionerCommunication",
+    # Plain sub-resource list responses
+    "PractitionerNamesListResponse",
+    "PractitionerIdentifiersListResponse",
+    "PractitionerTelecomListResponse",
+    "PractitionerAddressesListResponse",
+    "PractitionerPhotosListResponse",
+    "PractitionerQualificationsListResponse",
+    "PractitionerCommunicationsListResponse",
+    # FHIR sub-resource list responses
+    "FHIRPractitionerNamesListResponse",
+    "FHIRPractitionerIdentifiersListResponse",
+    "FHIRPractitionerTelecomListResponse",
+    "FHIRPractitionerAddressesListResponse",
+    "FHIRPractitionerPhotosListResponse",
+    "FHIRPractitionerQualificationsListResponse",
+    "FHIRPractitionerCommunicationsListResponse",
 ]

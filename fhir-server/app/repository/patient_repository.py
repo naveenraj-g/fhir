@@ -619,3 +619,190 @@ class PatientRepository:
                 raise
 
         return await self.get_by_patient_id(patient_id)
+
+    # ── Sub-resource list queries ──────────────────────────────────────────────
+
+    async def get_names(self, patient_id: int) -> list:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return []
+            result = await session.execute(
+                select(PatientName).where(PatientName.patient_id == patient.id)
+            )
+            return list(result.scalars().all())
+
+    async def get_identifiers(self, patient_id: int) -> list:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return []
+            result = await session.execute(
+                select(PatientIdentifier).where(PatientIdentifier.patient_id == patient.id)
+            )
+            return list(result.scalars().all())
+
+    async def get_telecoms(self, patient_id: int) -> list:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return []
+            result = await session.execute(
+                select(PatientTelecom).where(PatientTelecom.patient_id == patient.id)
+            )
+            return list(result.scalars().all())
+
+    async def get_addresses(self, patient_id: int) -> list:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return []
+            result = await session.execute(
+                select(PatientAddress).where(PatientAddress.patient_id == patient.id)
+            )
+            return list(result.scalars().all())
+
+    async def get_photos(self, patient_id: int) -> list:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return []
+            result = await session.execute(
+                select(PatientPhoto).where(PatientPhoto.patient_id == patient.id)
+            )
+            return list(result.scalars().all())
+
+    async def get_contacts(self, patient_id: int) -> list:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return []
+            stmt = (
+                select(PatientContact)
+                .where(PatientContact.patient_id == patient.id)
+                .options(
+                    selectinload(PatientContact.relationships),
+                    selectinload(PatientContact.roles),
+                    selectinload(PatientContact.telecoms),
+                    selectinload(PatientContact.additional_names),
+                    selectinload(PatientContact.additional_addresses),
+                )
+            )
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+
+    async def get_communications(self, patient_id: int) -> list:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return []
+            result = await session.execute(
+                select(PatientCommunication).where(PatientCommunication.patient_id == patient.id)
+            )
+            return list(result.scalars().all())
+
+    async def get_general_practitioners(self, patient_id: int) -> list:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return []
+            result = await session.execute(
+                select(PatientGeneralPractitioner).where(
+                    PatientGeneralPractitioner.patient_id == patient.id
+                )
+            )
+            return list(result.scalars().all())
+
+    async def get_links(self, patient_id: int) -> list:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return []
+            result = await session.execute(
+                select(PatientLink).where(PatientLink.patient_id == patient.id)
+            )
+            return list(result.scalars().all())
+
+    # ── Sub-resource delete ────────────────────────────────────────────────────
+
+    async def _delete_child(self, session, model_class, child_id: int, parent_internal_id: int) -> bool:
+        """Delete a child row by its id, verifying it belongs to the given parent internal id."""
+        result = await session.execute(
+            select(model_class).where(
+                model_class.id == child_id,
+                model_class.patient_id == parent_internal_id,
+            )
+        )
+        row = result.scalars().first()
+        if not row:
+            return False
+        try:
+            await session.delete(row)
+            await session.commit()
+            return True
+        except Exception:
+            await session.rollback()
+            raise
+
+    async def delete_name(self, patient_id: int, name_id: int) -> bool:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return False
+            return await self._delete_child(session, PatientName, name_id, patient.id)
+
+    async def delete_identifier(self, patient_id: int, identifier_id: int) -> bool:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return False
+            return await self._delete_child(session, PatientIdentifier, identifier_id, patient.id)
+
+    async def delete_telecom(self, patient_id: int, telecom_id: int) -> bool:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return False
+            return await self._delete_child(session, PatientTelecom, telecom_id, patient.id)
+
+    async def delete_address(self, patient_id: int, address_id: int) -> bool:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return False
+            return await self._delete_child(session, PatientAddress, address_id, patient.id)
+
+    async def delete_photo(self, patient_id: int, photo_id: int) -> bool:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return False
+            return await self._delete_child(session, PatientPhoto, photo_id, patient.id)
+
+    async def delete_contact(self, patient_id: int, contact_id: int) -> bool:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return False
+            return await self._delete_child(session, PatientContact, contact_id, patient.id)
+
+    async def delete_communication(self, patient_id: int, comm_id: int) -> bool:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return False
+            return await self._delete_child(session, PatientCommunication, comm_id, patient.id)
+
+    async def delete_general_practitioner(self, patient_id: int, gp_id: int) -> bool:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return False
+            return await self._delete_child(session, PatientGeneralPractitioner, gp_id, patient.id)
+
+    async def delete_link(self, patient_id: int, link_id: int) -> bool:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return False
+            return await self._delete_child(session, PatientLink, link_id, patient.id)

@@ -31,6 +31,24 @@ from app.schemas.patient.response import (
     FHIRPatientCommunication,
     FHIRPatientLink,
     FHIRAttachment,
+    PatientNamesListResponse,
+    PatientIdentifiersListResponse,
+    PatientTelecomListResponse,
+    PatientAddressesListResponse,
+    PatientPhotosListResponse,
+    PatientContactsListResponse,
+    PatientCommunicationsListResponse,
+    PatientGeneralPractitionersListResponse,
+    PatientLinksListResponse,
+    FHIRPatientNamesListResponse,
+    FHIRPatientIdentifiersListResponse,
+    FHIRPatientTelecomListResponse,
+    FHIRPatientAddressesListResponse,
+    FHIRPatientPhotosListResponse,
+    FHIRPatientContactsListResponse,
+    FHIRPatientCommunicationsListResponse,
+    FHIRPatientGeneralPractitionersListResponse,
+    FHIRPatientLinksListResponse,
 )
 
 __all__ = [
@@ -46,4 +64,16 @@ __all__ = [
     "PlainPatientContact", "PlainPatientCommunication",
     "PlainPatientGeneralPractitioner", "PlainPatientLink",
     "FHIRPatientContact", "FHIRPatientCommunication", "FHIRPatientLink", "FHIRAttachment",
+    # Plain sub-resource list responses
+    "PatientNamesListResponse", "PatientIdentifiersListResponse",
+    "PatientTelecomListResponse", "PatientAddressesListResponse",
+    "PatientPhotosListResponse", "PatientContactsListResponse",
+    "PatientCommunicationsListResponse", "PatientGeneralPractitionersListResponse",
+    "PatientLinksListResponse",
+    # FHIR sub-resource list responses
+    "FHIRPatientNamesListResponse", "FHIRPatientIdentifiersListResponse",
+    "FHIRPatientTelecomListResponse", "FHIRPatientAddressesListResponse",
+    "FHIRPatientPhotosListResponse", "FHIRPatientContactsListResponse",
+    "FHIRPatientCommunicationsListResponse", "FHIRPatientGeneralPractitionersListResponse",
+    "FHIRPatientLinksListResponse",
 ]

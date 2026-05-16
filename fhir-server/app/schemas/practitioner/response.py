@@ -199,3 +199,135 @@ class PaginatedPractitionerResponse(BaseModel):
     limit: int = Field(..., description="Page size requested.")
     offset: int = Field(..., description="Number of records skipped.")
     data: List[PlainPractitionerResponse] = Field(..., description="Array of plain-JSON Practitioner objects.")
+
+
+# ── Sub-resource list responses ───────────────────────────────────────────────
+
+
+class PractitionerNameListItem(PlainPractitionerName):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PractitionerNamesListResponse(BaseModel):
+    data: List[PractitionerNameListItem]
+    total: int = Field(..., description="Total count of name entries.")
+
+
+class PractitionerIdentifierListItem(PlainPractitionerIdentifier):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PractitionerIdentifiersListResponse(BaseModel):
+    data: List[PractitionerIdentifierListItem]
+    total: int = Field(..., description="Total count of identifier entries.")
+
+
+class PractitionerTelecomListItem(PlainPractitionerTelecom):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PractitionerTelecomListResponse(BaseModel):
+    data: List[PractitionerTelecomListItem]
+    total: int = Field(..., description="Total count of contact point entries.")
+
+
+class PractitionerAddressListItem(PlainPractitionerAddress):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PractitionerAddressesListResponse(BaseModel):
+    data: List[PractitionerAddressListItem]
+    total: int = Field(..., description="Total count of address entries.")
+
+
+class PractitionerPhotoListItem(PlainPractitionerPhoto):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PractitionerPhotosListResponse(BaseModel):
+    data: List[PractitionerPhotoListItem]
+    total: int = Field(..., description="Total count of photo entries.")
+
+
+class PractitionerQualificationListItem(PlainQualification):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PractitionerQualificationsListResponse(BaseModel):
+    data: List[PractitionerQualificationListItem]
+    total: int = Field(..., description="Total count of qualification entries.")
+
+
+class PractitionerCommunicationListItem(PlainPractitionerCommunication):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PractitionerCommunicationsListResponse(BaseModel):
+    data: List[PractitionerCommunicationListItem]
+    total: int = Field(..., description="Total count of communication entries.")
+
+
+# ── FHIR sub-resource list responses ──────────────────────────────────────────
+
+
+class FHIRPractitionerNameListItem(FHIRHumanName):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPractitionerNamesListResponse(BaseModel):
+    data: List[FHIRPractitionerNameListItem]
+    total: int = Field(..., description="Total count of name entries.")
+
+
+class FHIRPractitionerIdentifierListItem(FHIRIdentifier):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPractitionerIdentifiersListResponse(BaseModel):
+    data: List[FHIRPractitionerIdentifierListItem]
+    total: int = Field(..., description="Total count of identifier entries.")
+
+
+class FHIRPractitionerTelecomListItem(FHIRContactPoint):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPractitionerTelecomListResponse(BaseModel):
+    data: List[FHIRPractitionerTelecomListItem]
+    total: int = Field(..., description="Total count of contact point entries.")
+
+
+class FHIRPractitionerAddressListItem(FHIRAddress):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPractitionerAddressesListResponse(BaseModel):
+    data: List[FHIRPractitionerAddressListItem]
+    total: int = Field(..., description="Total count of address entries.")
+
+
+class FHIRPractitionerPhotoListItem(FHIRAttachment):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPractitionerPhotosListResponse(BaseModel):
+    data: List[FHIRPractitionerPhotoListItem]
+    total: int = Field(..., description="Total count of photo entries.")
+
+
+class FHIRPractitionerQualificationListItem(FHIRQualification):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPractitionerQualificationsListResponse(BaseModel):
+    data: List[FHIRPractitionerQualificationListItem]
+    total: int = Field(..., description="Total count of qualification entries.")
+
+
+class FHIRPractitionerCommunicationListItem(FHIRCommunication):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPractitionerCommunicationsListResponse(BaseModel):
+    data: List[FHIRPractitionerCommunicationListItem]
+    total: int = Field(..., description="Total count of communication entries.")

@@ -297,3 +297,171 @@ class PaginatedPatientResponse(BaseModel):
     limit: int = Field(..., description="Page size requested.")
     offset: int = Field(..., description="Number of records skipped.")
     data: List[PlainPatientResponse] = Field(..., description="Array of plain-JSON Patient objects.")
+
+
+# ── Sub-resource list responses ────────────────────────────────────────────────
+
+
+class PatientNameListItem(PlainPatientName):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PatientNamesListResponse(BaseModel):
+    data: List[PatientNameListItem]
+    total: int = Field(..., description="Total count of name entries.")
+
+
+class PatientIdentifierListItem(PlainPatientIdentifier):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PatientIdentifiersListResponse(BaseModel):
+    data: List[PatientIdentifierListItem]
+    total: int = Field(..., description="Total count of identifier entries.")
+
+
+class PatientTelecomListItem(PlainPatientTelecom):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PatientTelecomListResponse(BaseModel):
+    data: List[PatientTelecomListItem]
+    total: int = Field(..., description="Total count of contact point entries.")
+
+
+class PatientAddressListItem(PlainPatientAddress):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PatientAddressesListResponse(BaseModel):
+    data: List[PatientAddressListItem]
+    total: int = Field(..., description="Total count of address entries.")
+
+
+class PatientPhotoListItem(PlainPatientPhoto):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PatientPhotosListResponse(BaseModel):
+    data: List[PatientPhotoListItem]
+    total: int = Field(..., description="Total count of photo entries.")
+
+
+class PatientContactListItem(PlainPatientContact):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PatientContactsListResponse(BaseModel):
+    data: List[PatientContactListItem]
+    total: int = Field(..., description="Total count of contact entries.")
+
+
+class PatientCommunicationListItem(PlainPatientCommunication):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PatientCommunicationsListResponse(BaseModel):
+    data: List[PatientCommunicationListItem]
+    total: int = Field(..., description="Total count of communication entries.")
+
+
+class PatientGeneralPractitionerListItem(PlainPatientGeneralPractitioner):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PatientGeneralPractitionersListResponse(BaseModel):
+    data: List[PatientGeneralPractitionerListItem]
+    total: int = Field(..., description="Total count of general practitioner references.")
+
+
+class PatientLinkListItem(PlainPatientLink):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class PatientLinksListResponse(BaseModel):
+    data: List[PatientLinkListItem]
+    total: int = Field(..., description="Total count of patient link entries.")
+
+
+# ── FHIR sub-resource list responses ──────────────────────────────────────────
+
+
+class FHIRPatientNameListItem(FHIRHumanName):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPatientNamesListResponse(BaseModel):
+    data: List[FHIRPatientNameListItem]
+    total: int = Field(..., description="Total count of name entries.")
+
+
+class FHIRPatientIdentifierListItem(FHIRIdentifier):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPatientIdentifiersListResponse(BaseModel):
+    data: List[FHIRPatientIdentifierListItem]
+    total: int = Field(..., description="Total count of identifier entries.")
+
+
+class FHIRPatientTelecomListItem(FHIRContactPoint):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPatientTelecomListResponse(BaseModel):
+    data: List[FHIRPatientTelecomListItem]
+    total: int = Field(..., description="Total count of contact point entries.")
+
+
+class FHIRPatientAddressListItem(FHIRAddress):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPatientAddressesListResponse(BaseModel):
+    data: List[FHIRPatientAddressListItem]
+    total: int = Field(..., description="Total count of address entries.")
+
+
+class FHIRPatientPhotoListItem(FHIRAttachment):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPatientPhotosListResponse(BaseModel):
+    data: List[FHIRPatientPhotoListItem]
+    total: int = Field(..., description="Total count of photo entries.")
+
+
+class FHIRPatientContactListItem(FHIRPatientContact):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPatientContactsListResponse(BaseModel):
+    data: List[FHIRPatientContactListItem]
+    total: int = Field(..., description="Total count of contact entries.")
+
+
+class FHIRPatientCommunicationListItem(FHIRPatientCommunication):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPatientCommunicationsListResponse(BaseModel):
+    data: List[FHIRPatientCommunicationListItem]
+    total: int = Field(..., description="Total count of communication entries.")
+
+
+class FHIRPatientGeneralPractitionerListItem(FHIRReference):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPatientGeneralPractitionersListResponse(BaseModel):
+    data: List[FHIRPatientGeneralPractitionerListItem]
+    total: int = Field(..., description="Total count of general practitioner references.")
+
+
+class FHIRPatientLinkListItem(FHIRPatientLink):
+    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
+
+
+class FHIRPatientLinksListResponse(BaseModel):
+    data: List[FHIRPatientLinkListItem]
+    total: int = Field(..., description="Total count of patient link entries.")

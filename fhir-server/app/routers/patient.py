@@ -1,14 +1,38 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 
 from app.auth.dependencies import require_permission
 from app.auth.patient_deps import get_authorized_patient
-from app.core.content_negotiation import format_response, format_paginated_response
+from app.core.content_negotiation import format_response, format_paginated_response, wants_fhir
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.patient import get_patient_service
 from app.models.patient.patient import PatientModel
-from app.schemas.fhir import FHIRPatientBundle, FHIRPatientSchema, PaginatedPatientResponse, PlainPatientResponse
+from app.schemas.fhir import (
+    FHIRPatientBundle,
+    FHIRPatientSchema,
+    PaginatedPatientResponse,
+    PlainPatientResponse,
+    PatientNamesListResponse,
+    PatientIdentifiersListResponse,
+    PatientTelecomListResponse,
+    PatientAddressesListResponse,
+    PatientPhotosListResponse,
+    PatientContactsListResponse,
+    PatientCommunicationsListResponse,
+    PatientGeneralPractitionersListResponse,
+    PatientLinksListResponse,
+    FHIRPatientNamesListResponse,
+    FHIRPatientIdentifiersListResponse,
+    FHIRPatientTelecomListResponse,
+    FHIRPatientAddressesListResponse,
+    FHIRPatientPhotosListResponse,
+    FHIRPatientContactsListResponse,
+    FHIRPatientCommunicationsListResponse,
+    FHIRPatientGeneralPractitionersListResponse,
+    FHIRPatientLinksListResponse,
+)
 from app.schemas.resources import (
     PatientCreateSchema,
     PatientPatchSchema,
@@ -22,9 +46,19 @@ from app.schemas.resources import (
     GeneralPractitionerCreate,
     LinkCreate,
 )
+from app.fhir.datatypes import (
+    fhir_human_name, fhir_identifier, fhir_telecom, fhir_address,
+    fhir_photo, fhir_communication, plain_name, plain_identifier, plain_telecom,
+    plain_address, plain_photo, plain_communication,
+)
+from app.fhir.mappers.patient import (
+    fhir_contact, fhir_general_practitioner, fhir_link,
+    plain_contact, plain_general_practitioner, plain_link,
+)
 from app.services.patient_service import PatientService
 
 router = APIRouter()
+
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "
@@ -56,6 +90,43 @@ _LIST_200 = {
         },
     }
 }
+
+_SUBRES_NAMES_200 = {200: {"description": "List of HumanName entries", "content": {
+    "application/json": {"schema": inline_schema(PatientNamesListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPatientNamesListResponse.model_json_schema())},
+}}}
+_SUBRES_IDENTIFIERS_200 = {200: {"description": "List of business identifiers", "content": {
+    "application/json": {"schema": inline_schema(PatientIdentifiersListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPatientIdentifiersListResponse.model_json_schema())},
+}}}
+_SUBRES_TELECOM_200 = {200: {"description": "List of contact points", "content": {
+    "application/json": {"schema": inline_schema(PatientTelecomListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPatientTelecomListResponse.model_json_schema())},
+}}}
+_SUBRES_ADDRESSES_200 = {200: {"description": "List of addresses", "content": {
+    "application/json": {"schema": inline_schema(PatientAddressesListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPatientAddressesListResponse.model_json_schema())},
+}}}
+_SUBRES_PHOTOS_200 = {200: {"description": "List of photo attachments", "content": {
+    "application/json": {"schema": inline_schema(PatientPhotosListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPatientPhotosListResponse.model_json_schema())},
+}}}
+_SUBRES_CONTACTS_200 = {200: {"description": "List of contacts (next-of-kin / guardian)", "content": {
+    "application/json": {"schema": inline_schema(PatientContactsListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPatientContactsListResponse.model_json_schema())},
+}}}
+_SUBRES_COMMUNICATIONS_200 = {200: {"description": "List of communication language entries", "content": {
+    "application/json": {"schema": inline_schema(PatientCommunicationsListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPatientCommunicationsListResponse.model_json_schema())},
+}}}
+_SUBRES_GPS_200 = {200: {"description": "List of general practitioner references", "content": {
+    "application/json": {"schema": inline_schema(PatientGeneralPractitionersListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPatientGeneralPractitionersListResponse.model_json_schema())},
+}}}
+_SUBRES_LINKS_200 = {200: {"description": "List of patient link entries", "content": {
+    "application/json": {"schema": inline_schema(PatientLinksListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPatientLinksListResponse.model_json_schema())},
+}}}
 
 
 # ── Create ─────────────────────────────────────────────────────────────────────
@@ -472,3 +543,474 @@ async def add_link(
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
     return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+
+
+# ── Sub-resource: Names — GET + DELETE ────────────────────────────────────────
+
+
+@router.get(
+    "/{patient_id}/names",
+    dependencies=[Depends(require_permission("patient", "read"))],
+    operation_id="list_patient_names",
+    summary="List all names for a Patient",
+    description=(
+        "Returns all HumanName entries attached to this Patient. "
+        "Each item includes `id` — use it to remove a specific name via "
+        "`DELETE /{patient_id}/names/{name_id}`."
+    ),
+    responses={**_SUBRES_NAMES_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_names(
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    items = await patient_service.get_names(patient.patient_id)
+    plain = [{"id": n.id, **plain_name(n)} for n in items]
+    if wants_fhir(request):
+        fhir = [{"id": n.id, **fhir_human_name(n)} for n in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.delete(
+    "/{patient_id}/names/{name_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="delete_patient_name",
+    summary="Remove a name entry from a Patient",
+    description=(
+        "Permanently deletes a single HumanName entry. "
+        "The `name_id` is the `id` returned by `GET /{patient_id}/names`. "
+        "Returns 404 if the name does not exist or belongs to a different Patient."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_name(
+    name_id: int,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    deleted = await patient_service.delete_name(patient.patient_id, name_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Name not found on this Patient")
+    return None
+
+
+# ── Sub-resource: Identifiers — GET + DELETE ──────────────────────────────────
+
+
+@router.get(
+    "/{patient_id}/identifiers",
+    dependencies=[Depends(require_permission("patient", "read"))],
+    operation_id="list_patient_identifiers",
+    summary="List all business identifiers for a Patient",
+    description=(
+        "Returns all business identifiers (e.g. MRN, social security, passport) attached to this Patient. "
+        "Each item includes `id` — use it to remove a specific identifier via "
+        "`DELETE /{patient_id}/identifiers/{identifier_id}`."
+    ),
+    responses={**_SUBRES_IDENTIFIERS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_identifiers(
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    items = await patient_service.get_identifiers(patient.patient_id)
+    plain = [{"id": i.id, **plain_identifier(i)} for i in items]
+    if wants_fhir(request):
+        fhir = [{"id": i.id, **fhir_identifier(i)} for i in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.delete(
+    "/{patient_id}/identifiers/{identifier_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="delete_patient_identifier",
+    summary="Remove a business identifier from a Patient",
+    description=(
+        "Permanently deletes a single business identifier. "
+        "The `identifier_id` is the `id` returned by `GET /{patient_id}/identifiers`. "
+        "Returns 404 if the identifier does not exist or belongs to a different Patient."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_identifier(
+    identifier_id: int,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    deleted = await patient_service.delete_identifier(patient.patient_id, identifier_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Identifier not found on this Patient")
+    return None
+
+
+# ── Sub-resource: Telecom — GET + DELETE ──────────────────────────────────────
+
+
+@router.get(
+    "/{patient_id}/telecom",
+    dependencies=[Depends(require_permission("patient", "read"))],
+    operation_id="list_patient_telecom",
+    summary="List all contact points (telecom) for a Patient",
+    description=(
+        "Returns all contact points (phone, email, fax, etc.) attached to this Patient. "
+        "Each item includes `id` — use it to remove a specific contact point via "
+        "`DELETE /{patient_id}/telecom/{telecom_id}`."
+    ),
+    responses={**_SUBRES_TELECOM_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_telecom(
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    items = await patient_service.get_telecoms(patient.patient_id)
+    plain = [{"id": t.id, **plain_telecom(t)} for t in items]
+    if wants_fhir(request):
+        fhir = [{"id": t.id, **fhir_telecom(t)} for t in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.delete(
+    "/{patient_id}/telecom/{telecom_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="delete_patient_telecom",
+    summary="Remove a contact point from a Patient",
+    description=(
+        "Permanently deletes a single contact point (phone, email, etc.). "
+        "The `telecom_id` is the `id` returned by `GET /{patient_id}/telecom`. "
+        "Returns 404 if the contact point does not exist or belongs to a different Patient."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_telecom(
+    telecom_id: int,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    deleted = await patient_service.delete_telecom(patient.patient_id, telecom_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Telecom not found on this Patient")
+    return None
+
+
+# ── Sub-resource: Addresses — GET + DELETE ────────────────────────────────────
+
+
+@router.get(
+    "/{patient_id}/addresses",
+    dependencies=[Depends(require_permission("patient", "read"))],
+    operation_id="list_patient_addresses",
+    summary="List all addresses for a Patient",
+    description=(
+        "Returns all postal and physical addresses attached to this Patient. "
+        "Each item includes `id` — use it to remove a specific address via "
+        "`DELETE /{patient_id}/addresses/{address_id}`."
+    ),
+    responses={**_SUBRES_ADDRESSES_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_addresses(
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    items = await patient_service.get_addresses(patient.patient_id)
+    plain = [{"id": a.id, **plain_address(a)} for a in items]
+    if wants_fhir(request):
+        fhir = [{"id": a.id, **fhir_address(a)} for a in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.delete(
+    "/{patient_id}/addresses/{address_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="delete_patient_address",
+    summary="Remove an address from a Patient",
+    description=(
+        "Permanently deletes a single address entry. "
+        "The `address_id` is the `id` returned by `GET /{patient_id}/addresses`. "
+        "Returns 404 if the address does not exist or belongs to a different Patient."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_address(
+    address_id: int,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    deleted = await patient_service.delete_address(patient.patient_id, address_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Address not found on this Patient")
+    return None
+
+
+# ── Sub-resource: Photos — GET + DELETE ───────────────────────────────────────
+
+
+@router.get(
+    "/{patient_id}/photos",
+    dependencies=[Depends(require_permission("patient", "read"))],
+    operation_id="list_patient_photos",
+    summary="List all photos (Attachments) for a Patient",
+    description=(
+        "Returns all photo attachments stored for this Patient. "
+        "Each item includes `id` — use it to remove a specific photo via "
+        "`DELETE /{patient_id}/photos/{photo_id}`."
+    ),
+    responses={**_SUBRES_PHOTOS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_photos(
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    items = await patient_service.get_photos(patient.patient_id)
+    plain = [{"id": p.id, **plain_photo(p)} for p in items]
+    if wants_fhir(request):
+        fhir = [{"id": p.id, **fhir_photo(p)} for p in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.delete(
+    "/{patient_id}/photos/{photo_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="delete_patient_photo",
+    summary="Remove a photo from a Patient",
+    description=(
+        "Permanently deletes a single photo attachment. "
+        "The `photo_id` is the `id` returned by `GET /{patient_id}/photos`. "
+        "Returns 404 if the photo does not exist or belongs to a different Patient."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_photo(
+    photo_id: int,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    deleted = await patient_service.delete_photo(patient.patient_id, photo_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Photo not found on this Patient")
+    return None
+
+
+# ── Sub-resource: Contacts — GET + DELETE ─────────────────────────────────────
+
+
+@router.get(
+    "/{patient_id}/contacts",
+    dependencies=[Depends(require_permission("patient", "read"))],
+    operation_id="list_patient_contacts",
+    summary="List all contacts (next-of-kin / guardian) for a Patient",
+    description=(
+        "Returns all contact BackboneElements (next-of-kin, guardians, emergency contacts) for this Patient. "
+        "Each item includes `id` — use it to remove a specific contact via "
+        "`DELETE /{patient_id}/contacts/{contact_id}`."
+    ),
+    responses={**_SUBRES_CONTACTS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_contacts(
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    items = await patient_service.get_contacts(patient.patient_id)
+    plain = [{"id": c.id, **plain_contact(c)} for c in items]
+    if wants_fhir(request):
+        fhir = [{"id": c.id, **fhir_contact(c)} for c in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.delete(
+    "/{patient_id}/contacts/{contact_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="delete_patient_contact",
+    summary="Remove a contact entry from a Patient",
+    description=(
+        "Permanently deletes a single contact (next-of-kin, guardian, emergency contact). "
+        "The `contact_id` is the `id` returned by `GET /{patient_id}/contacts`. "
+        "Cascades to all nested relationship, telecom, additional name, and additional address rows. "
+        "Returns 404 if the contact does not exist or belongs to a different Patient."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_contact(
+    contact_id: int,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    deleted = await patient_service.delete_contact(patient.patient_id, contact_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Contact not found on this Patient")
+    return None
+
+
+# ── Sub-resource: Communications — GET + DELETE ───────────────────────────────
+
+
+@router.get(
+    "/{patient_id}/communications",
+    dependencies=[Depends(require_permission("patient", "read"))],
+    operation_id="list_patient_communications",
+    summary="List all communication languages for a Patient",
+    description=(
+        "Returns all preferred communication language entries for this Patient. "
+        "Each item includes `id` — use it to remove a specific language via "
+        "`DELETE /{patient_id}/communications/{comm_id}`."
+    ),
+    responses={**_SUBRES_COMMUNICATIONS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_communications(
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    items = await patient_service.get_communications(patient.patient_id)
+    plain = [{"id": cm.id, **plain_communication(cm)} for cm in items]
+    if wants_fhir(request):
+        fhir = [{"id": cm.id, **fhir_communication(cm)} for cm in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.delete(
+    "/{patient_id}/communications/{comm_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="delete_patient_communication",
+    summary="Remove a communication language from a Patient",
+    description=(
+        "Permanently deletes a single communication language entry. "
+        "The `comm_id` is the `id` returned by `GET /{patient_id}/communications`. "
+        "Returns 404 if the entry does not exist or belongs to a different Patient."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_communication(
+    comm_id: int,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    deleted = await patient_service.delete_communication(patient.patient_id, comm_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Communication not found on this Patient")
+    return None
+
+
+# ── Sub-resource: General Practitioners — GET + DELETE ────────────────────────
+
+
+@router.get(
+    "/{patient_id}/general-practitioners",
+    dependencies=[Depends(require_permission("patient", "read"))],
+    operation_id="list_patient_general_practitioners",
+    summary="List all general practitioner references for a Patient",
+    description=(
+        "Returns all nominated primary care provider references for this Patient. "
+        "Reference types: Organization, Practitioner, PractitionerRole. "
+        "Each item includes `id` — use it to remove a specific reference via "
+        "`DELETE /{patient_id}/general-practitioners/{gp_id}`."
+    ),
+    responses={**_SUBRES_GPS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_general_practitioners(
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    items = await patient_service.get_general_practitioners(patient.patient_id)
+    plain = [{"id": gp.id, **plain_general_practitioner(gp)} for gp in items]
+    if wants_fhir(request):
+        fhir = [{"id": gp.id, **fhir_general_practitioner(gp)} for gp in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.delete(
+    "/{patient_id}/general-practitioners/{gp_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="delete_patient_general_practitioner",
+    summary="Remove a general practitioner reference from a Patient",
+    description=(
+        "Permanently deletes a single general practitioner reference. "
+        "The `gp_id` is the `id` returned by `GET /{patient_id}/general-practitioners`. "
+        "Returns 404 if the reference does not exist or belongs to a different Patient."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_general_practitioner(
+    gp_id: int,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    deleted = await patient_service.delete_general_practitioner(patient.patient_id, gp_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="General practitioner not found on this Patient")
+    return None
+
+
+# ── Sub-resource: Links — GET + DELETE ────────────────────────────────────────
+
+
+@router.get(
+    "/{patient_id}/links",
+    dependencies=[Depends(require_permission("patient", "read"))],
+    operation_id="list_patient_links",
+    summary="List all patient links for a Patient",
+    description=(
+        "Returns all links to related Patient or RelatedPerson resources. "
+        "Link types: replaced-by | replaces | refer | seealso. "
+        "Each item includes `id` — use it to remove a specific link via "
+        "`DELETE /{patient_id}/links/{link_id}`."
+    ),
+    responses={**_SUBRES_LINKS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_links(
+    request: Request,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    items = await patient_service.get_links(patient.patient_id)
+    plain = [{"id": lk.id, **plain_link(lk)} for lk in items]
+    if wants_fhir(request):
+        fhir = [{"id": lk.id, **fhir_link(lk)} for lk in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.delete(
+    "/{patient_id}/links/{link_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("patient", "update"))],
+    operation_id="delete_patient_link",
+    summary="Remove a link from a Patient",
+    description=(
+        "Permanently deletes a single patient link entry. "
+        "The `link_id` is the `id` returned by `GET /{patient_id}/links`. "
+        "Returns 404 if the link does not exist or belongs to a different Patient."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_link(
+    link_id: int,
+    patient: PatientModel = Depends(get_authorized_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    deleted = await patient_service.delete_link(patient.patient_id, link_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Link not found on this Patient")
+    return None

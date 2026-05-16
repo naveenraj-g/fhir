@@ -117,3 +117,61 @@ class PatientService:
 
     async def add_link(self, patient_id: int, payload: LinkCreate) -> Optional[PatientModel]:
         return await self.repository.add_link(patient_id, payload)
+
+    # ── Sub-resource reads ────────────────────────────────────────────────────
+
+    async def get_names(self, patient_id: int) -> list:
+        return await self.repository.get_names(patient_id)
+
+    async def get_identifiers(self, patient_id: int) -> list:
+        return await self.repository.get_identifiers(patient_id)
+
+    async def get_telecoms(self, patient_id: int) -> list:
+        return await self.repository.get_telecoms(patient_id)
+
+    async def get_addresses(self, patient_id: int) -> list:
+        return await self.repository.get_addresses(patient_id)
+
+    async def get_photos(self, patient_id: int) -> list:
+        return await self.repository.get_photos(patient_id)
+
+    async def get_contacts(self, patient_id: int) -> list:
+        return await self.repository.get_contacts(patient_id)
+
+    async def get_communications(self, patient_id: int) -> list:
+        return await self.repository.get_communications(patient_id)
+
+    async def get_general_practitioners(self, patient_id: int) -> list:
+        return await self.repository.get_general_practitioners(patient_id)
+
+    async def get_links(self, patient_id: int) -> list:
+        return await self.repository.get_links(patient_id)
+
+    # ── Sub-resource deletes ──────────────────────────────────────────────────
+
+    async def delete_name(self, patient_id: int, name_id: int) -> bool:
+        return await self.repository.delete_name(patient_id, name_id)
+
+    async def delete_identifier(self, patient_id: int, identifier_id: int) -> bool:
+        return await self.repository.delete_identifier(patient_id, identifier_id)
+
+    async def delete_telecom(self, patient_id: int, telecom_id: int) -> bool:
+        return await self.repository.delete_telecom(patient_id, telecom_id)
+
+    async def delete_address(self, patient_id: int, address_id: int) -> bool:
+        return await self.repository.delete_address(patient_id, address_id)
+
+    async def delete_photo(self, patient_id: int, photo_id: int) -> bool:
+        return await self.repository.delete_photo(patient_id, photo_id)
+
+    async def delete_contact(self, patient_id: int, contact_id: int) -> bool:
+        return await self.repository.delete_contact(patient_id, contact_id)
+
+    async def delete_communication(self, patient_id: int, comm_id: int) -> bool:
+        return await self.repository.delete_communication(patient_id, comm_id)
+
+    async def delete_general_practitioner(self, patient_id: int, gp_id: int) -> bool:
+        return await self.repository.delete_general_practitioner(patient_id, gp_id)
+
+    async def delete_link(self, patient_id: int, link_id: int) -> bool:
+        return await self.repository.delete_link(patient_id, link_id)

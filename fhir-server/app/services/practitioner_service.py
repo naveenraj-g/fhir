@@ -116,3 +116,49 @@ class PractitionerService:
         self, practitioner_id: int, payload: PractitionerCommunicationCreate
     ) -> Optional[PractitionerModel]:
         return await self.repository.add_communication(practitioner_id, payload)
+
+    # ── Sub-resource reads ────────────────────────────────────────────────────
+
+    async def get_names(self, practitioner_id: int) -> list:
+        return await self.repository.get_names(practitioner_id)
+
+    async def get_identifiers(self, practitioner_id: int) -> list:
+        return await self.repository.get_identifiers(practitioner_id)
+
+    async def get_telecoms(self, practitioner_id: int) -> list:
+        return await self.repository.get_telecoms(practitioner_id)
+
+    async def get_addresses(self, practitioner_id: int) -> list:
+        return await self.repository.get_addresses(practitioner_id)
+
+    async def get_photos(self, practitioner_id: int) -> list:
+        return await self.repository.get_photos(practitioner_id)
+
+    async def get_qualifications(self, practitioner_id: int) -> list:
+        return await self.repository.get_qualifications(practitioner_id)
+
+    async def get_communications(self, practitioner_id: int) -> list:
+        return await self.repository.get_communications(practitioner_id)
+
+    # ── Sub-resource deletes ──────────────────────────────────────────────────
+
+    async def delete_name(self, practitioner_id: int, name_id: int) -> bool:
+        return await self.repository.delete_name(practitioner_id, name_id)
+
+    async def delete_identifier(self, practitioner_id: int, identifier_id: int) -> bool:
+        return await self.repository.delete_identifier(practitioner_id, identifier_id)
+
+    async def delete_telecom(self, practitioner_id: int, telecom_id: int) -> bool:
+        return await self.repository.delete_telecom(practitioner_id, telecom_id)
+
+    async def delete_address(self, practitioner_id: int, address_id: int) -> bool:
+        return await self.repository.delete_address(practitioner_id, address_id)
+
+    async def delete_photo(self, practitioner_id: int, photo_id: int) -> bool:
+        return await self.repository.delete_photo(practitioner_id, photo_id)
+
+    async def delete_qualification(self, practitioner_id: int, qualification_id: int) -> bool:
+        return await self.repository.delete_qualification(practitioner_id, qualification_id)
+
+    async def delete_communication(self, practitioner_id: int, comm_id: int) -> bool:
+        return await self.repository.delete_communication(practitioner_id, comm_id)

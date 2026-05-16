@@ -1,10 +1,11 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 
 from app.auth.dependencies import require_permission
 from app.auth.practitioner_deps import get_authorized_practitioner
-from app.core.content_negotiation import format_response, format_paginated_response
+from app.core.content_negotiation import format_response, format_paginated_response, wants_fhir
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.practitioner import get_practitioner_service
 from app.models.practitioner import PractitionerModel
@@ -13,6 +14,20 @@ from app.schemas.fhir import (
     FHIRPractitionerBundle,
     PaginatedPractitionerResponse,
     PlainPractitionerResponse,
+    PractitionerNamesListResponse,
+    PractitionerIdentifiersListResponse,
+    PractitionerTelecomListResponse,
+    PractitionerAddressesListResponse,
+    PractitionerPhotosListResponse,
+    PractitionerQualificationsListResponse,
+    PractitionerCommunicationsListResponse,
+    FHIRPractitionerNamesListResponse,
+    FHIRPractitionerIdentifiersListResponse,
+    FHIRPractitionerTelecomListResponse,
+    FHIRPractitionerAddressesListResponse,
+    FHIRPractitionerPhotosListResponse,
+    FHIRPractitionerQualificationsListResponse,
+    FHIRPractitionerCommunicationsListResponse,
 )
 from app.schemas.practitioner import (
     PractitionerCreateSchema,
@@ -25,9 +40,16 @@ from app.schemas.practitioner import (
     PractitionerQualificationCreate,
     PractitionerCommunicationCreate,
 )
+from app.fhir.datatypes import (
+    fhir_human_name, fhir_identifier, fhir_telecom, fhir_address,
+    fhir_photo, fhir_communication, plain_name, plain_identifier, plain_telecom,
+    plain_address, plain_photo, plain_communication,
+)
+from app.fhir.mappers.practitioner import fhir_qualification, plain_qualification
 from app.services.practitioner_service import PractitionerService
 
 router = APIRouter()
+
 
 _CONTENT_NEG = (
     "Set `Accept: application/fhir+json` to receive the full FHIR R4 representation; "
@@ -59,6 +81,35 @@ _LIST_200 = {
         },
     }
 }
+
+_SUBRES_NAMES_200 = {200: {"description": "List of HumanName entries", "content": {
+    "application/json": {"schema": inline_schema(PractitionerNamesListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPractitionerNamesListResponse.model_json_schema())},
+}}}
+_SUBRES_IDENTIFIERS_200 = {200: {"description": "List of business identifiers", "content": {
+    "application/json": {"schema": inline_schema(PractitionerIdentifiersListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPractitionerIdentifiersListResponse.model_json_schema())},
+}}}
+_SUBRES_TELECOM_200 = {200: {"description": "List of contact points", "content": {
+    "application/json": {"schema": inline_schema(PractitionerTelecomListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPractitionerTelecomListResponse.model_json_schema())},
+}}}
+_SUBRES_ADDRESSES_200 = {200: {"description": "List of addresses", "content": {
+    "application/json": {"schema": inline_schema(PractitionerAddressesListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPractitionerAddressesListResponse.model_json_schema())},
+}}}
+_SUBRES_PHOTOS_200 = {200: {"description": "List of photo attachments", "content": {
+    "application/json": {"schema": inline_schema(PractitionerPhotosListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPractitionerPhotosListResponse.model_json_schema())},
+}}}
+_SUBRES_QUALIFICATIONS_200 = {200: {"description": "List of qualifications", "content": {
+    "application/json": {"schema": inline_schema(PractitionerQualificationsListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPractitionerQualificationsListResponse.model_json_schema())},
+}}}
+_SUBRES_COMMUNICATIONS_200 = {200: {"description": "List of communication language entries", "content": {
+    "application/json": {"schema": inline_schema(PractitionerCommunicationsListResponse.model_json_schema())},
+    "application/fhir+json": {"schema": inline_schema(FHIRPractitionerCommunicationsListResponse.model_json_schema())},
+}}}
 
 
 # ── Create Practitioner ────────────────────────────────────────────────────
@@ -505,3 +556,354 @@ async def add_communication(
         practitioner_service._to_plain(updated),
         request,
     )
+
+
+# ── Sub-resource GETs ─────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/{practitioner_id}/names",
+    dependencies=[Depends(require_permission("practitioner", "read"))],
+    operation_id="list_practitioner_names",
+    summary="List all HumanName entries for a Practitioner",
+    description=(
+        "Returns all HumanName entries attached to this Practitioner. "
+        "Each item includes `id` — use it to remove a specific name via "
+        "`DELETE /{practitioner_id}/names/{name_id}`."
+    ),
+    responses={**_SUBRES_NAMES_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_names(
+    request: Request,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    items = await practitioner_service.get_names(practitioner.practitioner_id)
+    plain = [{"id": n.id, **plain_name(n)} for n in items]
+    if wants_fhir(request):
+        fhir = [{"id": n.id, **fhir_human_name(n)} for n in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.get(
+    "/{practitioner_id}/identifiers",
+    dependencies=[Depends(require_permission("practitioner", "read"))],
+    operation_id="list_practitioner_identifiers",
+    summary="List all business identifiers for a Practitioner",
+    description=(
+        "Returns all business identifiers (NPI, DEA, license numbers, etc.) attached to this Practitioner. "
+        "Each item includes `id` — use it to remove a specific identifier via "
+        "`DELETE /{practitioner_id}/identifiers/{identifier_id}`."
+    ),
+    responses={**_SUBRES_IDENTIFIERS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_identifiers(
+    request: Request,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    items = await practitioner_service.get_identifiers(practitioner.practitioner_id)
+    plain = [{"id": i.id, **plain_identifier(i)} for i in items]
+    if wants_fhir(request):
+        fhir = [{"id": i.id, **fhir_identifier(i)} for i in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.get(
+    "/{practitioner_id}/telecom",
+    dependencies=[Depends(require_permission("practitioner", "read"))],
+    operation_id="list_practitioner_telecom",
+    summary="List all contact points (telecom) for a Practitioner",
+    description=(
+        "Returns all contact points (phone, email, fax, pager, etc.) for this Practitioner. "
+        "Each item includes `id` — use it to remove a specific contact point via "
+        "`DELETE /{practitioner_id}/telecom/{telecom_id}`."
+    ),
+    responses={**_SUBRES_TELECOM_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_telecom(
+    request: Request,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    items = await practitioner_service.get_telecoms(practitioner.practitioner_id)
+    plain = [{"id": t.id, **plain_telecom(t)} for t in items]
+    if wants_fhir(request):
+        fhir = [{"id": t.id, **fhir_telecom(t)} for t in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.get(
+    "/{practitioner_id}/addresses",
+    dependencies=[Depends(require_permission("practitioner", "read"))],
+    operation_id="list_practitioner_addresses",
+    summary="List all addresses for a Practitioner",
+    description=(
+        "Returns all postal and physical addresses for this Practitioner. "
+        "Each item includes `id` — use it to remove a specific address via "
+        "`DELETE /{practitioner_id}/addresses/{address_id}`."
+    ),
+    responses={**_SUBRES_ADDRESSES_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_addresses(
+    request: Request,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    items = await practitioner_service.get_addresses(practitioner.practitioner_id)
+    plain = [{"id": a.id, **plain_address(a)} for a in items]
+    if wants_fhir(request):
+        fhir = [{"id": a.id, **fhir_address(a)} for a in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.get(
+    "/{practitioner_id}/photos",
+    dependencies=[Depends(require_permission("practitioner", "read"))],
+    operation_id="list_practitioner_photos",
+    summary="List all photos for a Practitioner",
+    description=(
+        "Returns all photo attachments stored for this Practitioner. "
+        "Each item includes `id` — use it to remove a specific photo via "
+        "`DELETE /{practitioner_id}/photos/{photo_id}`."
+    ),
+    responses={**_SUBRES_PHOTOS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_photos(
+    request: Request,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    items = await practitioner_service.get_photos(practitioner.practitioner_id)
+    plain = [{"id": p.id, **plain_photo(p)} for p in items]
+    if wants_fhir(request):
+        fhir = [{"id": p.id, **fhir_photo(p)} for p in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.get(
+    "/{practitioner_id}/qualifications",
+    dependencies=[Depends(require_permission("practitioner", "read"))],
+    operation_id="list_practitioner_qualifications",
+    summary="List all qualifications for a Practitioner",
+    description=(
+        "Returns all degrees, certifications, accreditations, and licenses for this Practitioner "
+        "(e.g. MD, board certification, NPI, DEA number). "
+        "Each qualification includes its nested identifiers and issuing organization reference. "
+        "Each item includes `id` — use it to remove a specific qualification via "
+        "`DELETE /{practitioner_id}/qualifications/{qualification_id}`."
+    ),
+    responses={**_SUBRES_QUALIFICATIONS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_qualifications(
+    request: Request,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    items = await practitioner_service.get_qualifications(practitioner.practitioner_id)
+    plain = [{"id": q.id, **plain_qualification(q)} for q in items]
+    if wants_fhir(request):
+        fhir = [{"id": q.id, **fhir_qualification(q)} for q in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+@router.get(
+    "/{practitioner_id}/communications",
+    dependencies=[Depends(require_permission("practitioner", "read"))],
+    operation_id="list_practitioner_communications",
+    summary="List all communication languages for a Practitioner",
+    description=(
+        "Returns all languages this Practitioner can use in patient communication. "
+        "Each item includes `id` — use it to remove a specific language entry via "
+        "`DELETE /{practitioner_id}/communications/{comm_id}`."
+    ),
+    responses={**_SUBRES_COMMUNICATIONS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def list_communications(
+    request: Request,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    items = await practitioner_service.get_communications(practitioner.practitioner_id)
+    plain = [{"id": c.id, **plain_communication(c)} for c in items]
+    if wants_fhir(request):
+        fhir = [{"id": c.id, **fhir_communication(c)} for c in items]
+        return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
+    return JSONResponse({"data": plain, "total": len(plain)})
+
+
+# ── Sub-resource DELETEs ──────────────────────────────────────────────────────
+
+
+@router.delete(
+    "/{practitioner_id}/names/{name_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+    operation_id="delete_practitioner_name",
+    summary="Remove a HumanName entry from a Practitioner",
+    description=(
+        "Permanently deletes a single HumanName entry. "
+        "The `name_id` is the `id` returned by `GET /{practitioner_id}/names`. "
+        "Returns 404 if the name does not exist or belongs to a different Practitioner."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_name(
+    name_id: int,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    deleted = await practitioner_service.delete_name(practitioner.practitioner_id, name_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Name not found")
+    return None
+
+
+@router.delete(
+    "/{practitioner_id}/identifiers/{identifier_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+    operation_id="delete_practitioner_identifier",
+    summary="Remove a business identifier from a Practitioner",
+    description=(
+        "Permanently deletes a single business identifier. "
+        "The `identifier_id` is the `id` returned by `GET /{practitioner_id}/identifiers`. "
+        "Returns 404 if the identifier does not exist or belongs to a different Practitioner."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_identifier(
+    identifier_id: int,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    deleted = await practitioner_service.delete_identifier(practitioner.practitioner_id, identifier_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Identifier not found")
+    return None
+
+
+@router.delete(
+    "/{practitioner_id}/telecom/{telecom_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+    operation_id="delete_practitioner_telecom",
+    summary="Remove a contact point from a Practitioner",
+    description=(
+        "Permanently deletes a single contact point (phone, email, etc.). "
+        "The `telecom_id` is the `id` returned by `GET /{practitioner_id}/telecom`. "
+        "Returns 404 if the contact point does not exist or belongs to a different Practitioner."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_telecom(
+    telecom_id: int,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    deleted = await practitioner_service.delete_telecom(practitioner.practitioner_id, telecom_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Telecom not found")
+    return None
+
+
+@router.delete(
+    "/{practitioner_id}/addresses/{address_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+    operation_id="delete_practitioner_address",
+    summary="Remove an address from a Practitioner",
+    description=(
+        "Permanently deletes a single address entry. "
+        "The `address_id` is the `id` returned by `GET /{practitioner_id}/addresses`. "
+        "Returns 404 if the address does not exist or belongs to a different Practitioner."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_address(
+    address_id: int,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    deleted = await practitioner_service.delete_address(practitioner.practitioner_id, address_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Address not found")
+    return None
+
+
+@router.delete(
+    "/{practitioner_id}/photos/{photo_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+    operation_id="delete_practitioner_photo",
+    summary="Remove a photo from a Practitioner",
+    description=(
+        "Permanently deletes a single photo attachment. "
+        "The `photo_id` is the `id` returned by `GET /{practitioner_id}/photos`. "
+        "Returns 404 if the photo does not exist or belongs to a different Practitioner."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_photo(
+    photo_id: int,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    deleted = await practitioner_service.delete_photo(practitioner.practitioner_id, photo_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    return None
+
+
+@router.delete(
+    "/{practitioner_id}/qualifications/{qualification_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+    operation_id="delete_practitioner_qualification",
+    summary="Remove a qualification from a Practitioner",
+    description=(
+        "Permanently deletes a single qualification and all its nested identifiers. "
+        "The `qualification_id` is the `id` returned by `GET /{practitioner_id}/qualifications`. "
+        "Returns 404 if the qualification does not exist or belongs to a different Practitioner."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_qualification(
+    qualification_id: int,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    deleted = await practitioner_service.delete_qualification(practitioner.practitioner_id, qualification_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Qualification not found")
+    return None
+
+
+@router.delete(
+    "/{practitioner_id}/communications/{comm_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+    operation_id="delete_practitioner_communication",
+    summary="Remove a communication language from a Practitioner",
+    description=(
+        "Permanently deletes a single communication language entry. "
+        "The `comm_id` is the `id` returned by `GET /{practitioner_id}/communications`. "
+        "Returns 404 if the entry does not exist or belongs to a different Practitioner."
+    ),
+    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+)
+async def delete_communication(
+    comm_id: int,
+    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    deleted = await practitioner_service.delete_communication(practitioner.practitioner_id, comm_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Communication not found")
+    return None

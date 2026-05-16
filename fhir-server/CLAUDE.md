@@ -40,7 +40,8 @@ app/
 ├── auth/           # get_current_user, require_permission, get_authorized_<resource>
 ├── di/             # container.py, modules/<resource>.py, dependencies/<resource>.py
 ├── models/         # SQLAlchemy ORM — one package per resource + shared enums.py
-├── fhir/mappers/   # to_fhir_<resource>(), to_plain_<resource>()
+├── fhir/mappers/   # per-resource packages: fhir.py (camelCase) + plain.py (snake_case) + __init__.py
+│                   # fhir/datatypes.py — shared helpers (fhir_human_name, fhir_identifier, plain_name, etc.)
 ├── repository/     # <resource>_repository.py — all DB I/O
 ├── services/       # <resource>_service.py — thin orchestration
 ├── routers/        # <resource>.py + __init__.py (mounts all routers)
@@ -195,11 +196,25 @@ Recursive schemas (e.g. QuestionnaireResponse items) must call `model_rebuild()`
 
 ## FHIR Mapper Pattern
 
-Two functions per resource in `app/fhir/mappers/<resource>.py`:
-- `to_fhir_<resource>(model) -> dict` — FHIR R4, `"id": str(model.<resource>_id)`, strip `None` at end
-- `to_plain_<resource>(model) -> dict` — snake_case, `"id": model.<resource>_id` as int
+Each resource gets a **package** at `app/fhir/mappers/<resource>/`:
 
-References: stored as `(subject_type: Enum, subject_id: int)` → output as `"Patient/10001"` string.
+| File | Purpose |
+|---|---|
+| `fhir.py` | Per-child-model FHIR builder functions + `to_fhir_<resource>()` orchestrator |
+| `plain.py` | Per-child-model plain/snake_case builder functions + `to_plain_<resource>()` orchestrator |
+| `__init__.py` | Re-exports all public functions from both files |
+
+**Shared standard-type helpers** live in `app/fhir/datatypes.py` and are imported by both `fhir.py` and the router:
+- FHIR: `fhir_human_name`, `fhir_identifier`, `fhir_telecom`, `fhir_address`, `fhir_photo`, `fhir_communication`, `fhir_enum`, `fhir_split`
+- Plain: `plain_name`, `plain_identifier`, `plain_telecom`, `plain_address`, `plain_photo`, `plain_communication`
+
+**Resource-specific child-model helpers** are defined in `fhir.py`/`plain.py` (e.g. `fhir_contact`, `plain_qualification`) and exported from `__init__.py`. Sub-resource GET routes in the router **import and reuse** these same functions — zero inline dicts in either the mapper orchestrators or the router.
+
+Rules:
+- `to_fhir_<resource>`: `"id": str(model.<resource>_id)`, strip `None` at end with dict comprehension
+- `to_plain_<resource>`: `"id": model.<resource>_id` as int
+- References: stored as `(subject_type: Enum, subject_id: int)` → output as `"Patient/10001"` string via `fhir_enum()`
+- `fhir_enum(v)` handles both SQLAlchemy Enum objects and plain strings transparently
 
 ---
 
@@ -283,6 +298,17 @@ Use the `/new-fhir-resource` skill (`.claude/commands/new-fhir-resource.md`) for
 
 ---
 
+## Sub-Resource GET + DELETE Endpoints
+
+Use the `/sub-resource-endpoints` skill (`.claude/commands/sub-resource-endpoints.md`) for the complete pattern covering schemas, repository, service, and router for `GET /{id}/<sub>` and `DELETE /{id}/<sub>/{sub_id}` routes.
+
+Key invariants (full details in the skill):
+- Document **both** `application/json` and `application/fhir+json` in `_SUBRES_*_200` constants — MCP needs both
+- Every list item must include `id` — callers need it for DELETE
+- Every route must have `operation_id`, `summary`, `description`, `responses=` — MCP uses all of these
+
+---
+
 ## Common Pitfalls
 
 - **Never `response_model=`** — use inline `responses=` + `inline_schema()`
@@ -293,4 +319,5 @@ Use the `/new-fhir-resource` skill (`.claude/commands/new-fhir-resource.md`) for
 - **`model_dump(exclude_unset=True)`** in PATCH to only apply provided fields
 - **`user_id`/`org_id` in `json_schema_extra` example** — required on every CreateSchema
 - **`inline_schema()` at module level** — not inside route handlers
+- **Sub-resource GET + DELETE** — use `/sub-resource-endpoints` skill; every route needs `operation_id`, `summary`, `description`, `responses=` with both content types
 - **Verify `/openapi.json`** after any schema change before marking task done
