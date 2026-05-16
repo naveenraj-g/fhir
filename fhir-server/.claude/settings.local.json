@@ -20,7 +20,8 @@
       "WebFetch(domain:hl7.org)",
       "PowerShell($content = Get-Content \"E:\\\\work\\\\code\\\\fhir\\\\fhir-server\\\\CLAUDE.md\" -Raw; \"Characters: $\\($content.Length\\)\"; \"Lines: $\\(\\(Get-Content 'E:\\\\work\\\\code\\\\fhir\\\\fhir-server\\\\CLAUDE.md'\\).Count\\)\")",
       "PowerShell(Get-ChildItem \"E:\\\\work\\\\code\\\\fhir\\\\fhir-server\\\\app\\\\fhir\" -Recurse | ForEach-Object { $_.FullName })",
-      "Bash(Remove-Item *)"
+      "Bash(Remove-Item *)",
+      "Bash(Get-ChildItem *)"
     ]
   }
 }
