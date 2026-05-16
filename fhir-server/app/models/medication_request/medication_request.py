@@ -33,6 +33,7 @@ from app.models.medication_request.enums import (
     MedicationRequesterType,
     MedicationSubjectType,
 )
+from app.models.enums import EncounterReferenceType
 
 medication_request_id_seq = Sequence("medication_request_id_seq", start=90000, increment=1)
 
@@ -100,7 +101,12 @@ class MedicationRequestModel(Base):
 
     # ── encounter — Reference(Encounter) ──────────────────────────────────────
 
+    encounter_type = Column(
+        Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
+        nullable=True,
+    )
     encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
+    encounter_display = Column(String, nullable=True)
 
     # ── Authoring metadata ────────────────────────────────────────────────────
 
@@ -245,7 +251,7 @@ class MedicationRequestModel(Base):
 
     # ── Relationships ─────────────────────────────────────────────────────────
 
-    encounter = relationship("EncounterModel", foreign_keys=[encounter_id])
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
 
     identifiers = relationship(
         "MedicationRequestIdentifier",

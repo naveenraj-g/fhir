@@ -810,10 +810,11 @@ class ClaimItemEncounter(Base):
         Enum(ClaimItemEncounterReferenceType, name="claim_item_encounter_ref_type"),
         nullable=True,
     )
-    reference_id = Column(Integer, nullable=True)
+    reference_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
     reference_display = Column(String, nullable=True)
 
     item = relationship("ClaimItem", back_populates="encounters")
+    encounter = relationship("EncounterModel", foreign_keys=[reference_id], lazy="selectin")
 
 
 # ---------------------------------------------------------------------------

@@ -30,6 +30,7 @@ from app.models.service_request.enums import (
     ServiceRequestStatus,
     ServiceRequestSubjectType,
 )
+from app.models.enums import EncounterReferenceType
 
 service_request_id_seq = Sequence("service_request_id_seq", start=80000, increment=1)
 
@@ -80,7 +81,12 @@ class ServiceRequestModel(Base):
 
     # ── Encounter — Reference(Encounter) ──────────────────────────────────────
 
+    encounter_type = Column(
+        Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
+        nullable=True,
+    )
     encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
+    encounter_display = Column(String, nullable=True)
 
     # ── Occurrence[x] — dateTime | Period | Timing ────────────────────────────
     # Store all three variants; mapper uses whichever is non-null.
@@ -174,7 +180,7 @@ class ServiceRequestModel(Base):
 
     # ── Relationships ─────────────────────────────────────────────────────────
 
-    encounter = relationship("EncounterModel", foreign_keys=[encounter_id])
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
 
     identifiers = relationship(
         "ServiceRequestIdentifier",

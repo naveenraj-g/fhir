@@ -27,6 +27,7 @@ from app.models.device_request.enums import (
     DeviceRequestStatus,
     DeviceRequestSubjectType,
 )
+from app.models.enums import EncounterReferenceType
 
 device_request_id_seq = Sequence("device_request_id_seq", start=130000, increment=1)
 
@@ -88,7 +89,12 @@ class DeviceRequestModel(Base):
 
     # ── encounter (0..1 Reference(Encounter)) ─────────────────────────────────
 
+    encounter_type = Column(
+        Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
+        nullable=True,
+    )
     encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
+    encounter_display = Column(String, nullable=True)
 
     # ── occurrence[x] (0..1 — dateTime | Period | Timing) ────────────────────
 
@@ -172,7 +178,7 @@ class DeviceRequestModel(Base):
 
     # ── Relationships ─────────────────────────────────────────────────────────
 
-    encounter = relationship("EncounterModel", foreign_keys=[encounter_id])
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
 
     identifiers = relationship(
         "DeviceRequestIdentifier",

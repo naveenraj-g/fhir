@@ -20,7 +20,7 @@ from app.models.questionnaire_response.enums import (
     QRBasedOnReferenceType,
     QRPartOfReferenceType,
 )
-from app.models.enums import SubjectReferenceType, IdentifierUse
+from app.models.enums import EncounterReferenceType, SubjectReferenceType, IdentifierUse
 
 questionnaire_response_id_seq = Sequence(
     "questionnaire_response_id_seq", start=60000, increment=1
@@ -70,10 +70,14 @@ class QuestionnaireResponseModel(Base):
     subject_id = Column(Integer, nullable=True)
     subject_display = Column(String, nullable=True)
 
-    # Encounter reference
-    encounter_id = Column(
-        Integer, ForeignKey("encounter.id"), nullable=True, index=True
+    # ── encounter (0..1 Reference(Encounter)) ─────────────────────────────────
+
+    encounter_type = Column(
+        Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
+        nullable=True,
     )
+    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
+    encounter_display = Column(String, nullable=True)
 
     # Authored / Author / Source
     authored = Column(DateTime(timezone=True), nullable=True)
@@ -113,7 +117,7 @@ class QuestionnaireResponseModel(Base):
         back_populates="response",
         cascade="all, delete-orphan",
     )
-    encounter = relationship("EncounterModel", back_populates="questionnaire_responses")
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
 
 
 class QuestionnaireResponseBasedOn(Base):

@@ -30,6 +30,7 @@ from app.models.procedure.enums import (
     ProcedureSubjectType,
     ProcedureUsedReferenceType,
 )
+from app.models.enums import EncounterReferenceType
 
 procedure_id_seq = Sequence("procedure_id_seq", start=100000, increment=1)
 
@@ -88,7 +89,12 @@ class ProcedureModel(Base):
 
     # ── encounter (0..1 Reference(Encounter)) ─────────────────────────────────
 
+    encounter_type = Column(
+        Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
+        nullable=True,
+    )
     encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
+    encounter_display = Column(String, nullable=True)
 
     # ── performed[x] (0..1 — dateTime | Period | string | Age | Range) ────────
     # All five variants stored; mapper uses whichever is non-null.
@@ -156,7 +162,7 @@ class ProcedureModel(Base):
 
     # ── Relationships ─────────────────────────────────────────────────────────
 
-    encounter = relationship("EncounterModel", foreign_keys=[encounter_id])
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
 
     identifiers = relationship(
         "ProcedureIdentifier",

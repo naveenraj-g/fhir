@@ -193,9 +193,6 @@ class EncounterModel(Base):
     locations = relationship(
         "EncounterLocation", back_populates="encounter", cascade="all, delete-orphan"
     )
-    questionnaire_responses = relationship(
-        "QuestionnaireResponseModel", back_populates="encounter"
-    )
 
 
 # ── Sub-resource tables ────────────────────────────────────────────────────────

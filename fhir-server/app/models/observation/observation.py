@@ -14,11 +14,11 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
+from app.models.enums import EncounterReferenceType
 from app.models.observation.enums import (
     ObservationBasedOnReferenceType,
     ObservationDerivedFromReferenceType,
     ObservationDeviceReferenceType,
-    ObservationEncounterReferenceType,
     ObservationHasMemberReferenceType,
     ObservationPartOfReferenceType,
     ObservationPerformerReferenceType,
@@ -72,10 +72,10 @@ class ObservationModel(Base):
 
     # encounter (0..1 Reference(Encounter))
     encounter_type = Column(
-        Enum(ObservationEncounterReferenceType, name="obs_encounter_ref_type"),
+        Enum(EncounterReferenceType, name="obs_encounter_ref_type", create_type=False),
         nullable=True,
     )
-    encounter_id = Column(Integer, nullable=True)
+    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
     encounter_display = Column(String, nullable=True)
 
     # effective[x] (0..1 choice: dateTime | Period | Timing | instant)
@@ -215,6 +215,9 @@ class ObservationModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_by = Column(String, nullable=True)
     updated_by = Column(String, nullable=True)
+
+    # encounter relationship (child → parent)
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
 
     # child relationships
     identifiers = relationship(

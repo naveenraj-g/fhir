@@ -26,7 +26,7 @@ from app.models.appointment.enums import (
     AppointmentSlotReferenceType,
     AppointmentAccountReferenceType,
 )
-from app.models.enums import SubjectReferenceType
+from app.models.enums import EncounterReferenceType, SubjectReferenceType
 
 appointment_id_seq = Sequence("appointment_id_seq", start=40000, increment=1)
 
@@ -79,8 +79,13 @@ class AppointmentModel(Base):
     subject_id = Column(Integer, nullable=True)
     subject_display = Column(String, nullable=True)
 
-    # Encounter FK (operational, not FHIR R5 standard)
+    # encounter (0..1 Reference(Encounter))
+    encounter_type = Column(
+        Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
+        nullable=True,
+    )
     encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
+    encounter_display = Column(String, nullable=True)
 
     # previousAppointment (0..1 Reference(Appointment)) — R5 new
     previous_appointment_id = Column(Integer, nullable=True)
@@ -109,7 +114,7 @@ class AppointmentModel(Base):
     updated_by = Column(String, nullable=True)
 
     # Relationships
-    encounter = relationship("EncounterModel", foreign_keys=[encounter_id])
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
     identifiers = relationship(
         "AppointmentIdentifier", back_populates="appointment", cascade="all, delete-orphan"
     )

@@ -22,6 +22,7 @@ from app.models.diagnostic_report.enums import (
     DiagnosticReportStatus,
     DiagnosticReportSubjectType,
 )
+from app.models.enums import EncounterReferenceType
 
 diagnostic_report_id_seq = Sequence("diagnostic_report_id_seq", start=110000, increment=1)
 
@@ -68,7 +69,12 @@ class DiagnosticReportModel(Base):
 
     # ── encounter (0..1 Reference(Encounter)) ─────────────────────────────────
 
+    encounter_type = Column(
+        Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
+        nullable=True,
+    )
     encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
+    encounter_display = Column(String, nullable=True)
 
     # ── effective[x] (0..1 — dateTime | Period) ───────────────────────────────
 
@@ -93,7 +99,7 @@ class DiagnosticReportModel(Base):
 
     # ── Relationships ─────────────────────────────────────────────────────────
 
-    encounter = relationship("EncounterModel", foreign_keys=[encounter_id])
+    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
 
     identifiers = relationship(
         "DiagnosticReportIdentifier",

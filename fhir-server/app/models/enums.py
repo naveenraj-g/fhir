@@ -17,6 +17,13 @@ class OrganizationReferenceType(str, Enum):
     ORGANIZATION = "Organization"
 
 
+class EncounterReferenceType(str, Enum):
+    """Shared enum for any FHIR field whose only allowed reference type is Encounter.
+    Stored as DB type name 'encounter_reference_type' (shared across all tables, create_type=False)."""
+
+    ENCOUNTER = "Encounter"
+
+
 class IdentifierUse(str, Enum):
     """FHIR R4 IdentifierUse — used by any resource that stores an identifier.use column."""
 

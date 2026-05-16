@@ -288,6 +288,8 @@ Use the `/fhir-db-model` skill (`.claude/commands/fhir-db-model.md`) for detaile
 - R4 only — never `https://www.hl7.org/fhir/<resource>.html` (that's R5)
 - `CodeableReference` does not exist in R4
 - `organization_reference_type` PG type is shared — always `create_type=False`, never create/drop it again
+- `encounter_reference_type` PG type is shared — always `create_type=False`, never create/drop it again
+- All reference `_id` columns store the **internal `resource.id` PK**, never the public sequence ID. Add `ForeignKey("resource.id")`, `index=True`, and `lazy="selectin"` relationship. Mapper reads the public ID through the relationship.
 - Alembic autogenerate always wrong for enums — manually fix every migration before applying
 
 ---
