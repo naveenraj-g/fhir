@@ -1,6 +1,21 @@
 dev:
     uv run uvicorn app.main:app --port 8001 --reload
 
+# ── Tests ─────────────────────────────────────────────────────────────────────
+
+# Run all tests
+test:
+    uv run pytest tests/ -q
+
+# Run tests with verbose output
+test-v:
+    uv run pytest tests/ -v
+
+# Run a specific test file or test by keyword
+# Usage: just test-k patient
+test-k K:
+    uv run pytest tests/ -k "{{K}}" -v
+
 start:
     uv run uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 2
 
