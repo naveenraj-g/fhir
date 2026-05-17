@@ -35,6 +35,7 @@ import app.models.organization.organization  # noqa: F401
 import app.models.schedule.schedule  # noqa: F401
 import app.models.slot.slot  # noqa: F401
 import app.models.invoice.invoice  # noqa: F401
+import app.models.location.location  # noqa: F401
 
 # Read alembic.ini logging config
 config = context.config

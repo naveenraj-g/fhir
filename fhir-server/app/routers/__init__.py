@@ -20,6 +20,7 @@ from .healthcare_service import router as healthcare_service_router
 from .claim import router as claim_router
 from .claim_response import router as claim_response_router
 from .invoice import router as invoice_router
+from .location import router as location_router
 
 api_router = APIRouter()
 
@@ -94,3 +95,5 @@ api_router.include_router(
 )
 
 api_router.include_router(invoice_router, prefix="/invoices", tags=["Invoices"])
+
+api_router.include_router(location_router, prefix="/locations", tags=["Locations"])
