@@ -22,6 +22,48 @@ def assert_fhir_patient(data: dict, **expected) -> None:
         )
 
 
+def assert_plain_practitioner(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) practitioner response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected practitioner.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_practitioner(data: dict, **expected) -> None:
+    """Assert fields on a FHIR practitioner response."""
+    assert data.get("resourceType") == "Practitioner", (
+        f"expected resourceType=Practitioner, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected practitioner.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_plain_appointment(data: dict, **expected) -> None:
+    """Assert fields on a plain (snake_case) appointment response."""
+    assert data.get("id") is not None, "plain response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected appointment.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
+def assert_fhir_appointment(data: dict, **expected) -> None:
+    """Assert fields on a FHIR appointment response."""
+    assert data.get("resourceType") == "Appointment", (
+        f"expected resourceType=Appointment, got {data.get('resourceType')!r}"
+    )
+    assert data.get("id") is not None, "FHIR response must have 'id'"
+    for field, value in expected.items():
+        assert data.get(field) == value, (
+            f"expected appointment.{field}={value!r}, got {data.get(field)!r}"
+        )
+
+
 def assert_paginated(data: dict, *, min_total: int = 1) -> None:
     """Assert structure of a plain paginated list response."""
     assert "total" in data, "paginated response must have 'total'"
