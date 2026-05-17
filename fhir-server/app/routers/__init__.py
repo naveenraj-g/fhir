@@ -14,6 +14,7 @@ from .observation import router as observation_router
 from .organization import router as organization_router
 from .procedure import router as procedure_router
 from .schedule import router as schedule_router
+from .slot import router as slot_router
 
 api_router = APIRouter()
 
@@ -67,4 +68,8 @@ api_router.include_router(
 
 api_router.include_router(
     schedule_router, prefix="/schedules", tags=["Schedules"]
+)
+
+api_router.include_router(
+    slot_router, prefix="/slots", tags=["Slots"]
 )

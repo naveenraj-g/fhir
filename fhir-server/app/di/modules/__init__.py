@@ -13,6 +13,7 @@ from .observation import ObservationContainer
 from .organization import OrganizationContainer
 from .procedure import ProcedureContainer
 from .schedule import ScheduleContainer
+from .slot import SlotContainer
 
 __all__ = [
     "PatientContainer",
@@ -30,4 +31,5 @@ __all__ = [
     "OrganizationContainer",
     "ProcedureContainer",
     "ScheduleContainer",
+    "SlotContainer",
 ]
