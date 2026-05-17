@@ -5,6 +5,10 @@ dev:
 
 # Run all tests
 test:
+    uv run pytest tests/ -v
+
+# Run all tests with quiet output
+test-q:
     uv run pytest tests/ -q
 
 # Run tests with verbose output

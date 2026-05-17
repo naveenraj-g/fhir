@@ -4,6 +4,11 @@ Complete checklist for adding pytest integration tests for any FHIR R4 resource 
 
 The test stack uses **pytest-asyncio** with `asyncio_mode = "auto"`, **httpx AsyncClient**, and **SQLite in-memory** (StaticPool). The shared `tests/conftest.py` handles all infrastructure — you only write the test module.
 
+The standard for these tests is **production-grade integration coverage**:
+- cover **every endpoint** in the router at least once
+- cover the highest-risk negative paths, not every nullable permutation
+- add comments and notes so another engineer can understand why the test exists
+
 ---
 
 ## ARGUMENTS: $RESOURCE
@@ -20,6 +25,7 @@ Read these files first — they determine what your tests assert:
 - `app/fhir/mappers/<resource>/plain.py` — exact field names in the plain JSON response (FHIR singular names like `"name"`, `"identifier"`, not `"names"`)
 - `app/schemas/<resource>/input.py` — required vs optional fields in create/patch payloads
 - `app/auth/<resource>_deps.py` — whether `get_authorized_<resource>` checks `user_id` ownership
+- `app/core/content_negotiation.py` — actual runtime status behavior may differ from the decorator on the route
 
 ---
 
@@ -104,16 +110,25 @@ FULL = {
 
 Write one `async def test_*` function per behaviour. Name tests descriptively.
 
+Important strategy notes:
+- Do **not** try to test every nullable field in isolation.
+- Do test every field that has custom parsing, mapping, or branching logic.
+- Do cover every route in the router: create, get, patch, list, delete, `/me`, and every sub-resource route.
+- Prefer one **minimal** payload plus one **representative full** payload over combinatorial explosion.
+- Add short comments above sections and tricky assertions so the file reads like documentation.
+
 ### Create
 
 ```python
 async def test_create_<resource>_minimal(client):
+    # Minimal payload proves the smallest supported contract works.
     resp = await client.post(BASE + "/", json=MINIMAL)
-    assert resp.status_code == 200  # format_response() always returns 200
+    assert resp.status_code == 200
     data = resp.json()
     assert_plain_<resource>(data, ...)  # key scalar fields
 
 async def test_create_<resource>_full(client):
+    # Full payload proves richer optional-field mapping works.
     resp = await client.post(BASE + "/", json=FULL)
     assert resp.status_code == 200
     ...
@@ -125,8 +140,13 @@ async def test_create_<resource>_fhir_format(client):
 
 async def test_create_<resource>_extra_field_rejected(client):
     resp = await client.post(BASE + "/", json={**MINIMAL, "bad": "field"})
-    assert resp.status_code == 400  # RequestValidationError → 400 OperationOutcome
+    assert_operation_outcome(resp.json(), expected_status=400, response_status=resp.status_code)
 ```
+
+Also add targeted invalid tests for fields with special parsing or enum handling, for example:
+- FHIR references like `"Organization/123"`
+- closed-set enum fields
+- rank/limit/value constraints
 
 ### Get by ID
 
@@ -147,8 +167,12 @@ async def test_get_<resource>_by_id_fhir(client):
 
 async def test_get_<resource>_not_found(client):
     resp = await client.get(f"{BASE}/999999")
-    assert resp.status_code == 404
+    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
 ```
+
+### Authorization / ownership
+
+Only add cross-org negative tests if `app/auth/<resource>_deps.py` actually enforces that scope. Do not write tests for protections that the current implementation does not provide.
 
 ### Patch
 
@@ -161,7 +185,7 @@ async def test_patch_<resource>(client):
 
 async def test_patch_<resource>_not_found(client):
     resp = await client.patch(f"{BASE}/999999", json={"<field>": "x"})
-    assert resp.status_code == 404
+    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
 ```
 
 ### Delete
@@ -173,7 +197,8 @@ async def test_delete_<resource>(client):
     assert (await client.get(f"{BASE}/{r_id}")).status_code == 404
 
 async def test_delete_<resource>_not_found(client):
-    assert (await client.delete(f"{BASE}/999999")).status_code == 404
+    resp = await client.delete(f"{BASE}/999999")
+    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
 ```
 
 ### List
@@ -207,6 +232,9 @@ async def test_list_<resource>s_empty(client):
     assert data["data"] == []
 ```
 
+If the router exposes resource-specific filters, add explicit tests for them.
+For patient-like resources, that can include name filters or status filters.
+
 ### /me (if the resource has a /me endpoint)
 
 ```python
@@ -219,7 +247,7 @@ async def test_get_my_<resource>s_found(client):
 async def test_get_my_<resource>s_org_isolation(client, other_client):
     await client.post(BASE + "/", json=MINIMAL)  # created as u-test / org-test
     resp = await other_client.get(BASE + "/me")  # u-other / org-other
-    assert resp.json()["total"] == 0
+    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
 ```
 
 ### Permissions
@@ -230,7 +258,7 @@ async def test_create_<resource>_no_permission(client):
     _app.dependency_overrides[get_current_user] = make_test_user(permissions=["<resource>:read"])
     try:
         resp = await client.post(BASE + "/", json=MINIMAL)
-        assert resp.status_code == 403
+        assert_operation_outcome(resp.json(), expected_status=403, response_status=resp.status_code)
     finally:
         _app.dependency_overrides[get_current_user] = make_test_user(
             permissions=["<resource>:create", "<resource>:read", "<resource>:update", "<resource>:delete"]
@@ -258,6 +286,25 @@ async def test_delete_<sub>(client):
     assert (await client.delete(f"{BASE}/{r_id}/<subs>/{sub_id}")).status_code == 204
     assert (await client.get(f"{BASE}/{r_id}/<subs>")).json()["total"] == 0
 ```
+
+For production-grade coverage, do not stop at one or two child endpoints.
+If the router defines:
+- `POST /{id}/names`
+- `GET /{id}/names`
+- `DELETE /{id}/names/{name_id}`
+- `POST /{id}/photos`
+- `GET /{id}/photos`
+- `DELETE /{id}/photos/{photo_id}`
+
+then the test file should hit **all** of them.
+
+Also add at least one FHIR-format list test for each distinct child response shape family:
+- HumanName-like
+- Identifier-like
+- ContactPoint-like
+- Address-like
+- Attachment-like
+- complex BackboneElement-like entries
 
 ---
 
@@ -292,7 +339,7 @@ All tests should pass. Common issues and fixes:
 |---|---|
 | `NotImplementedError: Dialect 'sqlite' does not support sequence increments` | `_strip_server_defaults()` not stripping — check `type(sd.arg).__name__ == "next_value"` |
 | `429 Too Many Requests` in later tests | `RateLimitMiddleware.dispatch` not patched — check conftest.py |
-| `assert 200 == 201` on POST create | `format_response()` always returns 200; change assertion to 200 |
+| `assert 200 == 201` on POST create | `format_response()` currently returns 200 at runtime; if you are not changing `app/`, assert 200. |
 | `assert 422 == 400` on validation error | Error handler maps validation to 400 OperationOutcome; use 400 |
 | `assert 0 >= 1` on sub-resource list | Wrong field name — use FHIR singular (`"name"` not `"names"`) |
 | `404` on `/me` even after create | `user_id` in payload doesn't match JWT `sub` in fixture (`"u-test"`) |
@@ -301,9 +348,12 @@ All tests should pass. Common issues and fixes:
 
 ## Key invariants (do not forget)
 
-- `format_response()` always returns HTTP **200** — even for POST create (`status_code=201` on the decorator is only for OpenAPI docs)
+- Assert the current runtime behavior, not just the decorator metadata. Today, `format_response()`-based create endpoints return HTTP **200**.
 - Validation errors return HTTP **400** (OperationOutcome), not 422
 - Plain response field names are **FHIR R4 singular**: `"name"`, `"identifier"`, `"telecom"`, `"address"` — never `"names"` etc.
 - Sub-resource responses are `{"data": [...], "total": N}` — each item includes `"id"` for DELETE
 - `MINIMAL` payload must include `"user_id": "u-test"` and `"org_id": "org-test"` for `/me` tests to work
 - `other_client` fixture shares the **same database** as `client` (same `_engine`) — use it for org isolation
+- Do not stop at status-code checks for errors. Assert the `OperationOutcome` shape too.
+- Production-grade does **not** mean testing every nullable field one-by-one. It means endpoint-complete coverage plus focused tests for all custom logic and risky mappings.
+- Add comments. The test file should explain intent, not just assert values.
