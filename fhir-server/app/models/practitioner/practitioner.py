@@ -61,7 +61,6 @@ class PractitionerModel(Base):
     photos = relationship("PractitionerPhoto", back_populates="practitioner", cascade="all, delete-orphan")
     qualifications = relationship("PractitionerQualification", back_populates="practitioner", cascade="all, delete-orphan")
     communications = relationship("PractitionerCommunication", back_populates="practitioner", cascade="all, delete-orphan")
-    roles = relationship("PractitionerRoleModel", back_populates="practitioner", cascade="all, delete-orphan")
 
 
 class PractitionerName(Base):

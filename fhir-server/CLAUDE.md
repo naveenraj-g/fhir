@@ -95,8 +95,9 @@ Router → Service → Repository → ORM Model
 | Organization | 190000 |
 | Schedule | 200000 |
 | Invoice | 210000 |
+| Slot | 220000 |
 
-**Next available block: 220000.** Pick the next unused 10000-block for any new resource.
+**Next available block: 230000.** Pick the next unused 10000-block for any new resource.
 
 ---
 

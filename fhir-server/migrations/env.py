@@ -33,6 +33,7 @@ import app.models.claim.claim  # noqa: F401
 import app.models.claim_response.claim_response  # noqa: F401
 import app.models.organization.organization  # noqa: F401
 import app.models.schedule.schedule  # noqa: F401
+import app.models.slot.slot  # noqa: F401
 import app.models.invoice.invoice  # noqa: F401
 
 # Read alembic.ini logging config

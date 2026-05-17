@@ -77,7 +77,7 @@ class PractitionerRoleModel(Base):
     updated_by = Column(String, nullable=True)
 
     # parent relationship
-    practitioner = relationship("PractitionerModel", back_populates="roles")
+    practitioner = relationship("PractitionerModel")
 
     # child relationships
     identifiers = relationship(
