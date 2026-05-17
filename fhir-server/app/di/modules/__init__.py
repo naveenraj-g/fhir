@@ -20,6 +20,7 @@ from .claim import ClaimContainer
 from .claim_response import ClaimResponseContainer
 from .invoice import InvoiceContainer
 from .location import LocationContainer
+from .coverage import CoverageContainer
 
 __all__ = [
     "PatientContainer",
@@ -44,4 +45,5 @@ __all__ = [
     "ClaimResponseContainer",
     "InvoiceContainer",
     "LocationContainer",
+    "CoverageContainer",
 ]
