@@ -11,6 +11,7 @@ from .diagnostic_report import DiagnosticReportContainer
 from .medication_request import MedicationRequestContainer
 from .observation import ObservationContainer
 from .organization import OrganizationContainer
+from .procedure import ProcedureContainer
 
 __all__ = [
     "PatientContainer",
@@ -26,4 +27,5 @@ __all__ = [
     "MedicationRequestContainer",
     "ObservationContainer",
     "OrganizationContainer",
+    "ProcedureContainer",
 ]
