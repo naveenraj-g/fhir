@@ -16,6 +16,7 @@ from .procedure import router as procedure_router
 from .practitioner_role import router as practitioner_role_router
 from .schedule import router as schedule_router
 from .slot import router as slot_router
+from .healthcare_service import router as healthcare_service_router
 
 api_router = APIRouter()
 
@@ -77,4 +78,8 @@ api_router.include_router(
 
 api_router.include_router(
     slot_router, prefix="/slots", tags=["Slots"]
+)
+
+api_router.include_router(
+    healthcare_service_router, prefix="/healthcare-services", tags=["HealthcareServices"]
 )
