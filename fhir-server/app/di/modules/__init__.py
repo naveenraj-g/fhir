@@ -10,6 +10,7 @@ from .device_request import DeviceRequestContainer
 from .diagnostic_report import DiagnosticReportContainer
 from .medication_request import MedicationRequestContainer
 from .observation import ObservationContainer
+from .organization import OrganizationContainer
 
 __all__ = [
     "PatientContainer",
@@ -24,4 +25,5 @@ __all__ = [
     "DiagnosticReportContainer",
     "MedicationRequestContainer",
     "ObservationContainer",
+    "OrganizationContainer",
 ]

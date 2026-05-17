@@ -11,6 +11,7 @@ from .device_request import router as device_request_router
 from .diagnostic_report import router as diagnostic_report_router
 from .medication_request import router as medication_request_router
 from .observation import router as observation_router
+from .organization import router as organization_router
 
 api_router = APIRouter()
 
@@ -52,4 +53,8 @@ api_router.include_router(
 
 api_router.include_router(
     observation_router, prefix="/observations", tags=["Observations"]
+)
+
+api_router.include_router(
+    organization_router, prefix="/organizations", tags=["Organizations"]
 )
