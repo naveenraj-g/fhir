@@ -18,6 +18,7 @@ from .slot import SlotContainer
 from .healthcare_service import HealthcareServiceContainer
 from .claim import ClaimContainer
 from .claim_response import ClaimResponseContainer
+from .invoice import InvoiceContainer
 
 __all__ = [
     "PatientContainer",
@@ -40,4 +41,5 @@ __all__ = [
     "HealthcareServiceContainer",
     "ClaimContainer",
     "ClaimResponseContainer",
+    "InvoiceContainer",
 ]

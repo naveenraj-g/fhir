@@ -19,6 +19,7 @@ from .slot import router as slot_router
 from .healthcare_service import router as healthcare_service_router
 from .claim import router as claim_router
 from .claim_response import router as claim_response_router
+from .invoice import router as invoice_router
 
 api_router = APIRouter()
 
@@ -91,3 +92,5 @@ api_router.include_router(claim_router, prefix="/claims", tags=["Claims"])
 api_router.include_router(
     claim_response_router, prefix="/claim-responses", tags=["ClaimResponses"]
 )
+
+api_router.include_router(invoice_router, prefix="/invoices", tags=["Invoices"])
