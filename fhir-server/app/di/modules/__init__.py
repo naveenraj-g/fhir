@@ -12,6 +12,7 @@ from .medication_request import MedicationRequestContainer
 from .observation import ObservationContainer
 from .organization import OrganizationContainer
 from .procedure import ProcedureContainer
+from .practitioner_role import PractitionerRoleContainer
 from .schedule import ScheduleContainer
 from .slot import SlotContainer
 
@@ -30,6 +31,7 @@ __all__ = [
     "ObservationContainer",
     "OrganizationContainer",
     "ProcedureContainer",
+    "PractitionerRoleContainer",
     "ScheduleContainer",
     "SlotContainer",
 ]

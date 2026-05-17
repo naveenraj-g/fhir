@@ -13,6 +13,7 @@ from .medication_request import router as medication_request_router
 from .observation import router as observation_router
 from .organization import router as organization_router
 from .procedure import router as procedure_router
+from .practitioner_role import router as practitioner_role_router
 from .schedule import router as schedule_router
 from .slot import router as slot_router
 
@@ -64,6 +65,10 @@ api_router.include_router(
 
 api_router.include_router(
     procedure_router, prefix="/procedures", tags=["Procedures"]
+)
+
+api_router.include_router(
+    practitioner_role_router, prefix="/practitioner-roles", tags=["PractitionerRoles"]
 )
 
 api_router.include_router(
