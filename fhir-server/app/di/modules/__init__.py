@@ -24,6 +24,7 @@ from .coverage import CoverageContainer
 from .medication import MedicationContainer
 from .allergy_intolerance import AllergyIntoleranceContainer
 from .provenance import ProvenanceContainer
+from .task import TaskContainer
 
 __all__ = [
     "PatientContainer",
@@ -52,4 +53,5 @@ __all__ = [
     "MedicationContainer",
     "AllergyIntoleranceContainer",
     "ProvenanceContainer",
+    "TaskContainer",
 ]

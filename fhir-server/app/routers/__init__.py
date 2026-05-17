@@ -25,6 +25,7 @@ from .coverage import router as coverage_router
 from .medication import router as medication_router
 from .allergy_intolerance import router as allergy_intolerance_router
 from .provenance import router as provenance_router
+from .task import router as task_router
 
 api_router = APIRouter()
 
@@ -111,3 +112,5 @@ api_router.include_router(
 )
 
 api_router.include_router(provenance_router, prefix="/provenances", tags=["Provenances"])
+
+api_router.include_router(task_router, prefix="/tasks", tags=["Tasks"])
