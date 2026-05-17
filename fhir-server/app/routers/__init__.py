@@ -23,6 +23,7 @@ from .invoice import router as invoice_router
 from .location import router as location_router
 from .coverage import router as coverage_router
 from .medication import router as medication_router
+from .allergy_intolerance import router as allergy_intolerance_router
 
 api_router = APIRouter()
 
@@ -103,3 +104,7 @@ api_router.include_router(location_router, prefix="/locations", tags=["Locations
 api_router.include_router(coverage_router, prefix="/coverages", tags=["Coverages"])
 
 api_router.include_router(medication_router, prefix="/medications", tags=["Medications"])
+
+api_router.include_router(
+    allergy_intolerance_router, prefix="/allergy-intolerances", tags=["AllergyIntolerances"]
+)
