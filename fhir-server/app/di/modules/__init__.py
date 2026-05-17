@@ -16,6 +16,8 @@ from .practitioner_role import PractitionerRoleContainer
 from .schedule import ScheduleContainer
 from .slot import SlotContainer
 from .healthcare_service import HealthcareServiceContainer
+from .claim import ClaimContainer
+from .claim_response import ClaimResponseContainer
 
 __all__ = [
     "PatientContainer",
@@ -36,4 +38,6 @@ __all__ = [
     "ScheduleContainer",
     "SlotContainer",
     "HealthcareServiceContainer",
+    "ClaimContainer",
+    "ClaimResponseContainer",
 ]
