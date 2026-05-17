@@ -39,6 +39,7 @@ import app.models.location.location  # noqa: F401
 import app.models.coverage.coverage  # noqa: F401
 import app.models.medication.medication  # noqa: F401
 import app.models.allergy_intolerance.allergy_intolerance  # noqa: F401
+import app.models.provenance.provenance  # noqa: F401
 
 # Read alembic.ini logging config
 config = context.config

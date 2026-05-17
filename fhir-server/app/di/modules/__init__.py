@@ -23,6 +23,7 @@ from .location import LocationContainer
 from .coverage import CoverageContainer
 from .medication import MedicationContainer
 from .allergy_intolerance import AllergyIntoleranceContainer
+from .provenance import ProvenanceContainer
 
 __all__ = [
     "PatientContainer",
@@ -50,4 +51,5 @@ __all__ = [
     "CoverageContainer",
     "MedicationContainer",
     "AllergyIntoleranceContainer",
+    "ProvenanceContainer",
 ]
