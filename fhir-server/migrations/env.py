@@ -44,6 +44,7 @@ import app.models.task.task  # noqa: F401
 import app.models.care_plan.care_plan  # noqa: F401
 import app.models.related_person.related_person  # noqa: F401
 import app.models.specimen.specimen  # noqa: F401
+import app.models.document_reference.document_reference  # noqa: F401
 
 # Read alembic.ini logging config
 config = context.config

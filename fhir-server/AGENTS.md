@@ -94,28 +94,26 @@ org_id  = request.state.user.get("activeOrganizationId")   # tenant identity
 ```
 
 **FHIR resources** use `require_permission("<resource>", "<action>")` as a route dependency for RBAC.
-**Vitals** does NOT use `require_permission` — it uses `get_authorized_vitals` in function params only.
+**Vitals** does NOT use `require_permission` — it uses `resolve_vitals` in function params only.
 
 ---
 
-## Ownership Dependency Pattern
+## Resource Resolver Dependency Pattern
 
-Every resource has `app/auth/<resource>_deps.py` with `get_authorized_<resource>()`:
+Every resource has `app/auth/<resource>_deps.py` with `resolve_<resource>()`. It resolves the model by public ID and raises 404 if not found — no 403 ownership check (ownership is enforced only on `/me` routes via `user_id` filter in the repository):
 
 ```python
-async def get_authorized_appointment(
-    appointment_id: int = Path(...),
-    request: Request,
+async def resolve_appointment(
+    appointment_id: int = Path(..., ge=1, description="Public appointment identifier."),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ) -> AppointmentModel:
-    user_id = request.state.user.get("sub")
     appt = await appointment_service.get_raw_by_appointment_id(appointment_id)
-    if not appt or appt.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
     return appt
 ```
 
-Used in route signatures as `appointment: AppointmentModel = Depends(get_authorized_appointment)`.
+Used in route signatures as `appointment: AppointmentModel = Depends(resolve_appointment)`.
 
 ---
 
@@ -349,7 +347,7 @@ HTTP status mapping: 400 validation, 401 not authenticated, 403 forbidden, 404 n
 7. `app/di/modules/<resource>.py` — DI container with repository + service
 8. `app/di/dependencies/<resource>.py` — `get_<resource>_service()` FastAPI dependency
 9. `app/di/container.py` — wire the new container
-10. `app/auth/<resource>_deps.py` — `get_authorized_<resource>()` ownership check
+10. `app/auth/<resource>_deps.py` — `resolve_<resource>()` resolves model by public ID, raises 404
 11. `app/routers/<resource>.py` — routes in order: POST /, GET /me, GET /{id}, PATCH /{id}, GET /, DELETE /{id}; inline `_SINGLE_200/_201/_LIST_200` schema constants
 12. `app/routers/__init__.py` — register router with prefix + tag
 

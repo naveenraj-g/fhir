@@ -28,6 +28,7 @@ from .task import TaskContainer
 from .care_plan import CarePlanContainer
 from .related_person import RelatedPersonContainer
 from .specimen import SpecimenContainer
+from .document_reference import DocumentReferenceContainer
 
 __all__ = [
     "PatientContainer",
@@ -60,4 +61,5 @@ __all__ = [
     "CarePlanContainer",
     "RelatedPersonContainer",
     "SpecimenContainer",
+    "DocumentReferenceContainer",
 ]

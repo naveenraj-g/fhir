@@ -37,7 +37,7 @@ FHIR R4-compliant REST API server built with FastAPI + PostgreSQL. Every endpoin
 ```
 app/
 ├── core/           # config, database, logging, redis, content_negotiation, schema_utils
-├── auth/           # get_current_user, require_permission, get_authorized_<resource>
+├── auth/           # get_current_user, require_permission, resolve_<resource>
 ├── di/             # container.py, modules/<resource>.py, dependencies/<resource>.py
 ├── models/         # SQLAlchemy ORM — one package per resource + shared enums.py
 ├── fhir/mappers/   # per-resource packages: fhir.py (camelCase) + plain.py (snake_case) + __init__.py
@@ -105,20 +105,21 @@ Router → Service → Repository → ORM Model
 | CarePlan | 290000 |
 | RelatedPerson | 300000 |
 | Specimen | 310000 |
+| DocumentReference | 320000 |
 
-**Next available block: 320000.** Pick the next unused 10000-block for any new resource.
+**Next available block: 330000.** Pick the next unused 10000-block for any new resource.
 
 ---
 
 ## Multi-Tenancy & Ownership
 
-Every row stores `user_id` (JWT `sub`) and `org_id` (JWT `activeOrganizationId`). Auth deps (`app/auth/<resource>_deps.py`) enforce ownership — `get_authorized_<resource>()` loads the row and raises 403 if `user_id` doesn't match. Used as `Depends(get_authorized_<resource>)` in route signatures.
+Every row stores `user_id` (JWT `sub`) and `org_id` (JWT `activeOrganizationId`). Auth deps (`app/auth/<resource>_deps.py`) resolve the resource by public ID and raise 404 if not found — `resolve_<resource>()`. Used as `Depends(resolve_<resource>)` in route signatures.
 
 ---
 
 ## JWT Authentication
 
-All routes protected by `get_current_user` (JWKS-validated), mounted globally in `main.py`. Claims read via `request.state.user.get("sub")` and `request.state.user.get("activeOrganizationId")`. FHIR resources use `require_permission("<resource>", "create|read|update|delete")`; Vitals uses `get_authorized_vitals` instead.
+All routes protected by `get_current_user` (JWKS-validated), mounted globally in `main.py`. Claims read via `request.state.user.get("sub")` and `request.state.user.get("activeOrganizationId")`. FHIR resources use `require_permission("<resource>", "create|read|update|delete")`; Vitals uses `resolve_vitals` instead.
 
 ---
 

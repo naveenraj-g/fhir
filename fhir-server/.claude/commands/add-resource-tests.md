@@ -25,7 +25,7 @@ Read these files first. They determine what the tests must actually assert:
 - `app/fhir/mappers/<resource>/plain.py` - exact plain JSON field names
 - `app/fhir/mappers/<resource>/fhir.py` - exact FHIR response field names
 - `app/schemas/<resource>/input.py` - required fields, patchable fields, nested input shapes
-- `app/auth/<resource>_deps.py` - whether `get_authorized_<resource>` enforces ownership or only existence
+- `app/auth/<resource>_deps.py` - `resolve_<resource>()` resolves by public ID and raises 404 (no ownership check)
 - `app/repository/<resource>_repository.py` - runtime list filters, foreign-key resolution, custom reference parsing
 - `app/core/content_negotiation.py` - current runtime status behavior may differ from decorator metadata
 

@@ -29,6 +29,7 @@ from .task import router as task_router
 from .care_plan import router as care_plan_router
 from .related_person import router as related_person_router
 from .specimen import router as specimen_router
+from .document_reference import router as document_reference_router
 
 api_router = APIRouter()
 
@@ -120,3 +121,4 @@ api_router.include_router(task_router, prefix="/tasks", tags=["Tasks"])
 api_router.include_router(care_plan_router, prefix="/care-plans", tags=["CarePlans"])
 api_router.include_router(related_person_router, prefix="/related-persons", tags=["RelatedPersons"])
 api_router.include_router(specimen_router, prefix="/specimens", tags=["Specimens"])
+api_router.include_router(document_reference_router, prefix="/document-references", tags=["DocumentReferences"])

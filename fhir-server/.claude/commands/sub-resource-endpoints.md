@@ -164,7 +164,7 @@ _SUBRES_<SUB>_200 = {200: {"description": "List of <sub> entries", "content": {
 )
 async def list_<sub>s(
     request: Request,
-    resource: <Resource>Model = Depends(get_authorized_<resource>),
+    resource: <Resource>Model = Depends(resolve_<resource>),
     service: <Resource>Service = Depends(get_<resource>_service),
 ):
     items = await service.get_<sub>s(resource.<resource>_id)
@@ -195,7 +195,7 @@ The `**plain_<sub>(r)` / `**fhir_<sub>(r)` pattern unpacks the helper's dict alo
 )
 async def delete_<sub>(
     sub_id: int,
-    resource: <Resource>Model = Depends(get_authorized_<resource>),
+    resource: <Resource>Model = Depends(resolve_<resource>),
     service: <Resource>Service = Depends(get_<resource>_service),
 ):
     deleted = await service.delete_<sub>(resource.<resource>_id, sub_id)

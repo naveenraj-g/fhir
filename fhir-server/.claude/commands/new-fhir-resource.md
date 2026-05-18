@@ -85,7 +85,7 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
     - `<resource> = providers.Container(<Resource>Container, core=core)`
 
 14. **Auth dep** — `app/auth/<resource>_deps.py`
-    - `get_authorized_<resource>()` — loads model, checks `user_id` ownership, raises 403 if mismatch
+    - `resolve_<resource>()` — loads model by public ID, raises 404 if not found (no ownership check)
 
 15. **Router** — `app/routers/<resource>.py`
     - Module-level constants: `_SINGLE_200`, `_SINGLE_201`, `_LIST_200` using `inline_schema()`
