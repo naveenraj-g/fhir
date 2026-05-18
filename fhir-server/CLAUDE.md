@@ -102,8 +102,9 @@ Router → Service → Repository → ORM Model
 | AllergyIntolerance | 260000 |
 | Provenance | 270000 |
 | Task | 280000 |
+| CarePlan | 290000 |
 
-**Next available block: 290000.** Pick the next unused 10000-block for any new resource.
+**Next available block: 300000.** Pick the next unused 10000-block for any new resource.
 
 ---
 
