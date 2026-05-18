@@ -103,8 +103,9 @@ Router → Service → Repository → ORM Model
 | Provenance | 270000 |
 | Task | 280000 |
 | CarePlan | 290000 |
+| RelatedPerson | 300000 |
 
-**Next available block: 300000.** Pick the next unused 10000-block for any new resource.
+**Next available block: 310000.** Pick the next unused 10000-block for any new resource.
 
 ---
 

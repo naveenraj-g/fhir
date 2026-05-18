@@ -42,6 +42,7 @@ import app.models.allergy_intolerance.allergy_intolerance  # noqa: F401
 import app.models.provenance.provenance  # noqa: F401
 import app.models.task.task  # noqa: F401
 import app.models.care_plan.care_plan  # noqa: F401
+import app.models.related_person.related_person  # noqa: F401
 
 # Read alembic.ini logging config
 config = context.config
