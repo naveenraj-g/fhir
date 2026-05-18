@@ -108,8 +108,9 @@ Router → Service → Repository → ORM Model
 | DocumentReference | 320000 |
 | Immunization | 330000 |
 | AuditEvent | 340000 |
+| EpisodeOfCare | 350000 |
 
-**Next available block: 350000.** Pick the next unused 10000-block for any new resource.
+**Next available block: 360000.** Pick the next unused 10000-block for any new resource.
 
 ---
 

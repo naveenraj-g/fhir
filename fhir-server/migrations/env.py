@@ -47,6 +47,7 @@ import app.models.specimen.specimen  # noqa: F401
 import app.models.document_reference.document_reference  # noqa: F401
 import app.models.immunization.immunization  # noqa: F401
 import app.models.audit_event.audit_event  # noqa: F401
+import app.models.episode_of_care.episode_of_care  # noqa: F401
 
 # Read alembic.ini logging config
 config = context.config
