@@ -4,7 +4,7 @@ from app.services.patient_service import PatientService
 from app.di.dependencies.patient import get_patient_service
 
 
-async def get_authorized_patient(
+async def resolve_patient(
     patient_id: int = Path(..., ge=1, description="Public patient identifier."),
     patient_service: PatientService = Depends(get_patient_service),
 ) -> PatientModel:

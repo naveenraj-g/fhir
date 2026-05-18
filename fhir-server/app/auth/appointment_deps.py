@@ -5,7 +5,7 @@ from app.services.appointment_service import AppointmentService
 from app.di.dependencies.appointment import get_appointment_service
 
 
-async def get_authorized_appointment(
+async def resolve_appointment(
     appointment_id: int = Path(..., ge=1, description="Public appointment identifier."),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ) -> AppointmentModel:

@@ -5,7 +5,7 @@ from app.models.location.location import LocationModel
 from app.services.location_service import LocationService
 
 
-async def get_authorized_location(
+async def resolve_location(
     location_id: int = Path(..., ge=1, description="Public location identifier."),
     location_service: LocationService = Depends(get_location_service),
 ) -> LocationModel:

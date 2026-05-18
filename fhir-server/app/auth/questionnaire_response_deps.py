@@ -9,7 +9,7 @@ from app.di.dependencies.questionnaire_response import (
 )
 
 
-async def get_authorized_questionnaire_response(
+async def resolve_questionnaire_response(
     questionnaire_response_id: int = Path(
         ..., ge=1, description="Public questionnaire response identifier."
     ),

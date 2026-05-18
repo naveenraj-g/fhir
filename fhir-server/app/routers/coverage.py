@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.coverage_deps import get_authorized_coverage
+from app.auth.coverage_deps import resolve_coverage
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
@@ -131,7 +131,7 @@ async def get_my_coverages(
 )
 async def get_coverage(
     request: Request,
-    coverage: CoverageModel = Depends(get_authorized_coverage),
+    coverage: CoverageModel = Depends(resolve_coverage),
     coverage_service: CoverageService = Depends(get_coverage_service),
 ):
     return format_response(
@@ -155,7 +155,7 @@ async def get_coverage(
 async def patch_coverage(
     request: Request,
     payload: CoveragePatchSchema,
-    coverage: CoverageModel = Depends(get_authorized_coverage),
+    coverage: CoverageModel = Depends(resolve_coverage),
     coverage_service: CoverageService = Depends(get_coverage_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -210,7 +210,7 @@ async def list_coverages(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND, 204: {"description": "Coverage deleted"}},
 )
 async def delete_coverage(
-    coverage: CoverageModel = Depends(get_authorized_coverage),
+    coverage: CoverageModel = Depends(resolve_coverage),
     coverage_service: CoverageService = Depends(get_coverage_service),
 ):
     await coverage_service.delete_coverage(coverage.coverage_id)

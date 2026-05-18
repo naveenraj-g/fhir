@@ -5,7 +5,7 @@ from app.models.vitals.vitals import VitalsModel
 from app.services.vitals_service import VitalsService
 
 
-async def get_authorized_vitals(
+async def resolve_vitals(
     vitals_id: int = Path(..., ge=1, description="Public vitals identifier."),
     vitals_service: VitalsService = Depends(get_vitals_service),
 ) -> VitalsModel:

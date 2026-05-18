@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.task_deps import get_authorized_task
+from app.auth.task_deps import resolve_task
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
@@ -126,7 +126,7 @@ async def get_my_tasks(
 )
 async def get_task(
     request: Request,
-    task: TaskModel = Depends(get_authorized_task),
+    task: TaskModel = Depends(resolve_task),
     task_service: TaskService = Depends(get_task_service),
 ):
     return format_response(
@@ -155,7 +155,7 @@ async def get_task(
 async def patch_task(
     request: Request,
     payload: TaskPatchSchema,
-    task: TaskModel = Depends(get_authorized_task),
+    task: TaskModel = Depends(resolve_task),
     task_service: TaskService = Depends(get_task_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -207,7 +207,7 @@ async def list_tasks(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND, 204: {"description": "Task deleted"}},
 )
 async def delete_task(
-    task: TaskModel = Depends(get_authorized_task),
+    task: TaskModel = Depends(resolve_task),
     task_service: TaskService = Depends(get_task_service),
 ):
     await task_service.delete_task(task.task_id)

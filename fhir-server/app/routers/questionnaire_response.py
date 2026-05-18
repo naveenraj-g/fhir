@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.auth.dependencies import require_permission
-from app.auth.questionnaire_response_deps import get_authorized_questionnaire_response
+from app.auth.questionnaire_response_deps import resolve_questionnaire_response
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.questionnaire_response import get_questionnaire_response_service
@@ -157,7 +157,7 @@ async def get_my_questionnaire_responses(
 )
 async def get_questionnaire_response(
     request: Request,
-    qr: QuestionnaireResponseModel = Depends(get_authorized_questionnaire_response),
+    qr: QuestionnaireResponseModel = Depends(resolve_questionnaire_response),
     qr_service: QuestionnaireResponseService = Depends(get_questionnaire_response_service),
 ):
     return format_response(
@@ -186,7 +186,7 @@ async def get_questionnaire_response(
 async def patch_questionnaire_response(
     payload: QuestionnaireResponsePatchSchema,
     request: Request,
-    qr: QuestionnaireResponseModel = Depends(get_authorized_questionnaire_response),
+    qr: QuestionnaireResponseModel = Depends(resolve_questionnaire_response),
     qr_service: QuestionnaireResponseService = Depends(get_questionnaire_response_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -260,7 +260,7 @@ async def list_questionnaire_responses(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_questionnaire_response(
-    qr: QuestionnaireResponseModel = Depends(get_authorized_questionnaire_response),
+    qr: QuestionnaireResponseModel = Depends(resolve_questionnaire_response),
     qr_service: QuestionnaireResponseService = Depends(get_questionnaire_response_service),
 ):
     await qr_service.delete_questionnaire_response(qr.questionnaire_response_id)

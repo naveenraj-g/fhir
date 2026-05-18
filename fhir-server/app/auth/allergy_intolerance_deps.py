@@ -5,7 +5,7 @@ from app.models.allergy_intolerance.allergy_intolerance import AllergyIntoleranc
 from app.services.allergy_intolerance_service import AllergyIntoleranceService
 
 
-async def get_authorized_allergy_intolerance(
+async def resolve_allergy_intolerance(
     allergy_intolerance_id: int = Path(..., ge=1, description="Public AllergyIntolerance identifier."),
     allergy_intolerance_service: AllergyIntoleranceService = Depends(get_allergy_intolerance_service),
 ) -> AllergyIntoleranceModel:

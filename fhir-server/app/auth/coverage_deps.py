@@ -5,7 +5,7 @@ from app.models.coverage.coverage import CoverageModel
 from app.services.coverage_service import CoverageService
 
 
-async def get_authorized_coverage(
+async def resolve_coverage(
     coverage_id: int = Path(..., ge=1, description="Public coverage identifier."),
     coverage_service: CoverageService = Depends(get_coverage_service),
 ) -> CoverageModel:

@@ -5,7 +5,7 @@ from app.models.healthcare_service.healthcare_service import HealthcareServiceMo
 from app.services.healthcare_service_service import HealthcareServiceService
 
 
-async def get_authorized_healthcare_service(
+async def resolve_healthcare_service(
     healthcare_service_id: int = Path(..., ge=1, description="Public healthcare service identifier."),
     hs_service: HealthcareServiceService = Depends(get_healthcare_service_service),
 ) -> HealthcareServiceModel:

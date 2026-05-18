@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.device_request_deps import get_authorized_device_request
+from app.auth.device_request_deps import resolve_device_request
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
@@ -151,7 +151,7 @@ async def get_my_device_requests(
 )
 async def get_device_request(
     request: Request,
-    dr: DeviceRequestModel = Depends(get_authorized_device_request),
+    dr: DeviceRequestModel = Depends(resolve_device_request),
     dr_service: DeviceRequestService = Depends(get_device_request_service),
 ):
     return format_response(
@@ -185,7 +185,7 @@ async def get_device_request(
 async def patch_device_request(
     payload: DeviceRequestPatchSchema,
     request: Request,
-    dr: DeviceRequestModel = Depends(get_authorized_device_request),
+    dr: DeviceRequestModel = Depends(resolve_device_request),
     dr_service: DeviceRequestService = Depends(get_device_request_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -265,7 +265,7 @@ async def list_device_requests(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_device_request(
-    dr: DeviceRequestModel = Depends(get_authorized_device_request),
+    dr: DeviceRequestModel = Depends(resolve_device_request),
     dr_service: DeviceRequestService = Depends(get_device_request_service),
 ):
     await dr_service.delete_device_request(dr.device_request_id)

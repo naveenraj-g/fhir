@@ -5,7 +5,7 @@ from app.models.diagnostic_report.diagnostic_report import DiagnosticReportModel
 from app.services.diagnostic_report_service import DiagnosticReportService
 
 
-async def get_authorized_diagnostic_report(
+async def resolve_diagnostic_report(
     diagnostic_report_id: int = Path(..., ge=1, description="Public diagnostic report identifier."),
     diagnostic_report_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
 ) -> DiagnosticReportModel:

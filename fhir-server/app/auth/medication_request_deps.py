@@ -5,7 +5,7 @@ from app.models.medication_request.medication_request import MedicationRequestMo
 from app.services.medication_request_service import MedicationRequestService
 
 
-async def get_authorized_medication_request(
+async def resolve_medication_request(
     medication_request_id: int = Path(..., ge=1, description="Public medication request identifier."),
     medication_request_service: MedicationRequestService = Depends(get_medication_request_service),
 ) -> MedicationRequestModel:

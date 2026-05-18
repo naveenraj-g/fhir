@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.condition_deps import get_authorized_condition
+from app.auth.condition_deps import resolve_condition
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
@@ -150,7 +150,7 @@ async def get_my_conditions(
 )
 async def get_condition(
     request: Request,
-    condition: ConditionModel = Depends(get_authorized_condition),
+    condition: ConditionModel = Depends(resolve_condition),
     condition_service: ConditionService = Depends(get_condition_service),
 ):
     return format_response(
@@ -181,7 +181,7 @@ async def get_condition(
 async def patch_condition(
     payload: ConditionPatchSchema,
     request: Request,
-    condition: ConditionModel = Depends(get_authorized_condition),
+    condition: ConditionModel = Depends(resolve_condition),
     condition_service: ConditionService = Depends(get_condition_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -260,7 +260,7 @@ async def list_conditions(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_condition(
-    condition: ConditionModel = Depends(get_authorized_condition),
+    condition: ConditionModel = Depends(resolve_condition),
     condition_service: ConditionService = Depends(get_condition_service),
 ):
     await condition_service.delete_condition(condition.condition_id)

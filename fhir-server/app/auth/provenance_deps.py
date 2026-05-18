@@ -5,7 +5,7 @@ from app.models.provenance.provenance import ProvenanceModel
 from app.services.provenance_service import ProvenanceService
 
 
-async def get_authorized_provenance(
+async def resolve_provenance(
     provenance_id: int = Path(..., ge=1, description="Public Provenance identifier."),
     provenance_service: ProvenanceService = Depends(get_provenance_service),
 ) -> ProvenanceModel:

@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.procedure_deps import get_authorized_procedure
+from app.auth.procedure_deps import resolve_procedure
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
@@ -151,7 +151,7 @@ async def get_my_procedures(
 )
 async def get_procedure(
     request: Request,
-    proc: ProcedureModel = Depends(get_authorized_procedure),
+    proc: ProcedureModel = Depends(resolve_procedure),
     proc_service: ProcedureService = Depends(get_procedure_service),
 ):
     return format_response(
@@ -185,7 +185,7 @@ async def get_procedure(
 async def patch_procedure(
     payload: ProcedurePatchSchema,
     request: Request,
-    proc: ProcedureModel = Depends(get_authorized_procedure),
+    proc: ProcedureModel = Depends(resolve_procedure),
     proc_service: ProcedureService = Depends(get_procedure_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -265,7 +265,7 @@ async def list_procedures(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_procedure(
-    proc: ProcedureModel = Depends(get_authorized_procedure),
+    proc: ProcedureModel = Depends(resolve_procedure),
     proc_service: ProcedureService = Depends(get_procedure_service),
 ):
     await proc_service.delete_procedure(proc.procedure_id)

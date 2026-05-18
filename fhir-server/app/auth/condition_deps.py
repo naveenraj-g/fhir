@@ -5,7 +5,7 @@ from app.models.condition.condition import ConditionModel
 from app.services.condition_service import ConditionService
 
 
-async def get_authorized_condition(
+async def resolve_condition(
     condition_id: int = Path(..., ge=1, description="Public condition identifier."),
     condition_service: ConditionService = Depends(get_condition_service),
 ) -> ConditionModel:

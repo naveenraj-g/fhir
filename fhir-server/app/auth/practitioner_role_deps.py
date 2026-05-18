@@ -5,7 +5,7 @@ from app.models.practitioner_role.practitioner_role import PractitionerRoleModel
 from app.services.practitioner_role_service import PractitionerRoleService
 
 
-async def get_authorized_practitioner_role(
+async def resolve_practitioner_role(
     practitioner_role_id: int = Path(..., ge=1, description="Public practitioner role identifier."),
     pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
 ) -> PractitionerRoleModel:

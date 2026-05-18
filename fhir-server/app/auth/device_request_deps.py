@@ -5,7 +5,7 @@ from app.models.device_request.device_request import DeviceRequestModel
 from app.services.device_request_service import DeviceRequestService
 
 
-async def get_authorized_device_request(
+async def resolve_device_request(
     device_request_id: int = Path(..., ge=1, description="Public device request identifier."),
     device_request_service: DeviceRequestService = Depends(get_device_request_service),
 ) -> DeviceRequestModel:

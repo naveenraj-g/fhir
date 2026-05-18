@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.claim_response_deps import get_authorized_claim_response
+from app.auth.claim_response_deps import resolve_claim_response
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
@@ -157,7 +157,7 @@ async def get_my_claim_responses(
 )
 async def get_claim_response(
     request: Request,
-    claim_response: ClaimResponseModel = Depends(get_authorized_claim_response),
+    claim_response: ClaimResponseModel = Depends(resolve_claim_response),
     cr_service: ClaimResponseService = Depends(get_claim_response_service),
 ):
     return format_response(
@@ -189,7 +189,7 @@ async def get_claim_response(
 async def patch_claim_response(
     payload: ClaimResponsePatchSchema,
     request: Request,
-    claim_response: ClaimResponseModel = Depends(get_authorized_claim_response),
+    claim_response: ClaimResponseModel = Depends(resolve_claim_response),
     cr_service: ClaimResponseService = Depends(get_claim_response_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -267,7 +267,7 @@ async def list_claim_responses(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_claim_response(
-    claim_response: ClaimResponseModel = Depends(get_authorized_claim_response),
+    claim_response: ClaimResponseModel = Depends(resolve_claim_response),
     cr_service: ClaimResponseService = Depends(get_claim_response_service),
 ):
     await cr_service.delete_claim_response(claim_response.claim_response_id)

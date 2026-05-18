@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.schedule_deps import get_authorized_schedule
+from app.auth.schedule_deps import resolve_schedule
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
@@ -140,7 +140,7 @@ async def get_my_schedules(
 )
 async def get_schedule(
     request: Request,
-    sched: ScheduleModel = Depends(get_authorized_schedule),
+    sched: ScheduleModel = Depends(resolve_schedule),
     sched_service: ScheduleService = Depends(get_schedule_service),
 ):
     return format_response(
@@ -170,7 +170,7 @@ async def get_schedule(
 async def patch_schedule(
     payload: SchedulePatchSchema,
     request: Request,
-    sched: ScheduleModel = Depends(get_authorized_schedule),
+    sched: ScheduleModel = Depends(resolve_schedule),
     sched_service: ScheduleService = Depends(get_schedule_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -239,7 +239,7 @@ async def list_schedules(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_schedule(
-    sched: ScheduleModel = Depends(get_authorized_schedule),
+    sched: ScheduleModel = Depends(resolve_schedule),
     sched_service: ScheduleService = Depends(get_schedule_service),
 ):
     await sched_service.delete_schedule(sched.schedule_id)

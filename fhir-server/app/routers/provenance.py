@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.provenance_deps import get_authorized_provenance
+from app.auth.provenance_deps import resolve_provenance
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
@@ -130,7 +130,7 @@ async def get_my_provenances(
 )
 async def get_provenance(
     request: Request,
-    prov: ProvenanceModel = Depends(get_authorized_provenance),
+    prov: ProvenanceModel = Depends(resolve_provenance),
     provenance_service: ProvenanceService = Depends(get_provenance_service),
 ):
     return format_response(
@@ -158,7 +158,7 @@ async def get_provenance(
 async def patch_provenance(
     request: Request,
     payload: ProvenancePatchSchema,
-    prov: ProvenanceModel = Depends(get_authorized_provenance),
+    prov: ProvenanceModel = Depends(resolve_provenance),
     provenance_service: ProvenanceService = Depends(get_provenance_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -210,7 +210,7 @@ async def list_provenances(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND, 204: {"description": "Provenance deleted"}},
 )
 async def delete_provenance(
-    prov: ProvenanceModel = Depends(get_authorized_provenance),
+    prov: ProvenanceModel = Depends(resolve_provenance),
     provenance_service: ProvenanceService = Depends(get_provenance_service),
 ):
     await provenance_service.delete_provenance(prov.provenance_id)

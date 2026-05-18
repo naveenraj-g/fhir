@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.allergy_intolerance_deps import get_authorized_allergy_intolerance
+from app.auth.allergy_intolerance_deps import resolve_allergy_intolerance
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
@@ -142,7 +142,7 @@ async def get_my_allergy_intolerances(
 )
 async def get_allergy_intolerance(
     request: Request,
-    ai: AllergyIntoleranceModel = Depends(get_authorized_allergy_intolerance),
+    ai: AllergyIntoleranceModel = Depends(resolve_allergy_intolerance),
     allergy_intolerance_service: AllergyIntoleranceService = Depends(get_allergy_intolerance_service),
 ):
     return format_response(
@@ -170,7 +170,7 @@ async def get_allergy_intolerance(
 async def patch_allergy_intolerance(
     request: Request,
     payload: AllergyIntolerancePatchSchema,
-    ai: AllergyIntoleranceModel = Depends(get_authorized_allergy_intolerance),
+    ai: AllergyIntoleranceModel = Depends(resolve_allergy_intolerance),
     allergy_intolerance_service: AllergyIntoleranceService = Depends(get_allergy_intolerance_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -233,7 +233,7 @@ async def list_allergy_intolerances(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND, 204: {"description": "AllergyIntolerance deleted"}},
 )
 async def delete_allergy_intolerance(
-    ai: AllergyIntoleranceModel = Depends(get_authorized_allergy_intolerance),
+    ai: AllergyIntoleranceModel = Depends(resolve_allergy_intolerance),
     allergy_intolerance_service: AllergyIntoleranceService = Depends(get_allergy_intolerance_service),
 ):
     await allergy_intolerance_service.delete_allergy_intolerance(ai.allergy_intolerance_id)

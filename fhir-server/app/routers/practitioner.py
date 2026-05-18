@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.dependencies import require_permission
-from app.auth.practitioner_deps import get_authorized_practitioner
+from app.auth.practitioner_deps import resolve_practitioner
 from app.core.content_negotiation import format_response, format_paginated_response, wants_fhir
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.practitioner import get_practitioner_service
@@ -200,7 +200,7 @@ async def get_my_practitioner_profile(
 )
 async def get_practitioner(
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     return format_response(
@@ -231,7 +231,7 @@ async def get_practitioner(
 async def patch_practitioner(
     payload: PractitionerPatchSchema,
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -303,7 +303,7 @@ async def list_practitioners(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_practitioner(
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     await practitioner_service.delete_practitioner(practitioner.practitioner_id)
@@ -332,7 +332,7 @@ async def delete_practitioner(
 async def add_name(
     payload: PractitionerNameCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_name(practitioner.practitioner_id, payload)
@@ -368,7 +368,7 @@ async def add_name(
 async def add_identifier(
     payload: PractitionerIdentifierCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_identifier(practitioner.practitioner_id, payload)
@@ -403,7 +403,7 @@ async def add_identifier(
 async def add_telecom(
     payload: PractitionerTelecomCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_telecom(practitioner.practitioner_id, payload)
@@ -439,7 +439,7 @@ async def add_telecom(
 async def add_address(
     payload: PractitionerAddressCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_address(practitioner.practitioner_id, payload)
@@ -474,7 +474,7 @@ async def add_address(
 async def add_photo(
     payload: PractitionerPhotoCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_photo(practitioner.practitioner_id, payload)
@@ -510,7 +510,7 @@ async def add_photo(
 async def add_qualification(
     payload: PractitionerQualificationCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_qualification(practitioner.practitioner_id, payload)
@@ -545,7 +545,7 @@ async def add_qualification(
 async def add_communication(
     payload: PractitionerCommunicationCreate,
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     updated = await practitioner_service.add_communication(practitioner.practitioner_id, payload)
@@ -575,7 +575,7 @@ async def add_communication(
 )
 async def list_names(
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_names(practitioner.practitioner_id)
@@ -600,7 +600,7 @@ async def list_names(
 )
 async def list_identifiers(
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_identifiers(practitioner.practitioner_id)
@@ -625,7 +625,7 @@ async def list_identifiers(
 )
 async def list_telecom(
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_telecoms(practitioner.practitioner_id)
@@ -650,7 +650,7 @@ async def list_telecom(
 )
 async def list_addresses(
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_addresses(practitioner.practitioner_id)
@@ -675,7 +675,7 @@ async def list_addresses(
 )
 async def list_photos(
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_photos(practitioner.practitioner_id)
@@ -702,7 +702,7 @@ async def list_photos(
 )
 async def list_qualifications(
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_qualifications(practitioner.practitioner_id)
@@ -727,7 +727,7 @@ async def list_qualifications(
 )
 async def list_communications(
     request: Request,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_communications(practitioner.practitioner_id)
@@ -756,7 +756,7 @@ async def list_communications(
 )
 async def delete_name(
     name_id: int,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     deleted = await practitioner_service.delete_name(practitioner.practitioner_id, name_id)
@@ -780,7 +780,7 @@ async def delete_name(
 )
 async def delete_identifier(
     identifier_id: int,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     deleted = await practitioner_service.delete_identifier(practitioner.practitioner_id, identifier_id)
@@ -804,7 +804,7 @@ async def delete_identifier(
 )
 async def delete_telecom(
     telecom_id: int,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     deleted = await practitioner_service.delete_telecom(practitioner.practitioner_id, telecom_id)
@@ -828,7 +828,7 @@ async def delete_telecom(
 )
 async def delete_address(
     address_id: int,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     deleted = await practitioner_service.delete_address(practitioner.practitioner_id, address_id)
@@ -852,7 +852,7 @@ async def delete_address(
 )
 async def delete_photo(
     photo_id: int,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     deleted = await practitioner_service.delete_photo(practitioner.practitioner_id, photo_id)
@@ -876,7 +876,7 @@ async def delete_photo(
 )
 async def delete_qualification(
     qualification_id: int,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     deleted = await practitioner_service.delete_qualification(practitioner.practitioner_id, qualification_id)
@@ -900,7 +900,7 @@ async def delete_qualification(
 )
 async def delete_communication(
     comm_id: int,
-    practitioner: PractitionerModel = Depends(get_authorized_practitioner),
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     deleted = await practitioner_service.delete_communication(practitioner.practitioner_id, comm_id)

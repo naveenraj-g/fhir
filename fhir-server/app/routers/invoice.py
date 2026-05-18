@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.invoice_deps import get_authorized_invoice
+from app.auth.invoice_deps import resolve_invoice
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
@@ -131,7 +131,7 @@ async def get_my_invoices(
 )
 async def get_invoice(
     request: Request,
-    invoice: InvoiceModel = Depends(get_authorized_invoice),
+    invoice: InvoiceModel = Depends(resolve_invoice),
     invoice_service: InvoiceService = Depends(get_invoice_service),
 ):
     return format_response(
@@ -155,7 +155,7 @@ async def get_invoice(
 async def patch_invoice(
     request: Request,
     payload: InvoicePatchSchema,
-    invoice: InvoiceModel = Depends(get_authorized_invoice),
+    invoice: InvoiceModel = Depends(resolve_invoice),
     invoice_service: InvoiceService = Depends(get_invoice_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -210,7 +210,7 @@ async def list_invoices(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND, 204: {"description": "Invoice deleted"}},
 )
 async def delete_invoice(
-    invoice: InvoiceModel = Depends(get_authorized_invoice),
+    invoice: InvoiceModel = Depends(resolve_invoice),
     invoice_service: InvoiceService = Depends(get_invoice_service),
 ):
     await invoice_service.delete_invoice(invoice.invoice_id)

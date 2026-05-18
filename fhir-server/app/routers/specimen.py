@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Request, status
 
-from app.auth.specimen_deps import get_authorized_specimen
+from app.auth.specimen_deps import resolve_specimen
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
@@ -123,7 +123,7 @@ async def get_me_specimens(
 )
 async def get_specimen(
     request: Request,
-    sp: SpecimenModel = Depends(get_authorized_specimen),
+    sp: SpecimenModel = Depends(resolve_specimen),
     service: SpecimenService = Depends(get_specimen_service),
 ):
     return format_response(
@@ -151,7 +151,7 @@ async def get_specimen(
 async def patch_specimen(
     payload: SpecimenPatchSchema,
     request: Request,
-    sp: SpecimenModel = Depends(get_authorized_specimen),
+    sp: SpecimenModel = Depends(resolve_specimen),
     service: SpecimenService = Depends(get_specimen_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -204,7 +204,7 @@ async def list_specimens(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_specimen(
-    sp: SpecimenModel = Depends(get_authorized_specimen),
+    sp: SpecimenModel = Depends(resolve_specimen),
     service: SpecimenService = Depends(get_specimen_service),
 ):
     await service.delete_specimen(sp.specimen_id)

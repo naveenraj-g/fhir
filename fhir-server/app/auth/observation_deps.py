@@ -5,7 +5,7 @@ from app.models.observation.observation import ObservationModel
 from app.services.observation_service import ObservationService
 
 
-async def get_authorized_observation(
+async def resolve_observation(
     observation_id: int = Path(..., ge=1, description="Public observation identifier."),
     observation_service: ObservationService = Depends(get_observation_service),
 ) -> ObservationModel:

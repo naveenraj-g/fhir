@@ -5,7 +5,7 @@ from app.models.procedure.procedure import ProcedureModel
 from app.services.procedure_service import ProcedureService
 
 
-async def get_authorized_procedure(
+async def resolve_procedure(
     procedure_id: int = Path(..., ge=1, description="Public procedure identifier."),
     procedure_service: ProcedureService = Depends(get_procedure_service),
 ) -> ProcedureModel:

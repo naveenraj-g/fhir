@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.auth.dependencies import require_permission
-from app.auth.healthcare_service_deps import get_authorized_healthcare_service
+from app.auth.healthcare_service_deps import resolve_healthcare_service
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.healthcare_service import get_healthcare_service_service
@@ -153,7 +153,7 @@ async def get_my_healthcare_services(
 )
 async def get_healthcare_service(
     request: Request,
-    hs: HealthcareServiceModel = Depends(get_authorized_healthcare_service),
+    hs: HealthcareServiceModel = Depends(resolve_healthcare_service),
     hs_service: HealthcareServiceService = Depends(get_healthcare_service_service),
 ):
     return format_response(
@@ -185,7 +185,7 @@ async def get_healthcare_service(
 async def patch_healthcare_service(
     payload: HealthcareServicePatchSchema,
     request: Request,
-    hs: HealthcareServiceModel = Depends(get_authorized_healthcare_service),
+    hs: HealthcareServiceModel = Depends(resolve_healthcare_service),
     hs_service: HealthcareServiceService = Depends(get_healthcare_service_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -256,7 +256,7 @@ async def list_healthcare_services(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_healthcare_service(
-    hs: HealthcareServiceModel = Depends(get_authorized_healthcare_service),
+    hs: HealthcareServiceModel = Depends(resolve_healthcare_service),
     hs_service: HealthcareServiceService = Depends(get_healthcare_service_service),
 ):
     await hs_service.delete_healthcare_service(hs.healthcare_service_id)

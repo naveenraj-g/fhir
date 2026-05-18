@@ -5,7 +5,7 @@ from app.models.organization.organization import OrganizationModel
 from app.services.organization_service import OrganizationService
 
 
-async def get_authorized_organization(
+async def resolve_organization(
     organization_id: int = Path(..., ge=1, description="Public organization identifier."),
     organization_service: OrganizationService = Depends(get_organization_service),
 ) -> OrganizationModel:

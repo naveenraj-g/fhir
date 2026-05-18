@@ -5,7 +5,7 @@ from app.models.schedule.schedule import ScheduleModel
 from app.services.schedule_service import ScheduleService
 
 
-async def get_authorized_schedule(
+async def resolve_schedule(
     schedule_id: int = Path(..., ge=1, description="Public schedule identifier."),
     schedule_service: ScheduleService = Depends(get_schedule_service),
 ) -> ScheduleModel:

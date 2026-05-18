@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.location_deps import get_authorized_location
+from app.auth.location_deps import resolve_location
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
@@ -131,7 +131,7 @@ async def get_my_locations(
 )
 async def get_location(
     request: Request,
-    location: LocationModel = Depends(get_authorized_location),
+    location: LocationModel = Depends(resolve_location),
     location_service: LocationService = Depends(get_location_service),
 ):
     return format_response(
@@ -155,7 +155,7 @@ async def get_location(
 async def patch_location(
     request: Request,
     payload: LocationPatchSchema,
-    location: LocationModel = Depends(get_authorized_location),
+    location: LocationModel = Depends(resolve_location),
     location_service: LocationService = Depends(get_location_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -210,7 +210,7 @@ async def list_locations(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND, 204: {"description": "Location deleted"}},
 )
 async def delete_location(
-    location: LocationModel = Depends(get_authorized_location),
+    location: LocationModel = Depends(resolve_location),
     location_service: LocationService = Depends(get_location_service),
 ):
     await location_service.delete_location(location.location_id)

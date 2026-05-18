@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.practitioner_role_deps import get_authorized_practitioner_role
+from app.auth.practitioner_role_deps import resolve_practitioner_role
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
@@ -143,7 +143,7 @@ async def get_my_practitioner_roles(
 )
 async def get_practitioner_role(
     request: Request,
-    pr: PractitionerRoleModel = Depends(get_authorized_practitioner_role),
+    pr: PractitionerRoleModel = Depends(resolve_practitioner_role),
     pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
 ):
     return format_response(
@@ -174,7 +174,7 @@ async def get_practitioner_role(
 async def patch_practitioner_role(
     payload: PractitionerRolePatchSchema,
     request: Request,
-    pr: PractitionerRoleModel = Depends(get_authorized_practitioner_role),
+    pr: PractitionerRoleModel = Depends(resolve_practitioner_role),
     pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -245,7 +245,7 @@ async def list_practitioner_roles(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_practitioner_role(
-    pr: PractitionerRoleModel = Depends(get_authorized_practitioner_role),
+    pr: PractitionerRoleModel = Depends(resolve_practitioner_role),
     pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
 ):
     await pr_service.delete_practitioner_role(pr.practitioner_role_id)

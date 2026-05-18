@@ -5,7 +5,7 @@ from app.models.invoice.invoice import InvoiceModel
 from app.services.invoice_service import InvoiceService
 
 
-async def get_authorized_invoice(
+async def resolve_invoice(
     invoice_id: int = Path(..., ge=1, description="Public invoice identifier."),
     invoice_service: InvoiceService = Depends(get_invoice_service),
 ) -> InvoiceModel:

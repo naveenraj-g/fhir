@@ -5,7 +5,7 @@ from app.models.slot.slot import SlotModel
 from app.services.slot_service import SlotService
 
 
-async def get_authorized_slot(
+async def resolve_slot(
     slot_id: int = Path(..., ge=1, description="Public slot identifier."),
     slot_service: SlotService = Depends(get_slot_service),
 ) -> SlotModel:

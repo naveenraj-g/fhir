@@ -4,7 +4,7 @@ from app.services.practitioner_service import PractitionerService
 from app.di.dependencies.practitioner import get_practitioner_service
 
 
-async def get_authorized_practitioner(
+async def resolve_practitioner(
     practitioner_id: int = Path(..., ge=1, description="Public practitioner identifier."),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ) -> PractitionerModel:

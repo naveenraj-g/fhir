@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.claim_deps import get_authorized_claim
+from app.auth.claim_deps import resolve_claim
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
@@ -144,7 +144,7 @@ async def get_my_claims(
 )
 async def get_claim(
     request: Request,
-    claim: ClaimModel = Depends(get_authorized_claim),
+    claim: ClaimModel = Depends(resolve_claim),
     claim_service: ClaimService = Depends(get_claim_service),
 ):
     return format_response(
@@ -175,7 +175,7 @@ async def get_claim(
 async def patch_claim(
     payload: ClaimPatchSchema,
     request: Request,
-    claim: ClaimModel = Depends(get_authorized_claim),
+    claim: ClaimModel = Depends(resolve_claim),
     claim_service: ClaimService = Depends(get_claim_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -249,7 +249,7 @@ async def list_claims(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_claim(
-    claim: ClaimModel = Depends(get_authorized_claim),
+    claim: ClaimModel = Depends(resolve_claim),
     claim_service: ClaimService = Depends(get_claim_service),
 ):
     await claim_service.delete_claim(claim.claim_id)

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.dependencies import require_permission
-from app.auth.patient_deps import get_authorized_patient
+from app.auth.patient_deps import resolve_patient
 from app.core.content_negotiation import format_response, format_paginated_response, wants_fhir
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.patient import get_patient_service
@@ -196,7 +196,7 @@ async def get_my_patient_profile(
 )
 async def get_patient(
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
@@ -222,7 +222,7 @@ async def get_patient(
 async def patch_patient(
     payload: PatientPatchSchema,
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -285,7 +285,7 @@ async def list_patients(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_patient(
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     await patient_service.delete_patient(patient.patient_id)
@@ -312,7 +312,7 @@ async def delete_patient(
 async def add_name(
     payload: NameCreate,
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     updated = await patient_service.add_name(patient.patient_id, payload)
@@ -340,7 +340,7 @@ async def add_name(
 async def add_identifier(
     payload: IdentifierCreate,
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     updated = await patient_service.add_identifier(patient.patient_id, payload)
@@ -368,7 +368,7 @@ async def add_identifier(
 async def add_telecom(
     payload: TelecomCreate,
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     updated = await patient_service.add_telecom(patient.patient_id, payload)
@@ -396,7 +396,7 @@ async def add_telecom(
 async def add_address(
     payload: AddressCreate,
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     updated = await patient_service.add_address(patient.patient_id, payload)
@@ -424,7 +424,7 @@ async def add_address(
 async def add_photo(
     payload: PhotoCreate,
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     updated = await patient_service.add_photo(patient.patient_id, payload)
@@ -452,7 +452,7 @@ async def add_photo(
 async def add_contact(
     payload: ContactCreate,
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     updated = await patient_service.add_contact(patient.patient_id, payload)
@@ -480,7 +480,7 @@ async def add_contact(
 async def add_communication(
     payload: CommunicationCreate,
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     updated = await patient_service.add_communication(patient.patient_id, payload)
@@ -508,7 +508,7 @@ async def add_communication(
 async def add_general_practitioner(
     payload: GeneralPractitionerCreate,
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     updated = await patient_service.add_general_practitioner(patient.patient_id, payload)
@@ -536,7 +536,7 @@ async def add_general_practitioner(
 async def add_link(
     payload: LinkCreate,
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     updated = await patient_service.add_link(patient.patient_id, payload)
@@ -562,7 +562,7 @@ async def add_link(
 )
 async def list_names(
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     items = await patient_service.get_names(patient.patient_id)
@@ -588,7 +588,7 @@ async def list_names(
 )
 async def delete_name(
     name_id: int,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     deleted = await patient_service.delete_name(patient.patient_id, name_id)
@@ -614,7 +614,7 @@ async def delete_name(
 )
 async def list_identifiers(
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     items = await patient_service.get_identifiers(patient.patient_id)
@@ -640,7 +640,7 @@ async def list_identifiers(
 )
 async def delete_identifier(
     identifier_id: int,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     deleted = await patient_service.delete_identifier(patient.patient_id, identifier_id)
@@ -666,7 +666,7 @@ async def delete_identifier(
 )
 async def list_telecom(
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     items = await patient_service.get_telecoms(patient.patient_id)
@@ -692,7 +692,7 @@ async def list_telecom(
 )
 async def delete_telecom(
     telecom_id: int,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     deleted = await patient_service.delete_telecom(patient.patient_id, telecom_id)
@@ -718,7 +718,7 @@ async def delete_telecom(
 )
 async def list_addresses(
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     items = await patient_service.get_addresses(patient.patient_id)
@@ -744,7 +744,7 @@ async def list_addresses(
 )
 async def delete_address(
     address_id: int,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     deleted = await patient_service.delete_address(patient.patient_id, address_id)
@@ -770,7 +770,7 @@ async def delete_address(
 )
 async def list_photos(
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     items = await patient_service.get_photos(patient.patient_id)
@@ -796,7 +796,7 @@ async def list_photos(
 )
 async def delete_photo(
     photo_id: int,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     deleted = await patient_service.delete_photo(patient.patient_id, photo_id)
@@ -822,7 +822,7 @@ async def delete_photo(
 )
 async def list_contacts(
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     items = await patient_service.get_contacts(patient.patient_id)
@@ -849,7 +849,7 @@ async def list_contacts(
 )
 async def delete_contact(
     contact_id: int,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     deleted = await patient_service.delete_contact(patient.patient_id, contact_id)
@@ -875,7 +875,7 @@ async def delete_contact(
 )
 async def list_communications(
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     items = await patient_service.get_communications(patient.patient_id)
@@ -901,7 +901,7 @@ async def list_communications(
 )
 async def delete_communication(
     comm_id: int,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     deleted = await patient_service.delete_communication(patient.patient_id, comm_id)
@@ -928,7 +928,7 @@ async def delete_communication(
 )
 async def list_general_practitioners(
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     items = await patient_service.get_general_practitioners(patient.patient_id)
@@ -954,7 +954,7 @@ async def list_general_practitioners(
 )
 async def delete_general_practitioner(
     gp_id: int,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     deleted = await patient_service.delete_general_practitioner(patient.patient_id, gp_id)
@@ -981,7 +981,7 @@ async def delete_general_practitioner(
 )
 async def list_links(
     request: Request,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     items = await patient_service.get_links(patient.patient_id)
@@ -1007,7 +1007,7 @@ async def list_links(
 )
 async def delete_link(
     link_id: int,
-    patient: PatientModel = Depends(get_authorized_patient),
+    patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     deleted = await patient_service.delete_link(patient.patient_id, link_id)

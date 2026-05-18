@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.observation_deps import get_authorized_observation
+from app.auth.observation_deps import resolve_observation
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
@@ -153,7 +153,7 @@ async def get_my_observations(
 )
 async def get_observation(
     request: Request,
-    obs: ObservationModel = Depends(get_authorized_observation),
+    obs: ObservationModel = Depends(resolve_observation),
     obs_service: ObservationService = Depends(get_observation_service),
 ):
     return format_response(
@@ -188,7 +188,7 @@ async def get_observation(
 async def patch_observation(
     payload: ObservationPatchSchema,
     request: Request,
-    obs: ObservationModel = Depends(get_authorized_observation),
+    obs: ObservationModel = Depends(resolve_observation),
     obs_service: ObservationService = Depends(get_observation_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -268,7 +268,7 @@ async def list_observations(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_observation(
-    obs: ObservationModel = Depends(get_authorized_observation),
+    obs: ObservationModel = Depends(resolve_observation),
     obs_service: ObservationService = Depends(get_observation_service),
 ):
     await obs_service.delete_observation(obs.observation_id)

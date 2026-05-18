@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.auth.dependencies import require_permission
-from app.auth.encounter_deps import get_authorized_encounter
+from app.auth.encounter_deps import resolve_encounter
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.encounter import get_encounter_service
@@ -147,7 +147,7 @@ async def get_my_encounters(
 )
 async def get_encounter(
     request: Request,
-    encounter: EncounterModel = Depends(get_authorized_encounter),
+    encounter: EncounterModel = Depends(resolve_encounter),
     encounter_service: EncounterService = Depends(get_encounter_service),
 ):
     return format_response(
@@ -177,7 +177,7 @@ async def get_encounter(
 async def patch_encounter(
     payload: EncounterPatchSchema,
     request: Request,
-    encounter: EncounterModel = Depends(get_authorized_encounter),
+    encounter: EncounterModel = Depends(resolve_encounter),
     encounter_service: EncounterService = Depends(get_encounter_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -249,7 +249,7 @@ async def list_encounters(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_encounter(
-    encounter: EncounterModel = Depends(get_authorized_encounter),
+    encounter: EncounterModel = Depends(resolve_encounter),
     encounter_service: EncounterService = Depends(get_encounter_service),
 ):
     await encounter_service.delete_encounter(encounter.encounter_id)

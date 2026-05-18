@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.medication_deps import get_authorized_medication
+from app.auth.medication_deps import resolve_medication
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
@@ -132,7 +132,7 @@ async def get_my_medications(
 )
 async def get_medication(
     request: Request,
-    medication: MedicationModel = Depends(get_authorized_medication),
+    medication: MedicationModel = Depends(resolve_medication),
     medication_service: MedicationService = Depends(get_medication_service),
 ):
     return format_response(
@@ -156,7 +156,7 @@ async def get_medication(
 async def patch_medication(
     request: Request,
     payload: MedicationPatchSchema,
-    medication: MedicationModel = Depends(get_authorized_medication),
+    medication: MedicationModel = Depends(resolve_medication),
     medication_service: MedicationService = Depends(get_medication_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -211,7 +211,7 @@ async def list_medications(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND, 204: {"description": "Medication deleted"}},
 )
 async def delete_medication(
-    medication: MedicationModel = Depends(get_authorized_medication),
+    medication: MedicationModel = Depends(resolve_medication),
     medication_service: MedicationService = Depends(get_medication_service),
 ):
     await medication_service.delete_medication(medication.medication_id)

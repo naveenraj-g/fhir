@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.diagnostic_report_deps import get_authorized_diagnostic_report
+from app.auth.diagnostic_report_deps import resolve_diagnostic_report
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
@@ -150,7 +150,7 @@ async def get_my_diagnostic_reports(
 )
 async def get_diagnostic_report(
     request: Request,
-    dr: DiagnosticReportModel = Depends(get_authorized_diagnostic_report),
+    dr: DiagnosticReportModel = Depends(resolve_diagnostic_report),
     dr_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
 ):
     return format_response(
@@ -182,7 +182,7 @@ async def get_diagnostic_report(
 async def patch_diagnostic_report(
     payload: DiagnosticReportPatchSchema,
     request: Request,
-    dr: DiagnosticReportModel = Depends(get_authorized_diagnostic_report),
+    dr: DiagnosticReportModel = Depends(resolve_diagnostic_report),
     dr_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -262,7 +262,7 @@ async def list_diagnostic_reports(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_diagnostic_report(
-    dr: DiagnosticReportModel = Depends(get_authorized_diagnostic_report),
+    dr: DiagnosticReportModel = Depends(resolve_diagnostic_report),
     dr_service: DiagnosticReportService = Depends(get_diagnostic_report_service),
 ):
     await dr_service.delete_diagnostic_report(dr.diagnostic_report_id)

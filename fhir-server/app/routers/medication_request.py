@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.medication_request_deps import get_authorized_medication_request
+from app.auth.medication_request_deps import resolve_medication_request
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
@@ -151,7 +151,7 @@ async def get_my_medication_requests(
 )
 async def get_medication_request(
     request: Request,
-    mr: MedicationRequestModel = Depends(get_authorized_medication_request),
+    mr: MedicationRequestModel = Depends(resolve_medication_request),
     mr_service: MedicationRequestService = Depends(get_medication_request_service),
 ):
     return format_response(
@@ -187,7 +187,7 @@ async def get_medication_request(
 async def patch_medication_request(
     payload: MedicationRequestPatchSchema,
     request: Request,
-    mr: MedicationRequestModel = Depends(get_authorized_medication_request),
+    mr: MedicationRequestModel = Depends(resolve_medication_request),
     mr_service: MedicationRequestService = Depends(get_medication_request_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -267,7 +267,7 @@ async def list_medication_requests(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_medication_request(
-    mr: MedicationRequestModel = Depends(get_authorized_medication_request),
+    mr: MedicationRequestModel = Depends(resolve_medication_request),
     mr_service: MedicationRequestService = Depends(get_medication_request_service),
 ):
     await mr_service.delete_medication_request(mr.medication_request_id)

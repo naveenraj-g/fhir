@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.organization_deps import get_authorized_organization
+from app.auth.organization_deps import resolve_organization
 from app.auth.dependencies import require_permission
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
@@ -145,7 +145,7 @@ async def get_my_organizations(
 )
 async def get_organization(
     request: Request,
-    org: OrganizationModel = Depends(get_authorized_organization),
+    org: OrganizationModel = Depends(resolve_organization),
     org_service: OrganizationService = Depends(get_organization_service),
 ):
     return format_response(
@@ -175,7 +175,7 @@ async def get_organization(
 async def patch_organization(
     payload: OrganizationPatchSchema,
     request: Request,
-    org: OrganizationModel = Depends(get_authorized_organization),
+    org: OrganizationModel = Depends(resolve_organization),
     org_service: OrganizationService = Depends(get_organization_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -250,7 +250,7 @@ async def list_organizations(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_organization(
-    org: OrganizationModel = Depends(get_authorized_organization),
+    org: OrganizationModel = Depends(resolve_organization),
     org_service: OrganizationService = Depends(get_organization_service),
 ):
     await org_service.delete_organization(org.organization_id)

@@ -5,7 +5,7 @@ from app.models.care_plan.care_plan import CarePlanModel
 from app.services.care_plan_service import CarePlanService
 
 
-async def get_authorized_care_plan(
+async def resolve_care_plan(
     care_plan_id: int = Path(..., ge=1, description="Public CarePlan identifier."),
     care_plan_service: CarePlanService = Depends(get_care_plan_service),
 ) -> CarePlanModel:

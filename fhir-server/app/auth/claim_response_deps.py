@@ -5,7 +5,7 @@ from app.models.claim_response.claim_response import ClaimResponseModel
 from app.services.claim_response_service import ClaimResponseService
 
 
-async def get_authorized_claim_response(
+async def resolve_claim_response(
     claim_response_id: int = Path(..., ge=1, description="Public claim response identifier."),
     claim_response_service: ClaimResponseService = Depends(get_claim_response_service),
 ) -> ClaimResponseModel:

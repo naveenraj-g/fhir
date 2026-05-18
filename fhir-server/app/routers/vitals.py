@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from app.auth.vitals_deps import get_authorized_vitals
+from app.auth.vitals_deps import resolve_vitals
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.vitals import get_vitals_service
 from app.models.vitals.vitals import VitalsModel
@@ -182,7 +182,7 @@ async def get_my_vitals(
 )
 async def get_vitals(
     request: Request,
-    vitals: VitalsModel = Depends(get_authorized_vitals),
+    vitals: VitalsModel = Depends(resolve_vitals),
     vitals_service: VitalsService = Depends(get_vitals_service),
 ):
     return JSONResponse(content=jsonable_encoder(_serialize(vitals)))
@@ -204,7 +204,7 @@ async def get_vitals(
 async def patch_vitals(
     payload: VitalsPatchSchema,
     request: Request,
-    vitals: VitalsModel = Depends(get_authorized_vitals),
+    vitals: VitalsModel = Depends(resolve_vitals),
     vitals_service: VitalsService = Depends(get_vitals_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -269,7 +269,7 @@ async def list_vitals(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_vitals(
-    vitals: VitalsModel = Depends(get_authorized_vitals),
+    vitals: VitalsModel = Depends(resolve_vitals),
     vitals_service: VitalsService = Depends(get_vitals_service),
 ):
     await vitals_service.delete_vitals(vitals.vitals_id)

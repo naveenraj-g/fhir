@@ -5,7 +5,7 @@ from app.models.claim.claim import ClaimModel
 from app.services.claim_service import ClaimService
 
 
-async def get_authorized_claim(
+async def resolve_claim(
     claim_id: int = Path(..., ge=1, description="Public claim identifier."),
     claim_service: ClaimService = Depends(get_claim_service),
 ) -> ClaimModel:

@@ -5,7 +5,7 @@ from app.services.encounter_service import EncounterService
 from app.di.dependencies.encounter import get_encounter_service
 
 
-async def get_authorized_encounter(
+async def resolve_encounter(
     encounter_id: int = Path(..., ge=1, description="Public encounter identifier."),
     encounter_service: EncounterService = Depends(get_encounter_service),
 ) -> EncounterModel:

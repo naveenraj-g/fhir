@@ -5,7 +5,7 @@ from app.models.task.task import TaskModel
 from app.services.task_service import TaskService
 
 
-async def get_authorized_task(
+async def resolve_task(
     task_id: int = Path(..., ge=1, description="Public Task identifier."),
     task_service: TaskService = Depends(get_task_service),
 ) -> TaskModel:

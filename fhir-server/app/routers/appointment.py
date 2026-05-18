@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from app.auth.dependencies import require_permission
-from app.auth.appointment_deps import get_authorized_appointment
+from app.auth.appointment_deps import resolve_appointment
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.appointment import get_appointment_service
@@ -153,7 +153,7 @@ async def get_my_appointments(
 )
 async def get_appointment(
     request: Request,
-    appointment: AppointmentModel = Depends(get_authorized_appointment),
+    appointment: AppointmentModel = Depends(resolve_appointment),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ):
     return format_response(
@@ -184,7 +184,7 @@ async def get_appointment(
 async def patch_appointment(
     payload: AppointmentPatchSchema,
     request: Request,
-    appointment: AppointmentModel = Depends(get_authorized_appointment),
+    appointment: AppointmentModel = Depends(resolve_appointment),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ):
     updated_by: str = request.state.user.get("sub")
@@ -256,7 +256,7 @@ async def list_appointments(
     responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
 )
 async def delete_appointment(
-    appointment: AppointmentModel = Depends(get_authorized_appointment),
+    appointment: AppointmentModel = Depends(resolve_appointment),
     appointment_service: AppointmentService = Depends(get_appointment_service),
 ):
     await appointment_service.delete_appointment(appointment.appointment_id)
