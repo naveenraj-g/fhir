@@ -27,6 +27,7 @@ from .provenance import ProvenanceContainer
 from .task import TaskContainer
 from .care_plan import CarePlanContainer
 from .related_person import RelatedPersonContainer
+from .specimen import SpecimenContainer
 
 __all__ = [
     "PatientContainer",
@@ -58,4 +59,5 @@ __all__ = [
     "TaskContainer",
     "CarePlanContainer",
     "RelatedPersonContainer",
+    "SpecimenContainer",
 ]

@@ -1,6 +1,6 @@
 from dependency_injector import containers, providers
 from app.di.core import CoreContainer
-from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer, MedicationRequestContainer, ObservationContainer, OrganizationContainer, PractitionerRoleContainer, ProcedureContainer, ScheduleContainer, SlotContainer, HealthcareServiceContainer, ClaimContainer, ClaimResponseContainer, InvoiceContainer, LocationContainer, CoverageContainer, MedicationContainer, AllergyIntoleranceContainer, ProvenanceContainer, TaskContainer, CarePlanContainer, RelatedPersonContainer
+from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer, MedicationRequestContainer, ObservationContainer, OrganizationContainer, PractitionerRoleContainer, ProcedureContainer, ScheduleContainer, SlotContainer, HealthcareServiceContainer, ClaimContainer, ClaimResponseContainer, InvoiceContainer, LocationContainer, CoverageContainer, MedicationContainer, AllergyIntoleranceContainer, ProvenanceContainer, TaskContainer, CarePlanContainer, RelatedPersonContainer, SpecimenContainer
 
 
 class Container(containers.DeclarativeContainer):
@@ -151,6 +151,11 @@ class Container(containers.DeclarativeContainer):
 
     related_person = providers.Container(
         RelatedPersonContainer,
+        core=core,
+    )
+
+    specimen = providers.Container(
+        SpecimenContainer,
         core=core,
     )
 
