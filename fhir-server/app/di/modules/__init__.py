@@ -29,6 +29,7 @@ from .care_plan import CarePlanContainer
 from .related_person import RelatedPersonContainer
 from .specimen import SpecimenContainer
 from .document_reference import DocumentReferenceContainer
+from .immunization import ImmunizationContainer
 
 __all__ = [
     "PatientContainer",
@@ -62,4 +63,5 @@ __all__ = [
     "RelatedPersonContainer",
     "SpecimenContainer",
     "DocumentReferenceContainer",
+    "ImmunizationContainer",
 ]

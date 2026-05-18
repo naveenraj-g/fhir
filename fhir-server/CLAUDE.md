@@ -106,8 +106,9 @@ Router → Service → Repository → ORM Model
 | RelatedPerson | 300000 |
 | Specimen | 310000 |
 | DocumentReference | 320000 |
+| Immunization | 330000 |
 
-**Next available block: 330000.** Pick the next unused 10000-block for any new resource.
+**Next available block: 340000.** Pick the next unused 10000-block for any new resource.
 
 ---
 

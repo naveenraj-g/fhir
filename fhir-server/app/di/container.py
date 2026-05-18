@@ -1,6 +1,6 @@
 from dependency_injector import containers, providers
 from app.di.core import CoreContainer
-from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer, MedicationRequestContainer, ObservationContainer, OrganizationContainer, PractitionerRoleContainer, ProcedureContainer, ScheduleContainer, SlotContainer, HealthcareServiceContainer, ClaimContainer, ClaimResponseContainer, InvoiceContainer, LocationContainer, CoverageContainer, MedicationContainer, AllergyIntoleranceContainer, ProvenanceContainer, TaskContainer, CarePlanContainer, RelatedPersonContainer, SpecimenContainer, DocumentReferenceContainer
+from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer, MedicationRequestContainer, ObservationContainer, OrganizationContainer, PractitionerRoleContainer, ProcedureContainer, ScheduleContainer, SlotContainer, HealthcareServiceContainer, ClaimContainer, ClaimResponseContainer, InvoiceContainer, LocationContainer, CoverageContainer, MedicationContainer, AllergyIntoleranceContainer, ProvenanceContainer, TaskContainer, CarePlanContainer, RelatedPersonContainer, SpecimenContainer, DocumentReferenceContainer, ImmunizationContainer
 
 
 class Container(containers.DeclarativeContainer):
@@ -161,6 +161,11 @@ class Container(containers.DeclarativeContainer):
 
     document_reference = providers.Container(
         DocumentReferenceContainer,
+        core=core,
+    )
+
+    immunization = providers.Container(
+        ImmunizationContainer,
         core=core,
     )
 
