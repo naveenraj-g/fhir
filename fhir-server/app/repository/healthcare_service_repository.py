@@ -94,8 +94,10 @@ class HealthcareServiceRepository:
         self, healthcare_service_id: int
     ) -> Optional[HealthcareServiceModel]:
         async with self.session_factory() as session:
-            stmt = select(HealthcareServiceModel).where(
-                HealthcareServiceModel.healthcare_service_id == healthcare_service_id
+            stmt = _with_relationships(
+                select(HealthcareServiceModel).where(
+                    HealthcareServiceModel.healthcare_service_id == healthcare_service_id
+                )
             )
             result = await session.execute(stmt)
             return result.scalars().first()

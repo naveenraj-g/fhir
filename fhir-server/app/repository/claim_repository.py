@@ -118,7 +118,7 @@ class ClaimRepository:
 
     async def get_by_claim_id(self, claim_id: int) -> Optional[ClaimModel]:
         async with self.session_factory() as session:
-            stmt = select(ClaimModel).where(ClaimModel.claim_id == claim_id)
+            stmt = _with_relationships(select(ClaimModel).where(ClaimModel.claim_id == claim_id))
             result = await session.execute(stmt)
             return result.scalars().first()
 

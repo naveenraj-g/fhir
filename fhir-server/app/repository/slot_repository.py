@@ -61,7 +61,7 @@ class SlotRepository:
 
     async def get_by_slot_id(self, slot_id: int) -> Optional[SlotModel]:
         async with self.session_factory() as session:
-            stmt = select(SlotModel).where(SlotModel.slot_id == slot_id)
+            stmt = _with_relationships(select(SlotModel).where(SlotModel.slot_id == slot_id))
             result = await session.execute(stmt)
             return result.scalars().first()
 

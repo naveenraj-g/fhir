@@ -88,8 +88,10 @@ class PractitionerRoleRepository:
         self, practitioner_role_id: int
     ) -> Optional[PractitionerRoleModel]:
         async with self.session_factory() as session:
-            stmt = select(PractitionerRoleModel).where(
-                PractitionerRoleModel.practitioner_role_id == practitioner_role_id
+            stmt = _with_relationships(
+                select(PractitionerRoleModel).where(
+                    PractitionerRoleModel.practitioner_role_id == practitioner_role_id
+                )
             )
             result = await session.execute(stmt)
             return result.scalars().first()
