@@ -55,8 +55,12 @@ terminology-fhir-r4:
     uv run python -m app.terminology.import_.cli --source fhir-r4 --file terminology_data/valuesets.json
     uv run python -m app.terminology.import_.cli --source fhir-r4 --file terminology_data/v3-codesystems.json
 
+# Seed FHIR R4 field bindings — maps resource.field → ValueSet (run after terminology-fhir-r4)
+terminology-seed-bindings:
+    uv run python -m app.terminology.seed_field_bindings
+
 # Load all terminologies in order (each is idempotent — safe to re-run)
-terminology-all: terminology-fhir-r4 terminology-icd10cm terminology-rxnorm terminology-loinc terminology-snomed
+terminology-all: terminology-fhir-r4 terminology-icd10cm terminology-rxnorm terminology-loinc terminology-snomed terminology-seed-bindings
 
 # ── Migrations ────────────────────────────────────────────────────────────────
 
