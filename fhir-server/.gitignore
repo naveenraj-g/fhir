@@ -49,6 +49,12 @@ Thumbs.db
 .vscode/
 .idea/
 
+# ── Terminology data ──────────────────────────────────────────────────────────
+# Large medical terminology files — download locally, never commit
+# See terminology_data/README.md for download instructions
+terminology_data/**
+!terminology_data/README.md
+
 # ── Claude Code ───────────────────────────────────────────────────────────────
 # Track .claude/commands/ (shared skill definitions); ignore local settings
 .claude/settings.local.json
