@@ -162,18 +162,35 @@ class FhirR4Loader(BaseLoader):
         for inc in includes:
             system_url = inc.get("system")
             codes = inc.get("concept", [])
-            if not system_url or not codes:
-                continue  # filter-based — skip
+            filters = inc.get("filter", [])
 
-            rows = await self.conn.fetch(
-                """
-                SELECT tc.id FROM terminology_concept tc
-                JOIN terminology_code_system cs ON cs.id = tc.code_system_id
-                WHERE cs.canonical_url = $1 AND tc.code = ANY($2::text[])
-                """,
-                system_url,
-                [c["code"] for c in codes],
-            )
+            if not system_url:
+                continue
+            if filters:
+                continue  # filter-based expansion — can't resolve without runtime expansion
+
+            if codes:
+                # Explicit code list
+                rows = await self.conn.fetch(
+                    """
+                    SELECT tc.id FROM terminology_concept tc
+                    JOIN terminology_code_system cs ON cs.id = tc.code_system_id
+                    WHERE cs.canonical_url = $1 AND tc.code = ANY($2::text[])
+                      AND tc.org_id IS NULL
+                    """,
+                    system_url,
+                    [c["code"] for c in codes],
+                )
+            else:
+                # Whole-system include — link all concepts from this CodeSystem
+                rows = await self.conn.fetch(
+                    """
+                    SELECT tc.id FROM terminology_concept tc
+                    JOIN terminology_code_system cs ON cs.id = tc.code_system_id
+                    WHERE cs.canonical_url = $1 AND tc.org_id IS NULL
+                    """,
+                    system_url,
+                )
             concept_db_ids.extend(r["id"] for r in rows)
 
         if not concept_db_ids:
