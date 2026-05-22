@@ -9,6 +9,7 @@ from app.auth.dependencies import get_current_user
 from app.routers.vitals import router as vitals_router
 from app.core.database import Database
 from app.core.logging import get_logger, setup_logging
+from app.core.openapi_tags import OPENAPI_TAGS
 from app.core.redis import redis_client
 from app.core.request_context import request_context_middleware
 from app.di.container import Container
@@ -54,45 +55,14 @@ async def lifespan(app: FastAPI):
 app: FastAPI = FastAPI(
     title="FHIR Server",
     version="1.0.0",
-    description="""
-A FHIR R4-compliant REST API server for managing healthcare resources.
-
-This server provides CRUD operations for core FHIR resources including Patient,
-Practitioner, and Encounter. All resources are validated against the HL7 FHIR R4
-specification using the `fhir.resources` library.
-
-Designed for integration with AI agents via FastMCP dynamic tool generation.
-""",
-    openapi_tags=[
-        {
-            "name": "Patients",
-            "description": "Operations for managing FHIR Patient resources — individuals receiving care. Supports create, read, update, list, and delete.",
-        },
-        {
-            "name": "Practitioners",
-            "description": "Operations for managing FHIR Practitioner resources — healthcare providers such as physicians, nurses, and therapists. Supports create, read, update, list, and delete.",
-        },
-        {
-            "name": "Encounters",
-            "description": "Operations for managing FHIR Encounter resources — clinical interactions between patients and providers (visits, admissions, telehealth). Supports create, read, update, list, and delete.",
-        },
-        {
-            "name": "Appointments",
-            "description": "Operations for managing FHIR Appointment resources — scheduled healthcare events for patients and practitioners at a specific date and time. Supports create, read, update, list, and delete.",
-        },
-        {
-            "name": "Vitals",
-            "description": "Operations for storing and retrieving user vitals data — activity, heart rate, sleep, and demographic metrics from wearable devices. Not a FHIR resource.",
-        },
-        {
-            "name": "QuestionnaireResponses",
-            "description": "Operations for managing FHIR QuestionnaireResponse resources — structured sets of answers to a Questionnaire, supporting nested items and all FHIR R4 answer value types. Supports create, read, update, list, and delete.",
-        },
-        {
-            "name": "Health",
-            "description": "Server liveness probe. No authentication required.",
-        },
-    ],
+    description=(
+        "FHIR R4-compliant REST API server for managing healthcare resources. "
+        "Supports 34 FHIR R4 resources with dual-format responses (application/json and "
+        "application/fhir+json), JWT authentication, multi-tenancy, and a full terminology "
+        "platform (ICD-10-CM, LOINC, RxNorm, SNOMED CT, FHIR R4 built-ins). "
+        "Designed for integration with AI agents via FastMCP dynamic tool generation."
+    ),
+    openapi_tags=OPENAPI_TAGS,
     lifespan=lifespan,
 )
 
