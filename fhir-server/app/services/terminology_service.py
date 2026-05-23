@@ -2,14 +2,6 @@ from app.models.terminology.terminology import TerminologyAuditLog, TerminologyC
 from app.repository.terminology_repository import TerminologyRepository
 from app.schemas.terminology import (
     AddConceptMapRequest,
-    AiMapRequest,
-    AiMapResponse,
-    AiMapSuggestion,
-    AiMappingRecord,
-    AiMappingsListResponse,
-    AiTranslateRequest,
-    AiTranslateResponse,
-    AiTranslateSuggestion,
     AuditLogListResponse,
     AuditLogRecord,
     CodeSystemListResponse,
@@ -175,77 +167,6 @@ class TerminologyService:
             concepts=[_concept_response(concept, cs) for concept, cs in rows],
         )
 
-    async def ai_map(self, req: AiMapRequest, api_key: str) -> AiMapResponse:
-        from app.terminology.ai_mapper import MODEL, map_phrase
-
-        phrase = req.phrase.lower().strip()
-
-        # Cache check
-        cached_rows = await self.repository.get_ai_mappings_for_phrase(phrase)
-        if cached_rows:
-            suggestions = [
-                AiMapSuggestion(
-                    suggested_system=cs.canonical_url,
-                    suggested_code=concept.code,
-                    suggested_display=concept.display,
-                    confidence=mapping.confidence or 0.0,
-                    reasoning=None,
-                    in_db=True,
-                    concept=_concept_response(concept, cs),
-                )
-                for mapping, concept, cs in cached_rows
-            ]
-            return AiMapResponse(phrase=req.phrase, suggestions=suggestions, cached=True, model=MODEL)
-
-        # Call Claude
-        raw = await map_phrase(
-            phrase=req.phrase,
-            api_key=api_key,
-            resource=req.resource,
-            field=req.field,
-            max_suggestions=req.max_suggestions,
-        )
-
-        suggestions: list[AiMapSuggestion] = []
-        for s in raw:
-            cs, concept = await self.repository.lookup_concept(s["system"], s["code"])
-            in_db = concept is not None
-            if in_db:
-                await self.repository.save_ai_mapping(
-                    phrase=phrase,
-                    concept_id=concept.id,
-                    confidence=s["confidence"],
-                    source=MODEL,
-                )
-            suggestions.append(
-                AiMapSuggestion(
-                    suggested_system=s["system"],
-                    suggested_code=s["code"],
-                    suggested_display=s["display"],
-                    confidence=s["confidence"],
-                    reasoning=s.get("reasoning"),
-                    in_db=in_db,
-                    concept=_concept_response(concept, cs) if in_db else None,
-                )
-            )
-        return AiMapResponse(phrase=req.phrase, suggestions=suggestions, cached=False, model=MODEL)
-
-    async def list_ai_mappings(
-        self, phrase_filter: str | None, limit: int, offset: int
-    ) -> AiMappingsListResponse:
-        count, rows = await self.repository.list_ai_mappings(phrase_filter, limit, offset)
-        data = [
-            AiMappingRecord(
-                id=mapping.id,
-                phrase=mapping.phrase,
-                confidence=mapping.confidence,
-                source=mapping.source,
-                concept=_concept_response(concept, cs),
-            )
-            for mapping, concept, cs in rows
-        ]
-        return AiMappingsListResponse(total=count, limit=limit, offset=offset, data=data)
-
     async def translate(self, req: TranslateRequest) -> TranslateResponse:
         src_cs, src_concept = await self.repository.lookup_concept(req.system, req.code)
         if src_concept is None:
@@ -307,71 +228,6 @@ class TerminologyService:
             "mapping_type": req.mapping_type,
             "confidence": req.confidence,
         }
-
-    async def ai_translate(self, req: AiTranslateRequest, api_key: str) -> AiTranslateResponse:
-        from app.terminology.ai_mapper import MODEL, translate_concept
-
-        src_cs, src_concept = await self.repository.lookup_concept(req.system, req.code)
-
-        # Check existing mappings first (cache)
-        if src_concept is not None:
-            existing = await self.repository.get_translations(src_concept.id, req.target_system)
-            if existing:
-                suggestions = [
-                    AiTranslateSuggestion(
-                        suggested_code=tgt_concept.code,
-                        suggested_display=tgt_concept.display,
-                        mapping_type=cm.mapping_type or "equivalent",
-                        confidence=cm.confidence or 0.0,
-                        in_db=True,
-                        concept=_concept_response(tgt_concept, tgt_cs),
-                    )
-                    for cm, tgt_concept, tgt_cs in existing
-                ]
-                return AiTranslateResponse(
-                    source_concept=_concept_response(src_concept, src_cs),
-                    target_system=req.target_system,
-                    suggestions=suggestions,
-                    cached=True,
-                    model=MODEL,
-                )
-
-        # Call Claude
-        display = src_concept.display if src_concept else req.code
-        raw = await translate_concept(
-            source_system=req.system,
-            source_code=req.code,
-            source_display=display,
-            target_system=req.target_system,
-            api_key=api_key,
-        )
-
-        suggestions: list[AiTranslateSuggestion] = []
-        for s in raw:
-            tgt_cs, tgt_concept = await self.repository.lookup_concept(req.target_system, s["code"])
-            in_db = tgt_concept is not None
-            if in_db and src_concept is not None:
-                await self.repository.add_concept_map(
-                    src_concept.id, tgt_concept.id, s["mapping_type"], s["confidence"]
-                )
-            suggestions.append(
-                AiTranslateSuggestion(
-                    suggested_code=s["code"],
-                    suggested_display=s["display"],
-                    mapping_type=s["mapping_type"],
-                    confidence=s["confidence"],
-                    reasoning=s.get("reasoning"),
-                    in_db=in_db,
-                    concept=_concept_response(tgt_concept, tgt_cs) if in_db else None,
-                )
-            )
-        return AiTranslateResponse(
-            source_concept=_concept_response(src_concept, src_cs) if src_concept else None,
-            target_system=req.target_system,
-            suggestions=suggestions,
-            cached=False,
-            model=MODEL,
-        )
 
     async def validate_org_exists(self, org_id: str) -> bool:
         return await self.repository.validate_org_exists(org_id)

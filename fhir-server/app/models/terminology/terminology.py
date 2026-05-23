@@ -205,23 +205,6 @@ class TerminologyFieldBinding(Base):
     value_set = relationship("TerminologyValueSet", back_populates="field_bindings")
 
 
-class TerminologyAiMapping(Base):
-    """AI/NLP phrase-to-concept mappings learned from clinical text."""
-
-    __tablename__ = "terminology_ai_mapping"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    phrase = Column(Text, nullable=False, index=True)
-    concept_id = Column(
-        Integer, ForeignKey("terminology_concept.id"), nullable=False, index=True
-    )
-    confidence = Column(Float, nullable=True)
-    source = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    concept = relationship("TerminologyConcept")
-
-
 class TerminologyConceptEmbedding(Base):
     """Vector embedding for semantic similarity search.
 

@@ -5,11 +5,6 @@ from app.core.schema_utils import inline_schema
 from app.di.dependencies.terminology import get_terminology_service
 from app.schemas.terminology import (
     AddConceptMapRequest,
-    AiMapRequest,
-    AiMapResponse,
-    AiMappingsListResponse,
-    AiTranslateRequest,
-    AiTranslateResponse,
     AuditLogListResponse,
     CodeSystemListResponse,
     ConceptMapListResponse,
@@ -42,11 +37,8 @@ _LOOKUP_200 = {200: {"content": {"application/json": {"schema": inline_schema(Lo
 _LOOKUP_BATCH_200 = {200: {"content": {"application/json": {"schema": inline_schema(LookupBatchResponse.model_json_schema())}}}}
 _CONCEPTS_FIELD_200 = {200: {"content": {"application/json": {"schema": inline_schema(ConceptsForFieldResponse.model_json_schema())}}}}
 _VALIDATE_200 = {200: {"content": {"application/json": {"schema": inline_schema(ValidateResponse.model_json_schema())}}}}
-_AI_MAP_200 = {200: {"content": {"application/json": {"schema": inline_schema(AiMapResponse.model_json_schema())}}}}
-_AI_MAPPINGS_200 = {200: {"content": {"application/json": {"schema": inline_schema(AiMappingsListResponse.model_json_schema())}}}}
 _TRANSLATE_200 = {200: {"content": {"application/json": {"schema": inline_schema(TranslateResponse.model_json_schema())}}}}
 _CONCEPT_MAPS_200 = {200: {"content": {"application/json": {"schema": inline_schema(ConceptMapListResponse.model_json_schema())}}}}
-_AI_TRANSLATE_200 = {200: {"content": {"application/json": {"schema": inline_schema(AiTranslateResponse.model_json_schema())}}}}
 _ORG_CONCEPT_200 = {200: {"content": {"application/json": {"schema": inline_schema(OrgConceptListResponse.model_json_schema())}}}}
 _ORG_CONCEPT_SINGLE_200 = {200: {"content": {"application/json": {"schema": inline_schema(OrgConceptResponse.model_json_schema())}}}}
 _AUDIT_LOG_200 = {200: {"content": {"application/json": {"schema": inline_schema(AuditLogListResponse.model_json_schema())}}}}
@@ -192,49 +184,6 @@ async def validate_code(
 
 
 @router.post(
-    "/ai-map",
-    operation_id="ai_map_terminology",
-    summary="Map a clinical phrase to terminology codes using AI",
-    description=(
-        "Uses Claude AI to map a free-text clinical phrase (e.g. 'high blood sugar', 'chest pain') "
-        "to standard terminology codes (SNOMED CT, LOINC, ICD-10-CM, RxNorm). "
-        "Results are cached in the database for future lookups. "
-        "Requires ANTHROPIC_API_KEY to be set."
-    ),
-    responses={**_AI_MAP_200, 503: {"description": "ANTHROPIC_API_KEY not configured"}},
-    tags=["Terminology"],
-)
-async def ai_map(
-    body: AiMapRequest,
-    request: Request,
-    service: TerminologyService = Depends(get_terminology_service),
-):
-    from app.core.config import settings
-    if not settings.ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY is not configured.")
-    result = await service.ai_map(body, settings.ANTHROPIC_API_KEY)
-    return JSONResponse(content=result.model_dump())
-
-
-@router.get(
-    "/ai-mappings",
-    operation_id="list_ai_mappings",
-    summary="List cached AI terminology mappings",
-    description="Returns all AI-generated phrase-to-concept mappings stored in the database.",
-    responses=_AI_MAPPINGS_200,
-    tags=["Terminology"],
-)
-async def list_ai_mappings(
-    phrase: str | None = Query(None, description="Filter by phrase"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    service: TerminologyService = Depends(get_terminology_service),
-):
-    result = await service.list_ai_mappings(phrase, limit, offset)
-    return JSONResponse(content=result.model_dump())
-
-
-@router.post(
     "/translate",
     operation_id="translate_terminology_concept",
     summary="Translate a concept to another code system",
@@ -286,29 +235,6 @@ async def add_concept_map(
 ):
     result = await service.add_concept_map(body)
     return JSONResponse(content=result)
-
-
-@router.post(
-    "/ai-translate",
-    operation_id="ai_translate_terminology",
-    summary="AI-powered cross-system concept translation",
-    description=(
-        "Uses Claude AI to translate a concept from one terminology system to another "
-        "(e.g. ICD-10-CM → SNOMED CT). Results are stored in the concept map table for future lookups. "
-        "Requires ANTHROPIC_API_KEY to be set."
-    ),
-    responses={**_AI_TRANSLATE_200, 503: {"description": "ANTHROPIC_API_KEY not configured"}},
-    tags=["Terminology"],
-)
-async def ai_translate(
-    body: AiTranslateRequest,
-    service: TerminologyService = Depends(get_terminology_service),
-):
-    from app.core.config import settings
-    if not settings.ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY is not configured.")
-    result = await service.ai_translate(body, settings.ANTHROPIC_API_KEY)
-    return JSONResponse(content=result.model_dump())
 
 
 @router.get(

@@ -114,46 +114,6 @@ class ValidateResponse(BaseModel):
     message: str
 
 
-class AiMapRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    phrase: str
-    resource: str | None = None
-    field: str | None = None
-    max_suggestions: int = 5
-
-
-class AiMapSuggestion(BaseModel):
-    suggested_system: str
-    suggested_code: str
-    suggested_display: str
-    confidence: float
-    reasoning: str | None = None
-    in_db: bool
-    concept: ConceptResponse | None = None
-
-
-class AiMapResponse(BaseModel):
-    phrase: str
-    suggestions: list[AiMapSuggestion]
-    cached: bool
-    model: str | None = None
-
-
-class AiMappingRecord(BaseModel):
-    id: int
-    phrase: str
-    confidence: float | None = None
-    source: str | None = None
-    concept: ConceptResponse | None = None
-
-
-class AiMappingsListResponse(BaseModel):
-    total: int
-    limit: int
-    offset: int
-    data: list[AiMappingRecord]
-
-
 # ── Phase 5: ConceptMap / Cross-system mapping ─────────────────────────────
 
 class TranslationResult(BaseModel):
@@ -201,31 +161,6 @@ class AddConceptMapRequest(BaseModel):
     target_code: str
     mapping_type: str | None = "equivalent"
     confidence: float | None = None
-
-
-class AiTranslateSuggestion(BaseModel):
-    suggested_code: str
-    suggested_display: str
-    mapping_type: str
-    confidence: float
-    reasoning: str | None = None
-    in_db: bool
-    concept: ConceptResponse | None = None
-
-
-class AiTranslateRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    system: str
-    code: str
-    target_system: str
-
-
-class AiTranslateResponse(BaseModel):
-    source_concept: ConceptResponse | None = None
-    target_system: str
-    suggestions: list[AiTranslateSuggestion]
-    cached: bool
-    model: str | None = None
 
 
 # ── Phase 6: Org-specific terminology ─────────────────────────────────────

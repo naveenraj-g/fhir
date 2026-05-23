@@ -7,8 +7,6 @@ class Settings(BaseSettings):
     REDIS_URL: str
     IAM_ISSUER: str
     IAM_JWKS_URL: str
-    ANTHROPIC_API_KEY: str | None = None
-
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

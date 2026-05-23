@@ -2,7 +2,6 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.models.terminology.terminology import (
-    TerminologyAiMapping,
     TerminologyAuditLog,
     TerminologyCodeSystem,
     TerminologyConcept,
@@ -167,60 +166,6 @@ class TerminologyRepository:
                 .where(TerminologyValueSetConcept.concept_id == concept.id)
             )
             return cs, concept, bool(in_vs)
-
-    async def get_ai_mappings_for_phrase(
-        self, phrase: str
-    ) -> list[tuple[TerminologyAiMapping, TerminologyConcept, TerminologyCodeSystem]]:
-        async with self.session_factory() as session:
-            rows = await session.execute(
-                select(TerminologyAiMapping, TerminologyConcept, TerminologyCodeSystem)
-                .join(TerminologyConcept, TerminologyAiMapping.concept_id == TerminologyConcept.id)
-                .join(TerminologyCodeSystem, TerminologyConcept.code_system_id == TerminologyCodeSystem.id)
-                .where(TerminologyAiMapping.phrase == phrase.lower().strip())
-                .order_by(TerminologyAiMapping.confidence.desc())
-            )
-            return list(rows.all())
-
-    async def save_ai_mapping(
-        self, phrase: str, concept_id: int, confidence: float, source: str
-    ) -> None:
-        async with self.session_factory() as session:
-            exists = await session.scalar(
-                select(func.count())
-                .select_from(TerminologyAiMapping)
-                .where(TerminologyAiMapping.phrase == phrase)
-                .where(TerminologyAiMapping.concept_id == concept_id)
-            )
-            if not exists:
-                session.add(
-                    TerminologyAiMapping(
-                        phrase=phrase,
-                        concept_id=concept_id,
-                        confidence=confidence,
-                        source=source,
-                    )
-                )
-                await session.commit()
-
-    async def list_ai_mappings(
-        self, phrase_filter: str | None, limit: int, offset: int
-    ) -> tuple[int, list[tuple[TerminologyAiMapping, TerminologyConcept, TerminologyCodeSystem]]]:
-        async with self.session_factory() as session:
-            base = (
-                select(TerminologyAiMapping, TerminologyConcept, TerminologyCodeSystem)
-                .join(TerminologyConcept, TerminologyAiMapping.concept_id == TerminologyConcept.id)
-                .join(TerminologyCodeSystem, TerminologyConcept.code_system_id == TerminologyCodeSystem.id)
-            )
-            if phrase_filter:
-                base = base.where(TerminologyAiMapping.phrase.ilike(f"%{phrase_filter}%"))
-            count_stmt = select(func.count()).select_from(TerminologyAiMapping)
-            if phrase_filter:
-                count_stmt = count_stmt.where(TerminologyAiMapping.phrase.ilike(f"%{phrase_filter}%"))
-            count = await session.scalar(count_stmt)
-            rows = await session.execute(
-                base.order_by(TerminologyAiMapping.created_at.desc()).limit(limit).offset(offset)
-            )
-            return count or 0, list(rows.all())
 
     # ── Org-specific concepts ──────────────────────────────────────────────────
 
