@@ -15,8 +15,17 @@ FIELD_BINDINGS: list[tuple[str, str, str, str, bool]] = [
     # ── Patient ────────────────────────────────────────────────────────────────
     ("Patient", "gender", "http://hl7.org/fhir/ValueSet/administrative-gender", "required", False),
     ("Patient", "maritalStatus", "http://hl7.org/fhir/ValueSet/marital-status", "extensible", False),
+    ("Patient", "communication.language", "http://hl7.org/fhir/ValueSet/languages", "preferred", False),
+    ("Patient", "link.type", "http://hl7.org/fhir/ValueSet/link-type", "required", False),
+    ("Patient", "telecom.system", "http://hl7.org/fhir/ValueSet/contact-point-system", "required", False),
+    ("Patient", "telecom.use", "http://hl7.org/fhir/ValueSet/contact-point-use", "required", False),
+    ("Patient", "contact.telecom.system", "http://hl7.org/fhir/ValueSet/contact-point-system", "required", False),
+    ("Patient", "contact.telecom.use", "http://hl7.org/fhir/ValueSet/contact-point-use", "required", False),
+    ("Patient", "contact.gender", "http://hl7.org/fhir/ValueSet/administrative-gender", "required", False),
     # ── Practitioner ───────────────────────────────────────────────────────────
     ("Practitioner", "gender", "http://hl7.org/fhir/ValueSet/administrative-gender", "required", False),
+    ("Practitioner", "telecom.system", "http://hl7.org/fhir/ValueSet/contact-point-system", "required", False),
+    ("Practitioner", "telecom.use", "http://hl7.org/fhir/ValueSet/contact-point-use", "required", False),
     # ── PractitionerRole ───────────────────────────────────────────────────────
     ("PractitionerRole", "code", "http://hl7.org/fhir/ValueSet/practitioner-role", "example", True),
     ("PractitionerRole", "specialty", "http://hl7.org/fhir/ValueSet/c80-practice-codes", "preferred", True),
@@ -141,8 +150,12 @@ FIELD_BINDINGS: list[tuple[str, str, str, str, bool]] = [
     ("Location", "mode", "http://hl7.org/fhir/ValueSet/location-mode", "required", False),
     ("Location", "type", "http://hl7.org/fhir/ValueSet/v3-ServiceDeliveryLocationRoleType", "extensible", True),
     ("Location", "physicalType", "http://hl7.org/fhir/ValueSet/location-physical-type", "example", False),
+    ("Location", "telecom.system", "http://hl7.org/fhir/ValueSet/contact-point-system", "required", False),
+    ("Location", "telecom.use", "http://hl7.org/fhir/ValueSet/contact-point-use", "required", False),
     # ── Organization ───────────────────────────────────────────────────────────
     ("Organization", "type", "http://hl7.org/fhir/ValueSet/organization-type", "example", True),
+    ("Organization", "telecom.system", "http://hl7.org/fhir/ValueSet/contact-point-system", "required", False),
+    ("Organization", "telecom.use", "http://hl7.org/fhir/ValueSet/contact-point-use", "required", False),
     # ── Provenance ─────────────────────────────────────────────────────────────
     ("Provenance", "reason", "http://terminology.hl7.org/ValueSet/v3-PurposeOfUse", "extensible", True),
     ("Provenance", "activity", "http://hl7.org/fhir/ValueSet/provenance-activity-type", "extensible", False),
@@ -156,6 +169,8 @@ FIELD_BINDINGS: list[tuple[str, str, str, str, bool]] = [
     # ── RelatedPerson ──────────────────────────────────────────────────────────
     ("RelatedPerson", "relationship", "http://hl7.org/fhir/ValueSet/relatedperson-relationshiptype", "preferred", True),
     ("RelatedPerson", "gender", "http://hl7.org/fhir/ValueSet/administrative-gender", "required", False),
+    ("RelatedPerson", "telecom.system", "http://hl7.org/fhir/ValueSet/contact-point-system", "required", False),
+    ("RelatedPerson", "telecom.use", "http://hl7.org/fhir/ValueSet/contact-point-use", "required", False),
     # ── HealthcareService ──────────────────────────────────────────────────────
     ("HealthcareService", "category", "http://hl7.org/fhir/ValueSet/service-category", "example", True),
     ("HealthcareService", "type", "http://hl7.org/fhir/ValueSet/service-type", "example", True),

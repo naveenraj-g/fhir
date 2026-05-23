@@ -78,11 +78,11 @@ class TerminologyRepository:
                 .where(TerminologyValueSetConcept.active == True)
             )
             if q:
-                ts_where = text(
-                    "terminology_concept.search_vector @@ plainto_tsquery('english', :q)"
-                )
-                base = base.where(ts_where).params(q=q)
-                count_stmt = count_stmt.where(ts_where).params(q=q)
+                trgm_where = text(
+                    "terminology_concept.display ILIKE :pat"
+                ).bindparams(pat=f"%{q}%")
+                base = base.where(trgm_where)
+                count_stmt = count_stmt.where(trgm_where)
 
             count = await session.scalar(count_stmt)
             rows = await session.execute(
@@ -94,19 +94,19 @@ class TerminologyRepository:
         self, q: str, system: str | None, limit: int, offset: int
     ) -> tuple[int, list[tuple]]:
         async with self.session_factory() as session:
-            ts_where = text(
-                "terminology_concept.search_vector @@ plainto_tsquery('english', :q)"
-            )
-            ts_rank = text(
-                "ts_rank(terminology_concept.search_vector, plainto_tsquery('english', :q)) DESC"
-            )
+            trgm_where = text(
+                "terminology_concept.display ILIKE :pat"
+            ).bindparams(pat=f"%{q}%")
+            trgm_rank = text(
+                "similarity(terminology_concept.display, :q) DESC"
+            ).bindparams(q=q)
             base = (
                 select(TerminologyConcept, TerminologyCodeSystem)
                 .join(
                     TerminologyCodeSystem,
                     TerminologyConcept.code_system_id == TerminologyCodeSystem.id,
                 )
-                .where(ts_where)
+                .where(trgm_where)
                 .where(TerminologyConcept.active == True)
             )
             count_stmt = (
@@ -116,7 +116,7 @@ class TerminologyRepository:
                     TerminologyCodeSystem,
                     TerminologyConcept.code_system_id == TerminologyCodeSystem.id,
                 )
-                .where(ts_where)
+                .where(trgm_where)
                 .where(TerminologyConcept.active == True)
             )
             if system:
@@ -124,9 +124,9 @@ class TerminologyRepository:
                 count_stmt = count_stmt.where(
                     TerminologyCodeSystem.canonical_url == system
                 )
-            count = await session.scalar(count_stmt.params(q=q))
+            count = await session.scalar(count_stmt)
             rows = await session.execute(
-                base.order_by(ts_rank).limit(limit).offset(offset).params(q=q)
+                base.order_by(trgm_rank).limit(limit).offset(offset)
             )
             return count or 0, list(rows.all())
 
@@ -380,11 +380,11 @@ class TerminologyRepository:
                     .where(TerminologyCodeSystem.canonical_url == code_system_url)
                 )
             if q:
-                ts_where = text(
-                    "terminology_concept.search_vector @@ plainto_tsquery('english', :q)"
-                )
-                base = base.where(ts_where).params(q=q)
-                count_stmt = count_stmt.where(ts_where).params(q=q)
+                trgm_where = text(
+                    "terminology_concept.display ILIKE :pat"
+                ).bindparams(pat=f"%{q}%")
+                base = base.where(trgm_where)
+                count_stmt = count_stmt.where(trgm_where)
             count = await session.scalar(count_stmt)
             rows = await session.execute(
                 base.order_by(TerminologyConcept.code).limit(limit).offset(offset)

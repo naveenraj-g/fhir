@@ -61,8 +61,13 @@ terminology-fhir-r4:
 terminology-seed-bindings:
     uv run python -m app.terminology.seed_field_bindings
 
+# Auto-seed ALL FHIR R4 field bindings from HL7 StructureDefinitions (preferred over manual seed)
+# Requires: terminology_data/profiles-resources.json + terminology_data/profiles-types.json
+terminology-seed-bindings-r4:
+    uv run python -m app.terminology.seed_field_bindings_r4
+
 # Load all terminologies in order (each is idempotent — safe to re-run)
-terminology-all: terminology-fhir-r4 terminology-icd10cm terminology-rxnorm terminology-loinc terminology-snomed terminology-seed-bindings
+terminology-all: terminology-fhir-r4 terminology-icd10cm terminology-rxnorm terminology-loinc terminology-snomed terminology-seed-bindings-r4
 
 # ── Migrations ────────────────────────────────────────────────────────────────
 

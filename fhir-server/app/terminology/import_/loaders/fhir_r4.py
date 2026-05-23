@@ -170,15 +170,45 @@ class FhirR4Loader(BaseLoader):
                 continue  # filter-based expansion — can't resolve without runtime expansion
 
             if codes:
-                # Explicit code list
-                rows = await self.conn.fetch(
+                # Ensure the CodeSystem exists (handles external systems like
+                # urn:ietf:bcp:47, http://unitsofmeasure.org, ISO standards, etc.)
+                cs_id: int = await self.conn.fetchval(
                     """
-                    SELECT tc.id FROM terminology_concept tc
-                    JOIN terminology_code_system cs ON cs.id = tc.code_system_id
-                    WHERE cs.canonical_url = $1 AND tc.code = ANY($2::text[])
-                      AND tc.org_id IS NULL
+                    INSERT INTO terminology_code_system (canonical_url, name)
+                    VALUES ($1, $2)
+                    ON CONFLICT (canonical_url) DO UPDATE SET updated_at = NOW()
+                    RETURNING id
                     """,
                     system_url,
+                    system_url.split("/")[-1] or system_url,
+                )
+                concept_rows = [
+                    (
+                        cs_id,
+                        c["code"],
+                        c.get("display") or c["code"],
+                        f"{c.get('display') or c['code']}".strip(),
+                    )
+                    for c in codes
+                    if c.get("code")
+                ]
+                if concept_rows:
+                    await self.conn.executemany(
+                        """
+                        INSERT INTO terminology_concept
+                            (code_system_id, code, display, search_vector)
+                        VALUES ($1, $2, $3, to_tsvector('english', $4))
+                        ON CONFLICT DO NOTHING
+                        """,
+                        concept_rows,
+                    )
+                rows = await self.conn.fetch(
+                    """
+                    SELECT id FROM terminology_concept
+                    WHERE code_system_id = $1 AND code = ANY($2::text[])
+                      AND org_id IS NULL
+                    """,
+                    cs_id,
                     [c["code"] for c in codes],
                 )
             else:
