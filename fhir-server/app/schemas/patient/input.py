@@ -93,41 +93,6 @@ class ContactRelationshipCreate(BaseModel):
     text: Optional[str] = None
 
 
-class ContactRoleCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    coding_system: Optional[str] = None
-    coding_code: Optional[str] = None
-    coding_display: Optional[str] = None
-    text: Optional[str] = None
-
-
-class ContactAdditionalNameCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    use: Optional[HumanNameUse] = None
-    text: Optional[str] = None
-    family: Optional[str] = None
-    given: Optional[List[str]] = None
-    prefix: Optional[List[str]] = None
-    suffix: Optional[List[str]] = None
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
-
-
-class ContactAdditionalAddressCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    use: Optional[AddressUse] = None
-    type: Optional[AddressType] = None
-    text: Optional[str] = None
-    line: Optional[List[str]] = None
-    city: Optional[str] = None
-    district: Optional[str] = None
-    state: Optional[str] = None
-    postal_code: Optional[str] = None
-    country: Optional[str] = None
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
-
-
 class ContactTelecomCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     system: Optional[ContactPointSystem] = Field(None, description="phone|fax|email|pager|url|sms|other")
@@ -142,8 +107,6 @@ class ContactCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     # relationship (0..*) CodeableConcept → grandchild table
     relationship: Optional[List[ContactRelationshipCreate]] = None
-    # role (0..*) CodeableConcept → grandchild table (R5)
-    role: Optional[List[ContactRoleCreate]] = None
     # name (0..1 HumanName) — flattened
     name_use: Optional[HumanNameUse] = None
     name_text: Optional[str] = None
@@ -153,8 +116,6 @@ class ContactCreate(BaseModel):
     name_suffix: Optional[List[str]] = None
     # telecom (0..*) ContactPoint → grandchild table
     telecom: Optional[List[ContactTelecomCreate]] = None
-    # additionalName (0..*) HumanName → grandchild table (R5)
-    additional_name: Optional[List[ContactAdditionalNameCreate]] = None
     # address (0..1 Address) — flattened
     address_use: Optional[AddressUse] = None
     address_type: Optional[AddressType] = None
@@ -167,8 +128,6 @@ class ContactCreate(BaseModel):
     address_country: Optional[str] = None
     address_period_start: Optional[datetime] = None
     address_period_end: Optional[datetime] = None
-    # additionalAddress (0..*) Address → grandchild table (R5)
-    additional_address: Optional[List[ContactAdditionalAddressCreate]] = None
     # other scalar fields
     gender: Optional[PatientGender] = Field(None, description="male|female|other|unknown")
     organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")

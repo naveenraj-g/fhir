@@ -281,17 +281,8 @@ class PatientContact(Base):
     relationships = relationship(
         "PatientContactRelationship", back_populates="contact", cascade="all, delete-orphan",
     )
-    roles = relationship(
-        "PatientContactRole", back_populates="contact", cascade="all, delete-orphan",
-    )
     telecoms = relationship(
         "PatientContactTelecom", back_populates="contact", cascade="all, delete-orphan",
-    )
-    additional_names = relationship(
-        "PatientContactAdditionalName", back_populates="contact", cascade="all, delete-orphan",
-    )
-    additional_addresses = relationship(
-        "PatientContactAdditionalAddress", back_populates="contact", cascade="all, delete-orphan",
     )
 
 
@@ -312,23 +303,6 @@ class PatientContactRelationship(Base):
     contact = relationship("PatientContact", back_populates="relationships")
 
 
-class PatientContactRole(Base):
-    """contact[].role[] — CodeableConcept — functional role of contact (R5)."""
-
-    __tablename__ = "patient_contact_role"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    contact_id = Column(Integer, ForeignKey("patient_contact.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    coding_system = Column(String, nullable=True)
-    coding_code = Column(String, nullable=True)
-    coding_display = Column(String, nullable=True)
-    text = Column(String, nullable=True)
-
-    contact = relationship("PatientContact", back_populates="roles")
-
-
 class PatientContactTelecom(Base):
     """contact[].telecom[] — ContactPoint — contact details for the contact person."""
 
@@ -346,51 +320,6 @@ class PatientContactTelecom(Base):
     period_end = Column(DateTime(timezone=True), nullable=True)
 
     contact = relationship("PatientContact", back_populates="telecoms")
-
-
-class PatientContactAdditionalName(Base):
-    """contact[].additionalName[] — HumanName — additional contact names (R5)."""
-
-    __tablename__ = "patient_contact_additional_name"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    contact_id = Column(Integer, ForeignKey("patient_contact.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    use = Column(Enum(HumanNameUse, name="human_name_use"), nullable=True)
-    text = Column(String, nullable=True)
-    family = Column(String, nullable=True)
-    given = Column(Text, nullable=True)   # comma-separated
-    prefix = Column(Text, nullable=True)  # comma-separated
-    suffix = Column(Text, nullable=True)  # comma-separated
-    period_start = Column(DateTime(timezone=True), nullable=True)
-    period_end = Column(DateTime(timezone=True), nullable=True)
-
-    contact = relationship("PatientContact", back_populates="additional_names")
-
-
-class PatientContactAdditionalAddress(Base):
-    """contact[].additionalAddress[] — Address — additional contact addresses (R5)."""
-
-    __tablename__ = "patient_contact_additional_address"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    contact_id = Column(Integer, ForeignKey("patient_contact.id"), nullable=False, index=True)
-    org_id = Column(String, nullable=True)
-
-    use = Column(Enum(AddressUse, name="address_use"), nullable=True)
-    type = Column(Enum(AddressType, name="address_type"), nullable=True)
-    text = Column(String, nullable=True)
-    line = Column(Text, nullable=True)    # comma-separated
-    city = Column(String, nullable=True)
-    district = Column(String, nullable=True)
-    state = Column(String, nullable=True)
-    postal_code = Column(String, nullable=True)
-    country = Column(String, nullable=True)
-    period_start = Column(DateTime(timezone=True), nullable=True)
-    period_end = Column(DateTime(timezone=True), nullable=True)
-
-    contact = relationship("PatientContact", back_populates="additional_addresses")
 
 
 class PatientCommunication(Base):

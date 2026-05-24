@@ -11,10 +11,7 @@ from app.models.patient.patient import (
     PatientCommunication,
     PatientContact,
     PatientContactRelationship,
-    PatientContactRole,
     PatientContactTelecom,
-    PatientContactAdditionalName,
-    PatientContactAdditionalAddress,
     PatientGeneralPractitioner,
     PatientIdentifier,
     PatientLink,
@@ -71,10 +68,7 @@ def _with_relationships(stmt):
         selectinload(PatientModel.addresses),
         selectinload(PatientModel.photos),
         selectinload(PatientModel.contacts).selectinload(PatientContact.relationships),
-        selectinload(PatientModel.contacts).selectinload(PatientContact.roles),
         selectinload(PatientModel.contacts).selectinload(PatientContact.telecoms),
-        selectinload(PatientModel.contacts).selectinload(PatientContact.additional_names),
-        selectinload(PatientModel.contacts).selectinload(PatientContact.additional_addresses),
         selectinload(PatientModel.communications),
         selectinload(PatientModel.general_practitioners),
         selectinload(PatientModel.links),
@@ -482,17 +476,6 @@ class PatientRepository:
                         text=r.text,
                     ))
 
-            if payload.role:
-                for r in payload.role:
-                    session.add(PatientContactRole(
-                        contact_id=contact.id,
-                        org_id=patient.org_id,
-                        coding_system=r.coding_system,
-                        coding_code=r.coding_code,
-                        coding_display=r.coding_display,
-                        text=r.text,
-                    ))
-
             if payload.telecom:
                 for t in payload.telecom:
                     session.add(PatientContactTelecom(
@@ -504,39 +487,6 @@ class PatientRepository:
                         rank=t.rank,
                         period_start=t.period_start,
                         period_end=t.period_end,
-                    ))
-
-            if payload.additional_name:
-                for n in payload.additional_name:
-                    session.add(PatientContactAdditionalName(
-                        contact_id=contact.id,
-                        org_id=patient.org_id,
-                        use=n.use,
-                        text=n.text,
-                        family=n.family,
-                        given=", ".join(n.given) if n.given else None,
-                        prefix=", ".join(n.prefix) if n.prefix else None,
-                        suffix=", ".join(n.suffix) if n.suffix else None,
-                        period_start=n.period_start,
-                        period_end=n.period_end,
-                    ))
-
-            if payload.additional_address:
-                for a in payload.additional_address:
-                    session.add(PatientContactAdditionalAddress(
-                        contact_id=contact.id,
-                        org_id=patient.org_id,
-                        use=a.use,
-                        type=a.type,
-                        text=a.text,
-                        line=", ".join(a.line) if a.line else None,
-                        city=a.city,
-                        district=a.district,
-                        state=a.state,
-                        postal_code=a.postal_code,
-                        country=a.country,
-                        period_start=a.period_start,
-                        period_end=a.period_end,
                     ))
 
             try:
@@ -682,10 +632,7 @@ class PatientRepository:
                 .where(PatientContact.patient_id == patient.id)
                 .options(
                     selectinload(PatientContact.relationships),
-                    selectinload(PatientContact.roles),
                     selectinload(PatientContact.telecoms),
-                    selectinload(PatientContact.additional_names),
-                    selectinload(PatientContact.additional_addresses),
                 )
             )
             result = await session.execute(stmt)

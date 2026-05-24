@@ -22,15 +22,6 @@ def fhir_contact(c: "PatientContact") -> dict:
             }.items() if v2}],
             "text": r.text,
         }.items() if v} for r in c.relationships]
-    if c.roles:
-        entry["role"] = [{k: v for k, v in {
-            "coding": [{k2: v2 for k2, v2 in {
-                "system": r.coding_system,
-                "code": r.coding_code,
-                "display": r.coding_display,
-            }.items() if v2}],
-            "text": r.text,
-        }.items() if v} for r in c.roles]
     name_entry: dict = {}
     if c.name_use:
         name_entry["use"] = fhir_enum(c.name_use)
@@ -49,8 +40,6 @@ def fhir_contact(c: "PatientContact") -> dict:
         name_entry["suffix"] = suffix
     if name_entry:
         entry["name"] = name_entry
-    if c.additional_names:
-        entry["additionalName"] = [fhir_human_name(n) for n in c.additional_names]
     if c.telecoms:
         entry["telecom"] = [fhir_telecom(t) for t in c.telecoms]
     addr_entry: dict = {}
@@ -80,8 +69,6 @@ def fhir_contact(c: "PatientContact") -> dict:
         }.items() if v}
     if addr_entry:
         entry["address"] = addr_entry
-    if c.additional_addresses:
-        entry["additionalAddress"] = [fhir_address(a) for a in c.additional_addresses]
     if c.gender:
         entry["gender"] = fhir_enum(c.gender)
     if c.organization_type and c.organization_id:

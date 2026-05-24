@@ -16,16 +16,12 @@ def plain_contact(c: "PatientContact") -> dict:
         "relationship": [{"coding_system": r.coding_system, "coding_code": r.coding_code,
                            "coding_display": r.coding_display, "text": r.text}
                           for r in c.relationships] if c.relationships else None,
-        "role": [{"coding_system": r.coding_system, "coding_code": r.coding_code,
-                   "coding_display": r.coding_display, "text": r.text}
-                 for r in c.roles] if c.roles else None,
         "name_use": fhir_enum(c.name_use),
         "name_text": c.name_text,
         "name_family": c.name_family,
         "name_given": fhir_split(c.name_given),
         "name_prefix": fhir_split(c.name_prefix),
         "name_suffix": fhir_split(c.name_suffix),
-        "additional_name": [plain_name(n) for n in c.additional_names] if c.additional_names else None,
         "telecom": [{"system": fhir_enum(t.system), "value": t.value, "use": fhir_enum(t.use), "rank": t.rank,
                       "period_start": t.period_start.isoformat() if t.period_start else None,
                       "period_end": t.period_end.isoformat() if t.period_end else None}
@@ -41,7 +37,6 @@ def plain_contact(c: "PatientContact") -> dict:
         "address_country": c.address_country,
         "address_period_start": c.address_period_start.isoformat() if c.address_period_start else None,
         "address_period_end": c.address_period_end.isoformat() if c.address_period_end else None,
-        "additional_address": [plain_address(a) for a in c.additional_addresses] if c.additional_addresses else None,
         "gender": fhir_enum(c.gender),
         "organization_type": fhir_enum(c.organization_type),
         "organization_id": c.organization_id,
