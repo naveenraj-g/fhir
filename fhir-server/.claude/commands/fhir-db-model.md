@@ -75,14 +75,34 @@ reference_display = Column(String, nullable=True)
 
 ## Step 4 — Enum rules
 
-Use `Enum(MyClass, name="pg_type_name")` when the allowed reference types are a **closed, known set**. Define the Python enum in `app/models/<resource>/enums.py`:
+Use `Enum(MyClass, name="pg_type_name")` when the allowed reference types are a **closed, known set**. Define the Python enum in `app/models/<resource>/enums.py`.
+
+### Two enum patterns — never mix them
+
+**Reference type enums** (FHIR resource names): member NAME is `UPPER_SNAKE_CASE`, member VALUE is the TitleCase FHIR resource name.
 
 ```python
 class MyResourceFieldReferenceType(str, Enum):
-    """Allowed reference types for MyResource.field.reference."""
-    CONDITION = "Condition"       # value = TitleCase FHIR resource name
-    PROCEDURE = "Procedure"
+    CONDITION = "Condition"       # name=CONDITION (stored in DB), value=Condition (FHIR output)
+    PRACTITIONER_ROLE = "PractitionerRole"
 ```
+
+**Status / code enums** (FHIR code values): member name **equals** its value, both lowercase.
+
+```python
+class MyResourceStatus(str, Enum):
+    active = "active"             # name==value==lowercase (stored in DB and FHIR output)
+    completed = "completed"
+```
+
+### Why it matters — SQLAlchemy binding
+
+SQLAlchemy's `str, Enum` uses `member.name` (not `.value`) when writing to the DB and when reading back. So:
+
+- `CONDITION = "Condition"` → DB stores `"CONDITION"`, FHIR output returns `"Condition"` (via `.value`).
+- `active = "active"` → DB stores `"active"`, FHIR output returns `"active"`.
+
+**The PostgreSQL enum type must contain the same strings that SQLAlchemy stores** (the member names). For reference type enums those are `UPPERCASE_SNAKE_CASE`. For status enums those are `lowercase`. Never create PG enum types with TitleCase values like `'Condition'` or `'PractitionerRole'` — they won't match what SQLAlchemy sends.
 
 Naming: `<Resource><Field>ReferenceType` in Python, `<table_name>_reference_type` as the PostgreSQL type name.
 
@@ -141,8 +161,8 @@ uv run alembic revision --autogenerate -m "<description>"
 ```
 
 Then **manually fix** the generated file before applying:
-1. Replace `sa.Enum('UPPERCASE_MEMBER', ...)` with `postgresql.ENUM('TitleCaseValue', ...)`.
-2. Add `_my_enum = postgresql.ENUM('Val1', 'Val2', name='pg_type_name')` at module level.
+1. Alembic autogenerate emits `sa.Enum('VALUE1', 'VALUE2', ...)` using the Python member names — **keep those values exactly as-is**. For reference type enums the values will be UPPERCASE_SNAKE (e.g. `'CONDITION'`, `'PRACTITIONER_ROLE'`); for status enums they will be lowercase. Both are correct — they match what SQLAlchemy binds. **Never rename them to TitleCase** (e.g. `'Condition'`) — that would break every write.
+2. Replace `sa.Enum(...)` with `postgresql.ENUM(...)` at module level: `_my_enum = postgresql.ENUM('VALUE1', 'VALUE2', name='pg_type_name')`.
 3. Call `_my_enum.create(op.get_bind(), checkfirst=True)` at the start of `upgrade()`.
 4. Use `create_type=False` on any `add_column`/`alter_column` that references the type.
 5. If converting VARCHAR → Enum, add `postgresql_using='col::pg_type_name'`.

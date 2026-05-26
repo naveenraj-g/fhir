@@ -24,9 +24,9 @@ Steps use `$RESOURCE` = the resource name (e.g. `Observation`, `Claim`). Adjust 
 4. **Register in migrations** — add `import app.models.<resource>.<resource>  # noqa: F401` to `migrations/env.py`
 
 5. **Migration** — `uv run alembic revision --autogenerate -m "add_<resource>_tables"` then manually fix:
-   - Replace `sa.Enum('UPPERCASE', ...)` with `postgresql.ENUM('TitleCaseValue', ..., create_type=False)`
+   - Autogenerate emits `sa.Enum('VALUE1', ...)` using Python member names — **keep those values as-is**. For reference type enums they are `UPPERCASE_SNAKE` (e.g. `'PRACTITIONER_ROLE'`); for status enums they are `lowercase`. Both are correct — never change them to TitleCase.
+   - Replace `sa.Enum(...)` with module-level `postgresql.ENUM('VALUE1', ..., name='pg_type_name')` + `.create(bind, checkfirst=True)` in `upgrade()`
    - Add `op.execute("CREATE SEQUENCE IF NOT EXISTS <resource>_id_seq START WITH <N> INCREMENT BY 1")`
-   - Add module-level `_enum = postgresql.ENUM(...)` + call `.create(bind, checkfirst=True)` in `upgrade()`
    - `organization_reference_type` — always `create_type=False`, never create/drop (shared type)
    - `downgrade()`: drop tables in reverse FK order, drop sequence, drop new enum types (not shared ones)
    - Apply: `uv run alembic upgrade head`
