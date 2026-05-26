@@ -2,37 +2,37 @@ from enum import Enum
 
 
 class TaskStatus(str, Enum):
-    DRAFT = "draft"
-    REQUESTED = "requested"
-    RECEIVED = "received"
-    ACCEPTED = "accepted"
-    REJECTED = "rejected"
-    READY = "ready"
-    CANCELLED = "cancelled"
-    IN_PROGRESS = "in-progress"
-    ON_HOLD = "on-hold"
-    FAILED = "failed"
-    COMPLETED = "completed"
-    ENTERED_IN_ERROR = "entered-in-error"
+    draft = "draft"
+    requested = "requested"
+    received = "received"
+    accepted = "accepted"
+    rejected = "rejected"
+    ready = "ready"
+    cancelled = "cancelled"
+    in_progress = "in-progress"
+    on_hold = "on-hold"
+    failed = "failed"
+    completed = "completed"
+    entered_in_error = "entered-in-error"
 
 
 class TaskIntent(str, Enum):
-    UNKNOWN = "unknown"
-    PROPOSAL = "proposal"
-    PLAN = "plan"
-    ORDER = "order"
-    ORIGINAL_ORDER = "original-order"
-    REFLEX_ORDER = "reflex-order"
-    FILLER_ORDER = "filler-order"
-    INSTANCE_ORDER = "instance-order"
-    OPTION = "option"
+    unknown = "unknown"
+    proposal = "proposal"
+    plan = "plan"
+    order = "order"
+    original_order = "original-order"
+    reflex_order = "reflex-order"
+    filler_order = "filler-order"
+    instance_order = "instance-order"
+    option = "option"
 
 
 class TaskPriority(str, Enum):
-    ROUTINE = "routine"
-    URGENT = "urgent"
-    ASAP = "asap"
-    STAT = "stat"
+    routine = "routine"
+    urgent = "urgent"
+    asap = "asap"
+    stat = "stat"
 
 
 class TaskRequesterReferenceType(str, Enum):

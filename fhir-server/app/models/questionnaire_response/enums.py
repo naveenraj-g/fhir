@@ -2,11 +2,11 @@ from enum import Enum
 
 
 class QuestionnaireResponseStatus(str, Enum):
-    IN_PROGRESS = "in-progress"
-    COMPLETED = "completed"
-    AMENDED = "amended"
-    ENTERED_IN_ERROR = "entered-in-error"
-    STOPPED = "stopped"
+    in_progress = "in-progress"
+    completed = "completed"
+    amended = "amended"
+    entered_in_error = "entered-in-error"
+    stopped = "stopped"
 
 
 class QuestionnaireResponseAuthorReferenceType(str, Enum):

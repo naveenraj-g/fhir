@@ -4,11 +4,11 @@ from enum import Enum
 class ProvenanceEntityRole(str, Enum):
     """FHIR R4 Provenance.entity.role — how the entity was used in the activity."""
 
-    DERIVATION = "derivation"
-    REVISION = "revision"
-    QUOTATION = "quotation"
-    SOURCE = "source"
-    REMOVAL = "removal"
+    derivation = "derivation"
+    revision = "revision"
+    quotation = "quotation"
+    source = "source"
+    removal = "removal"
 
 
 class ProvenanceAgentWhoReferenceType(str, Enum):

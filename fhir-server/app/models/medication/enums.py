@@ -4,9 +4,9 @@ from enum import Enum
 class MedicationStatus(str, Enum):
     """FHIR R4 Medication.status — active | inactive | entered-in-error."""
 
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    ENTERED_IN_ERROR = "entered-in-error"
+    active = "active"
+    inactive = "inactive"
+    entered_in_error = "entered-in-error"
 
 
 class MedicationIngredientItemReferenceType(str, Enum):

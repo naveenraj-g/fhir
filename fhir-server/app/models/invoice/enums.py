@@ -3,11 +3,11 @@ from enum import Enum
 
 class InvoiceStatus(str, Enum):
     """Invoice.status required binding."""
-    DRAFT = "draft"
-    ISSUED = "issued"
-    BALANCED = "balanced"
-    CANCELLED = "cancelled"
-    ENTERED_IN_ERROR = "entered-in-error"
+    draft = "draft"
+    issued = "issued"
+    balanced = "balanced"
+    cancelled = "cancelled"
+    entered_in_error = "entered-in-error"
 
 
 class InvoiceSubjectReferenceType(str, Enum):

@@ -4,16 +4,16 @@ from enum import Enum
 class LocationStatus(str, Enum):
     """FHIR R4 Location.status value set — general availability."""
 
-    ACTIVE = "active"
-    SUSPENDED = "suspended"
-    INACTIVE = "inactive"
+    active = "active"
+    suspended = "suspended"
+    inactive = "inactive"
 
 
 class LocationMode(str, Enum):
     """FHIR R4 Location.mode value set — instance or kind."""
 
-    INSTANCE = "instance"
-    KIND = "kind"
+    instance = "instance"
+    kind = "kind"
 
 
 class LocationPartOfReferenceType(str, Enum):

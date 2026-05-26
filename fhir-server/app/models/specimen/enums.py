@@ -2,10 +2,10 @@ from enum import Enum
 
 
 class SpecimenStatus(str, Enum):
-    AVAILABLE = "available"
-    UNAVAILABLE = "unavailable"
-    UNSATISFACTORY = "unsatisfactory"
-    ENTERED_IN_ERROR = "entered-in-error"
+    available = "available"
+    unavailable = "unavailable"
+    unsatisfactory = "unsatisfactory"
+    entered_in_error = "entered-in-error"
 
 
 class SpecimenSubjectReferenceType(str, Enum):

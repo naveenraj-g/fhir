@@ -27,8 +27,8 @@ class EncounterReferenceType(str, Enum):
 class IdentifierUse(str, Enum):
     """FHIR R4 IdentifierUse — used by any resource that stores an identifier.use column."""
 
-    USUAL = "usual"
-    OFFICIAL = "official"
-    TEMP = "temp"
-    SECONDARY = "secondary"
-    OLD = "old"
+    usual = "usual"
+    official = "official"
+    temp = "temp"
+    secondary = "secondary"
+    old = "old"

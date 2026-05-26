@@ -4,16 +4,16 @@ from enum import Enum
 class DiagnosticReportStatus(str, Enum):
     """FHIR R4 DiagnosticReport status value set (full set)."""
 
-    REGISTERED = "registered"
-    PARTIAL = "partial"
-    PRELIMINARY = "preliminary"
-    FINAL = "final"
-    AMENDED = "amended"
-    CORRECTED = "corrected"
-    APPENDED = "appended"
-    CANCELLED = "cancelled"
-    ENTERED_IN_ERROR = "entered-in-error"
-    UNKNOWN = "unknown"
+    registered = "registered"
+    partial = "partial"
+    preliminary = "preliminary"
+    final = "final"
+    amended = "amended"
+    corrected = "corrected"
+    appended = "appended"
+    cancelled = "cancelled"
+    entered_in_error = "entered-in-error"
+    unknown = "unknown"
 
 
 class DiagnosticReportSubjectType(str, Enum):

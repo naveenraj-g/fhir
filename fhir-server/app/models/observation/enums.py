@@ -2,14 +2,14 @@ from enum import Enum
 
 
 class ObservationStatus(str, Enum):
-    REGISTERED = "registered"
-    PRELIMINARY = "preliminary"
-    FINAL = "final"
-    AMENDED = "amended"
-    CORRECTED = "corrected"
-    CANCELLED = "cancelled"
-    ENTERED_IN_ERROR = "entered-in-error"
-    UNKNOWN = "unknown"
+    registered = "registered"
+    preliminary = "preliminary"
+    final = "final"
+    amended = "amended"
+    corrected = "corrected"
+    cancelled = "cancelled"
+    entered_in_error = "entered-in-error"
+    unknown = "unknown"
 
 
 class ObservationSubjectReferenceType(str, Enum):

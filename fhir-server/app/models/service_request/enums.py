@@ -4,36 +4,36 @@ from enum import Enum
 class ServiceRequestStatus(str, Enum):
     """FHIR R4 ServiceRequest status value set."""
 
-    DRAFT = "draft"
-    ACTIVE = "active"
-    ON_HOLD = "on-hold"
-    REVOKED = "revoked"
-    COMPLETED = "completed"
-    ENTERED_IN_ERROR = "entered-in-error"
-    UNKNOWN = "unknown"
+    draft = "draft"
+    active = "active"
+    on_hold = "on-hold"
+    revoked = "revoked"
+    completed = "completed"
+    entered_in_error = "entered-in-error"
+    unknown = "unknown"
 
 
 class ServiceRequestIntent(str, Enum):
     """FHIR R4 ServiceRequest intent value set."""
 
-    PROPOSAL = "proposal"
-    PLAN = "plan"
-    DIRECTIVE = "directive"
-    ORDER = "order"
-    ORIGINAL_ORDER = "original-order"
-    REFLEX_ORDER = "reflex-order"
-    FILLER_ORDER = "filler-order"
-    INSTANCE_ORDER = "instance-order"
-    OPTION = "option"
+    proposal = "proposal"
+    plan = "plan"
+    directive = "directive"
+    order = "order"
+    original_order = "original-order"
+    reflex_order = "reflex-order"
+    filler_order = "filler-order"
+    instance_order = "instance-order"
+    option = "option"
 
 
 class ServiceRequestPriority(str, Enum):
     """FHIR R4 request priority value set."""
 
-    ROUTINE = "routine"
-    URGENT = "urgent"
-    ASAP = "asap"
-    STAT = "stat"
+    routine = "routine"
+    urgent = "urgent"
+    asap = "asap"
+    stat = "stat"
 
 
 class ServiceRequestSubjectType(str, Enum):

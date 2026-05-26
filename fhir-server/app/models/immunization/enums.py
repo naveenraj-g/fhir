@@ -2,9 +2,9 @@ from enum import Enum
 
 
 class ImmunizationStatus(str, Enum):
-    COMPLETED = "completed"
-    ENTERED_IN_ERROR = "entered-in-error"
-    NOT_DONE = "not-done"
+    completed = "completed"
+    entered_in_error = "entered-in-error"
+    not_done = "not-done"
 
 
 class ImmunizationPatientReferenceType(str, Enum):

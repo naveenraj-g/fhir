@@ -2,13 +2,13 @@ from enum import Enum
 
 
 class EpisodeOfCareStatus(str, Enum):
-    PLANNED = "planned"
-    WAITLIST = "waitlist"
-    ACTIVE = "active"
-    ONHOLD = "onhold"
-    FINISHED = "finished"
-    CANCELLED = "cancelled"
-    ENTERED_IN_ERROR = "entered-in-error"
+    planned = "planned"
+    waitlist = "waitlist"
+    active = "active"
+    onhold = "onhold"
+    finished = "finished"
+    cancelled = "cancelled"
+    entered_in_error = "entered-in-error"
 
 
 class EpisodeOfCarePatientReferenceType(str, Enum):

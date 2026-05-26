@@ -4,14 +4,14 @@ from enum import Enum
 class ProcedureStatus(str, Enum):
     """FHIR R4 Procedure status value set."""
 
-    PREPARATION = "preparation"
-    IN_PROGRESS = "in-progress"
-    NOT_DONE = "not-done"
-    ON_HOLD = "on-hold"
-    STOPPED = "stopped"
-    COMPLETED = "completed"
-    ENTERED_IN_ERROR = "entered-in-error"
-    UNKNOWN = "unknown"
+    preparation = "preparation"
+    in_progress = "in-progress"
+    not_done = "not-done"
+    on_hold = "on-hold"
+    stopped = "stopped"
+    completed = "completed"
+    entered_in_error = "entered-in-error"
+    unknown = "unknown"
 
 
 class ProcedureSubjectType(str, Enum):

@@ -2,20 +2,20 @@ from enum import Enum
 
 
 class CarePlanStatus(str, Enum):
-    DRAFT = "draft"
-    ACTIVE = "active"
-    ON_HOLD = "on-hold"
-    REVOKED = "revoked"
-    COMPLETED = "completed"
-    ENTERED_IN_ERROR = "entered-in-error"
-    UNKNOWN = "unknown"
+    draft = "draft"
+    active = "active"
+    on_hold = "on-hold"
+    revoked = "revoked"
+    completed = "completed"
+    entered_in_error = "entered-in-error"
+    unknown = "unknown"
 
 
 class CarePlanIntent(str, Enum):
-    PROPOSAL = "proposal"
-    PLAN = "plan"
-    ORDER = "order"
-    OPTION = "option"
+    proposal = "proposal"
+    plan = "plan"
+    order = "order"
+    option = "option"
 
 
 class CarePlanSubjectReferenceType(str, Enum):
@@ -80,15 +80,15 @@ class CarePlanActivityReferenceType(str, Enum):
 
 
 class CarePlanDetailActivityStatus(str, Enum):
-    NOT_STARTED = "not-started"
-    SCHEDULED = "scheduled"
-    IN_PROGRESS = "in-progress"
-    ON_HOLD = "on-hold"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
-    STOPPED = "stopped"
-    UNKNOWN = "unknown"
-    ENTERED_IN_ERROR = "entered-in-error"
+    not_started = "not-started"
+    scheduled = "scheduled"
+    in_progress = "in-progress"
+    on_hold = "on-hold"
+    completed = "completed"
+    cancelled = "cancelled"
+    stopped = "stopped"
+    unknown = "unknown"
+    entered_in_error = "entered-in-error"
 
 
 class CarePlanDetailLocationReferenceType(str, Enum):

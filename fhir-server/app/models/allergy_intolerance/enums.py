@@ -4,33 +4,33 @@ from enum import Enum
 class AllergyIntoleranceType(str, Enum):
     """FHIR R4 AllergyIntolerance.type — allergy | intolerance."""
 
-    ALLERGY = "allergy"
-    INTOLERANCE = "intolerance"
+    allergy = "allergy"
+    intolerance = "intolerance"
 
 
 class AllergyIntoleranceCriticality(str, Enum):
     """FHIR R4 AllergyIntolerance.criticality."""
 
-    LOW = "low"
-    HIGH = "high"
-    UNABLE_TO_ASSESS = "unable-to-assess"
+    low = "low"
+    high = "high"
+    unable_to_assess = "unable-to-assess"
 
 
 class AllergyIntoleranceCategoryCode(str, Enum):
     """Allowed values for AllergyIntolerance.category[]."""
 
-    FOOD = "food"
-    MEDICATION = "medication"
-    ENVIRONMENT = "environment"
-    BIOLOGIC = "biologic"
+    food = "food"
+    medication = "medication"
+    environment = "environment"
+    biologic = "biologic"
 
 
 class AllergyIntoleranceReactionSeverity(str, Enum):
     """FHIR R4 AllergyIntolerance.reaction.severity."""
 
-    MILD = "mild"
-    MODERATE = "moderate"
-    SEVERE = "severe"
+    mild = "mild"
+    moderate = "moderate"
+    severe = "severe"
 
 
 class AllergyIntolerancePatientReferenceType(str, Enum):

@@ -2,16 +2,16 @@ from enum import Enum
 
 
 class ClaimStatus(str, Enum):
-    ACTIVE = "active"
-    CANCELLED = "cancelled"
-    DRAFT = "draft"
-    ENTERED_IN_ERROR = "entered-in-error"
+    active = "active"
+    cancelled = "cancelled"
+    draft = "draft"
+    entered_in_error = "entered-in-error"
 
 
 class ClaimUse(str, Enum):
-    CLAIM = "claim"
-    PREAUTHORIZATION = "preauthorization"
-    PREDETERMINATION = "predetermination"
+    claim = "claim"
+    preauthorization = "preauthorization"
+    predetermination = "predetermination"
 
 
 class ClaimPatientReferenceType(str, Enum):

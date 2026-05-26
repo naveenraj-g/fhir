@@ -2,23 +2,23 @@ from enum import Enum
 
 
 class ClaimResponseStatus(str, Enum):
-    ACTIVE = "active"
-    CANCELLED = "cancelled"
-    DRAFT = "draft"
-    ENTERED_IN_ERROR = "entered-in-error"
+    active = "active"
+    cancelled = "cancelled"
+    draft = "draft"
+    entered_in_error = "entered-in-error"
 
 
 class ClaimResponseUse(str, Enum):
-    CLAIM = "claim"
-    PREAUTHORIZATION = "preauthorization"
-    PREDETERMINATION = "predetermination"
+    claim = "claim"
+    preauthorization = "preauthorization"
+    predetermination = "predetermination"
 
 
 class ClaimResponseOutcome(str, Enum):
-    QUEUED = "queued"
-    COMPLETE = "complete"
-    ERROR = "error"
-    PARTIAL = "partial"
+    queued = "queued"
+    complete = "complete"
+    error = "error"
+    partial = "partial"
 
 
 class ClaimResponsePatientReferenceType(str, Enum):

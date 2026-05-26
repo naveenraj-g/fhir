@@ -4,36 +4,36 @@ from enum import Enum
 class MedicationRequestStatus(str, Enum):
     """FHIR R4 MedicationRequest status value set."""
 
-    ACTIVE = "active"
-    ON_HOLD = "on-hold"
-    CANCELLED = "cancelled"
-    COMPLETED = "completed"
-    ENTERED_IN_ERROR = "entered-in-error"
-    STOPPED = "stopped"
-    DRAFT = "draft"
-    UNKNOWN = "unknown"
+    active = "active"
+    on_hold = "on-hold"
+    cancelled = "cancelled"
+    completed = "completed"
+    entered_in_error = "entered-in-error"
+    stopped = "stopped"
+    draft = "draft"
+    unknown = "unknown"
 
 
 class MedicationRequestIntent(str, Enum):
     """FHIR R4 MedicationRequest intent value set."""
 
-    PROPOSAL = "proposal"
-    PLAN = "plan"
-    ORDER = "order"
-    ORIGINAL_ORDER = "original-order"
-    REFLEX_ORDER = "reflex-order"
-    FILLER_ORDER = "filler-order"
-    INSTANCE_ORDER = "instance-order"
-    OPTION = "option"
+    proposal = "proposal"
+    plan = "plan"
+    order = "order"
+    original_order = "original-order"
+    reflex_order = "reflex-order"
+    filler_order = "filler-order"
+    instance_order = "instance-order"
+    option = "option"
 
 
 class MedicationRequestPriority(str, Enum):
     """FHIR R4 request priority value set."""
 
-    ROUTINE = "routine"
-    URGENT = "urgent"
-    ASAP = "asap"
-    STAT = "stat"
+    routine = "routine"
+    urgent = "urgent"
+    asap = "asap"
+    stat = "stat"
 
 
 class MedicationSubjectType(str, Enum):

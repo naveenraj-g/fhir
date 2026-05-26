@@ -2,16 +2,16 @@ from enum import Enum
 
 
 class DocumentReferenceStatus(str, Enum):
-    CURRENT = "current"
-    SUPERSEDED = "superseded"
-    ENTERED_IN_ERROR = "entered-in-error"
+    current = "current"
+    superseded = "superseded"
+    entered_in_error = "entered-in-error"
 
 
 class DocumentReferenceDocStatus(str, Enum):
-    PRELIMINARY = "preliminary"
-    FINAL = "final"
-    AMENDED = "amended"
-    ENTERED_IN_ERROR = "entered-in-error"
+    preliminary = "preliminary"
+    final = "final"
+    amended = "amended"
+    entered_in_error = "entered-in-error"
 
 
 class DocumentReferenceSubjectReferenceType(str, Enum):
@@ -45,10 +45,10 @@ class DocumentReferenceAuthorReferenceType(str, Enum):
 class DocumentReferenceRelatesToCode(str, Enum):
     """Relationship code for DocumentReference.relatesTo.code."""
 
-    REPLACES = "replaces"
-    TRANSFORMS = "transforms"
-    SIGNS = "signs"
-    APPENDS = "appends"
+    replaces = "replaces"
+    transforms = "transforms"
+    signs = "signs"
+    appends = "appends"
 
 
 class DocumentReferenceRelatesToTargetType(str, Enum):

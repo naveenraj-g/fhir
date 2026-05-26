@@ -4,10 +4,10 @@ from enum import Enum
 class CoverageStatus(str, Enum):
     """FHIR R4 Coverage.status value set (FM Status — Required)."""
 
-    ACTIVE = "active"
-    CANCELLED = "cancelled"
-    DRAFT = "draft"
-    ENTERED_IN_ERROR = "entered-in-error"
+    active = "active"
+    cancelled = "cancelled"
+    draft = "draft"
+    entered_in_error = "entered-in-error"
 
 
 class CoveragePolicyHolderReferenceType(str, Enum):
