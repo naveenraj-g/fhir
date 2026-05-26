@@ -12,7 +12,9 @@ from app.schemas.practitioner_role import PractitionerRoleCreateSchema, Practiti
 from app.schemas.practitioner_role.response import (
     FHIRPractitionerRoleSchema,
     FHIRPractitionerRoleBundle,
+    FHIRPractitionerBookingBundle,
     PaginatedPractitionerRoleResponse,
+    PaginatedPractitionerBookingResponse,
     PlainPractitionerRoleResponse,
 )
 from app.services.practitioner_role_service import PractitionerRoleService
@@ -46,6 +48,15 @@ _LIST_200 = {
         "content": {
             "application/json": {"schema": inline_schema(PaginatedPractitionerRoleResponse.model_json_schema())},
             "application/fhir+json": {"schema": inline_schema(FHIRPractitionerRoleBundle.model_json_schema())},
+        },
+    }
+}
+_BOOKING_LIST_200 = {
+    200: {
+        "description": "Paginated list of practitioners for appointment booking",
+        "content": {
+            "application/json": {"schema": inline_schema(PaginatedPractitionerBookingResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIRPractitionerBookingBundle.model_json_schema())},
         },
     }
 }
@@ -124,6 +135,56 @@ async def get_my_practitioner_roles(
         [pr_service._to_plain(p) for p in items],
         total, limit, offset, request,
     )
+
+
+# ── Booking directory ─────────────────────────────────────────────────────────
+# Must be declared before /{practitioner_role_id} to avoid routing conflicts.
+
+
+@router.get(
+    "/booking",
+    dependencies=[Depends(require_permission("practitioner_role", "read"))],
+    operation_id="list_practitioner_roles_for_booking",
+    summary="List practitioners available for appointment booking",
+    description=(
+        "Returns active PractitionerRole resources enriched with the linked Practitioner's name, "
+        "gender, photo, and qualifications. Includes specialty, availability schedule "
+        "(availableTime / notAvailableTime), location, and healthcare services — everything a "
+        "booking UI needs in one call. "
+        "Scoped to the caller's organization via JWT `activeOrganizationId`. "
+        "Filter by `specialty_code` (SNOMED code) and/or `day_of_week` (mon/tue/wed/thu/fri/sat/sun). "
+        "FHIR response embeds the Practitioner as a `contained` resource referenced by `#pr`. "
+        + _CONTENT_NEG
+    ),
+    responses={**_BOOKING_LIST_200, **_ERR_AUTH},
+)
+async def list_practitioner_roles_for_booking(
+    request: Request,
+    specialty_code: Optional[str] = Query(
+        None,
+        description="Filter by SNOMED specialty code, e.g. '394814009' (General Practice).",
+    ),
+    day_of_week: Optional[str] = Query(
+        None,
+        description="Filter by available day: mon | tue | wed | thu | fri | sat | sun.",
+    ),
+    active: bool = Query(True, description="Filter by active status (default: true)."),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
+):
+    org_id: str = request.state.user.get("activeOrganizationId")
+    items, total = await pr_service.list_for_booking(
+        org_id=org_id,
+        active=active,
+        specialty_code=specialty_code,
+        day_of_week=day_of_week,
+        limit=limit,
+        offset=offset,
+    )
+    fhir_items = [pr_service._to_fhir_booking(p) for p in items]
+    plain_items = [pr_service._to_plain_booking(p) for p in items]
+    return format_paginated_response(fhir_items, plain_items, total, limit, offset, request)
 
 
 # ── Get PractitionerRole by public practitioner_role_id ───────────────────────

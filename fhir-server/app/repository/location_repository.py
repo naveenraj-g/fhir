@@ -195,13 +195,13 @@ class LocationRepository:
                 user_id=user_id,
                 org_id=org_id,
                 created_by=created_by,
-                status=status_enum,
+                status=status_enum.value if status_enum else None,
                 operational_status_system=payload.operational_status_system,
                 operational_status_code=payload.operational_status_code,
                 operational_status_display=payload.operational_status_display,
                 name=payload.name,
                 description=payload.description,
-                mode=mode_enum,
+                mode=mode_enum.value if mode_enum else None,
                 address_use=payload.address_use,
                 address_type=payload.address_type,
                 address_text=payload.address_text,
@@ -306,7 +306,7 @@ class LocationRepository:
             for field, value in updates.items():
                 if field == "status" and value is not None:
                     try:
-                        setattr(location, field, LocationStatus(value))
+                        setattr(location, field, LocationStatus(value).value)
                     except ValueError:
                         raise HTTPException(
                             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -314,7 +314,7 @@ class LocationRepository:
                         )
                 elif field == "mode" and value is not None:
                     try:
-                        setattr(location, field, LocationMode(value))
+                        setattr(location, field, LocationMode(value).value)
                     except ValueError:
                         raise HTTPException(
                             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,

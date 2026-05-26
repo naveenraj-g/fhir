@@ -227,7 +227,7 @@ class ProcedureRepository:
                 user_id=user_id,
                 org_id=org_id,
                 created_by=created_by,
-                status=ProcedureStatus(payload.status),
+                status=ProcedureStatus(payload.status).value,
                 status_reason_system=payload.status_reason_system,
                 status_reason_code=payload.status_reason_code,
                 status_reason_display=payload.status_reason_display,
@@ -446,7 +446,7 @@ class ProcedureRepository:
                 if list_field in updates and updates[list_field] is not None:
                     updates[list_field] = ",".join(updates[list_field])
             if "status" in updates and updates["status"] is not None:
-                updates["status"] = ProcedureStatus(updates["status"])
+                updates["status"] = ProcedureStatus(updates["status"]).value
 
             for field, value in updates.items():
                 setattr(proc, field, value)

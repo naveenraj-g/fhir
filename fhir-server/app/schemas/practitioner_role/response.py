@@ -277,3 +277,33 @@ class PaginatedPractitionerRoleResponse(BaseModel):
     limit: int
     offset: int
     data: List[PlainPractitionerRoleResponse]
+
+
+# ── Booking directory schemas ──────────────────────────────────────────────────
+
+
+class FHIRPractitionerBookingBundleEntry(BaseModel):
+    resource: Dict[str, Any]
+
+
+class FHIRPractitionerBookingBundle(FHIRBundle):
+    entry: Optional[List[FHIRPractitionerBookingBundleEntry]] = None
+
+
+class PlainPractitionerDetail(BaseModel):
+    id: int
+    gender: Optional[str] = None
+    name: Optional[Dict[str, Any]] = None
+    qualifications: Optional[List[Dict[str, Any]]] = None
+    photo_url: Optional[str] = None
+
+
+class PlainPractitionerBookingItem(PlainPractitionerRoleResponse):
+    practitioner_detail: Optional[PlainPractitionerDetail] = None
+
+
+class PaginatedPractitionerBookingResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    data: List[PlainPractitionerBookingItem]

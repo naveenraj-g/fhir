@@ -268,7 +268,7 @@ class ObservationRepository:
                 user_id=user_id,
                 org_id=org_id,
                 created_by=created_by,
-                status=ObservationStatus(payload.status),
+                status=ObservationStatus(payload.status).value,
                 code_system=payload.code_system,
                 code_code=payload.code_code,
                 code_display=payload.code_display,
@@ -529,7 +529,7 @@ class ObservationRepository:
 
             for field, value in payload.model_dump(exclude_unset=True).items():
                 if field == "status" and value is not None:
-                    setattr(obs, field, ObservationStatus(value))
+                    setattr(obs, field, ObservationStatus(value).value)
                 else:
                     setattr(obs, field, value)
 

@@ -239,7 +239,7 @@ class MedicationRepository:
             for field, value in updates.items():
                 if field == "status" and value is not None:
                     try:
-                        setattr(medication, field, MedicationStatus(value))
+                        setattr(medication, field, MedicationStatus(value).value)
                     except ValueError:
                         raise HTTPException(
                             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,

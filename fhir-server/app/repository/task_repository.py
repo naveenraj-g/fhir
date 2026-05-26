@@ -104,11 +104,11 @@ def _parse_ref_open_optional(ref: Optional[str], field: str):
     return _parse_ref_open(ref, field)
 
 
-def _cast_status(v) -> Optional[TaskStatus]:
+def _cast_status(v) -> Optional[str]:
     if v is None:
         return None
     try:
-        return TaskStatus(v)
+        return TaskStatus(v).value
     except ValueError:
         allowed = [e.value for e in TaskStatus]
         raise HTTPException(
@@ -117,11 +117,11 @@ def _cast_status(v) -> Optional[TaskStatus]:
         )
 
 
-def _cast_intent(v) -> Optional[TaskIntent]:
+def _cast_intent(v) -> Optional[str]:
     if v is None:
         return None
     try:
-        return TaskIntent(v)
+        return TaskIntent(v).value
     except ValueError:
         allowed = [e.value for e in TaskIntent]
         raise HTTPException(
@@ -130,11 +130,11 @@ def _cast_intent(v) -> Optional[TaskIntent]:
         )
 
 
-def _cast_priority(v) -> Optional[TaskPriority]:
+def _cast_priority(v) -> Optional[str]:
     if v is None:
         return None
     try:
-        return TaskPriority(v)
+        return TaskPriority(v).value
     except ValueError:
         allowed = [e.value for e in TaskPriority]
         raise HTTPException(

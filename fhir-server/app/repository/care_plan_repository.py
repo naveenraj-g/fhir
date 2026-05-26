@@ -129,11 +129,11 @@ def _parse_ref_open_opt(ref: Optional[str], field: str):
     return _parse_ref_open(ref, field)
 
 
-def _cast_status(v) -> Optional[CarePlanStatus]:
+def _cast_status(v) -> Optional[str]:
     if v is None:
         return None
     try:
-        return CarePlanStatus(v)
+        return CarePlanStatus(v).value
     except ValueError:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -141,11 +141,11 @@ def _cast_status(v) -> Optional[CarePlanStatus]:
         )
 
 
-def _cast_intent(v) -> Optional[CarePlanIntent]:
+def _cast_intent(v) -> Optional[str]:
     if v is None:
         return None
     try:
-        return CarePlanIntent(v)
+        return CarePlanIntent(v).value
     except ValueError:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -153,11 +153,11 @@ def _cast_intent(v) -> Optional[CarePlanIntent]:
         )
 
 
-def _cast_detail_status(v) -> Optional[CarePlanDetailActivityStatus]:
+def _cast_detail_status(v) -> Optional[str]:
     if v is None:
         return None
     try:
-        return CarePlanDetailActivityStatus(v)
+        return CarePlanDetailActivityStatus(v).value
     except ValueError:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,

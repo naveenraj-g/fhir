@@ -276,9 +276,9 @@ class ClaimResponseRepository:
                 user_id=user_id,
                 org_id=org_id,
                 created_by=created_by,
-                status=ClaimResponseStatus(data.status),
-                use=ClaimResponseUse(data.use),
-                outcome=ClaimResponseOutcome(data.outcome),
+                status=ClaimResponseStatus(data.status).value,
+                use=ClaimResponseUse(data.use).value,
+                outcome=ClaimResponseOutcome(data.outcome).value,
                 created=data.created,
                 type_system=data.type_system,
                 type_code=data.type_code,
@@ -772,11 +772,11 @@ class ClaimResponseRepository:
             updates = data.model_dump(exclude_unset=True)
             for field, value in updates.items():
                 if field == "status" and value is not None:
-                    value = ClaimResponseStatus(value)
+                    value = ClaimResponseStatus(value).value
                 elif field == "use" and value is not None:
-                    value = ClaimResponseUse(value)
+                    value = ClaimResponseUse(value).value
                 elif field == "outcome" and value is not None:
-                    value = ClaimResponseOutcome(value)
+                    value = ClaimResponseOutcome(value).value
                 setattr(db_model, field, value)
             db_model.updated_by = updated_by
 

@@ -276,7 +276,7 @@ class CoverageRepository:
             for field, value in updates.items():
                 if field == "status" and value is not None:
                     try:
-                        setattr(coverage, field, CoverageStatus(value))
+                        setattr(coverage, field, CoverageStatus(value).value)
                     except ValueError:
                         raise HTTPException(
                             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,

@@ -1,13 +1,19 @@
 from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status as http_status
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.models.enums import OrganizationReferenceType
-from app.models.practitioner.practitioner import PractitionerModel
+from app.models.practitioner.practitioner import (
+    PractitionerModel,
+    PractitionerName,
+    PractitionerQualification,
+    PractitionerTelecom,
+    PractitionerPhoto,
+)
 from app.models.practitioner_role.enums import (
     PractitionerRoleEndpointReferenceType,
     PractitionerRoleHealthcareServiceReferenceType,
@@ -50,6 +56,31 @@ def _with_relationships(stmt):
         selectinload(PractitionerRoleModel.availabilities).selectinload(PractitionerRoleAvailability.available_times),
         selectinload(PractitionerRoleModel.availabilities).selectinload(PractitionerRoleAvailability.not_available_times),
         selectinload(PractitionerRoleModel.endpoints),
+    )
+
+
+def _with_booking_relationships(stmt):
+    """Extends _with_relationships to also eager-load all linked Practitioner sub-resources."""
+    return stmt.options(
+        selectinload(PractitionerRoleModel.identifiers),
+        selectinload(PractitionerRoleModel.codes),
+        selectinload(PractitionerRoleModel.specialties),
+        selectinload(PractitionerRoleModel.locations),
+        selectinload(PractitionerRoleModel.healthcare_services),
+        selectinload(PractitionerRoleModel.characteristics),
+        selectinload(PractitionerRoleModel.communications),
+        selectinload(PractitionerRoleModel.contacts).selectinload(PractitionerRoleContact.names),
+        selectinload(PractitionerRoleModel.contacts).selectinload(PractitionerRoleContact.telecoms),
+        selectinload(PractitionerRoleModel.availabilities).selectinload(PractitionerRoleAvailability.available_times),
+        selectinload(PractitionerRoleModel.availabilities).selectinload(PractitionerRoleAvailability.not_available_times),
+        selectinload(PractitionerRoleModel.endpoints),
+        selectinload(PractitionerRoleModel.practitioner).selectinload(PractitionerModel.names),
+        selectinload(PractitionerRoleModel.practitioner).selectinload(PractitionerModel.identifiers),
+        selectinload(PractitionerRoleModel.practitioner).selectinload(PractitionerModel.telecoms),
+        selectinload(PractitionerRoleModel.practitioner).selectinload(PractitionerModel.addresses),
+        selectinload(PractitionerRoleModel.practitioner).selectinload(PractitionerModel.photos),
+        selectinload(PractitionerRoleModel.practitioner).selectinload(PractitionerModel.qualifications).selectinload(PractitionerQualification.identifiers),
+        selectinload(PractitionerRoleModel.practitioner).selectinload(PractitionerModel.communications),
     )
 
 
@@ -158,6 +189,57 @@ class PractitionerRoleRepository:
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
                 base.order_by(PractitionerRoleModel.practitioner_role_id.desc())
+                    .offset(offset).limit(limit)
+            )).scalars().all())
+        return rows, total
+
+    async def list_for_booking(
+        self,
+        org_id: Optional[str] = None,
+        active: Optional[bool] = True,
+        specialty_code: Optional[str] = None,
+        day_of_week: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[PractitionerRoleModel], int]:
+        async with self.session_factory() as session:
+            base = _with_booking_relationships(select(PractitionerRoleModel))
+            count_base = select(func.count()).select_from(PractitionerRoleModel)
+
+            if org_id:
+                base = base.where(PractitionerRoleModel.org_id == org_id)
+                count_base = count_base.where(PractitionerRoleModel.org_id == org_id)
+            if active is not None:
+                base = base.where(PractitionerRoleModel.active == active)
+                count_base = count_base.where(PractitionerRoleModel.active == active)
+            if specialty_code:
+                sp_sub = (
+                    select(PractitionerRoleSpecialty.practitioner_role_id)
+                    .where(PractitionerRoleSpecialty.coding_code == specialty_code)
+                    .scalar_subquery()
+                )
+                base = base.where(PractitionerRoleModel.id.in_(sp_sub))
+                count_base = count_base.where(PractitionerRoleModel.id.in_(sp_sub))
+            if day_of_week:
+                avt_sub = (
+                    select(PractitionerRoleAvailabilityTime.availability_id)
+                    .where(or_(
+                        PractitionerRoleAvailabilityTime.days_of_week.contains(day_of_week),
+                        PractitionerRoleAvailabilityTime.all_day == True,  # noqa: E712
+                    ))
+                    .scalar_subquery()
+                )
+                av_sub = (
+                    select(PractitionerRoleAvailability.practitioner_role_id)
+                    .where(PractitionerRoleAvailability.id.in_(avt_sub))
+                    .scalar_subquery()
+                )
+                base = base.where(PractitionerRoleModel.id.in_(av_sub))
+                count_base = count_base.where(PractitionerRoleModel.id.in_(av_sub))
+
+            total = (await session.execute(count_base)).scalar_one()
+            rows = list((await session.execute(
+                base.order_by(PractitionerRoleModel.practitioner_role_id)
                     .offset(offset).limit(limit)
             )).scalars().all())
         return rows, total

@@ -290,7 +290,7 @@ class InvoiceRepository:
             for field, value in updates.items():
                 if field == "status" and value is not None:
                     try:
-                        setattr(invoice, field, InvoiceStatus(value))
+                        setattr(invoice, field, InvoiceStatus(value).value)
                     except ValueError:
                         raise HTTPException(
                             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,

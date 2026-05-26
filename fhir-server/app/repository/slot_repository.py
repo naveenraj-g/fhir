@@ -158,7 +158,7 @@ class SlotRepository:
                 schedule_type=sched_type,
                 schedule_fk_id=sched_row.id,
                 schedule_display=payload.schedule_display,
-                status=SlotStatus(payload.status),
+                status=SlotStatus(payload.status).value,
                 start=payload.start,
                 end=payload.end,
                 overbooked=payload.overbooked,
@@ -226,7 +226,7 @@ class SlotRepository:
 
             updates = payload.model_dump(exclude_unset=True)
             if "status" in updates:
-                updates["status"] = SlotStatus(updates["status"])
+                updates["status"] = SlotStatus(updates["status"]).value
 
             for field, value in updates.items():
                 setattr(slot, field, value)

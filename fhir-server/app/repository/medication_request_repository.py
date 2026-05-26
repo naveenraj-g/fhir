@@ -278,9 +278,9 @@ class MedicationRequestRepository:
                 user_id=user_id,
                 org_id=org_id,
                 created_by=created_by,
-                status=MedicationRequestStatus(payload.status),
-                intent=MedicationRequestIntent(payload.intent),
-                priority=MedicationRequestPriority(payload.priority) if payload.priority else None,
+                status=MedicationRequestStatus(payload.status).value,
+                intent=MedicationRequestIntent(payload.intent).value,
+                priority=MedicationRequestPriority(payload.priority).value if payload.priority else None,
                 do_not_perform=payload.do_not_perform,
                 status_reason_system=payload.status_reason_system,
                 status_reason_code=payload.status_reason_code,
@@ -613,11 +613,11 @@ class MedicationRequestRepository:
 
             for field, value in payload.model_dump(exclude_unset=True).items():
                 if field == "status" and value is not None:
-                    setattr(mr, field, MedicationRequestStatus(value))
+                    setattr(mr, field, MedicationRequestStatus(value).value)
                 elif field == "intent" and value is not None:
-                    setattr(mr, field, MedicationRequestIntent(value))
+                    setattr(mr, field, MedicationRequestIntent(value).value)
                 elif field == "priority" and value is not None:
-                    setattr(mr, field, MedicationRequestPriority(value))
+                    setattr(mr, field, MedicationRequestPriority(value).value)
                 else:
                     setattr(mr, field, value)
 

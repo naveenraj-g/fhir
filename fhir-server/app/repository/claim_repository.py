@@ -209,8 +209,8 @@ class ClaimRepository:
                 user_id=user_id,
                 org_id=org_id,
                 created_by=created_by,
-                status=ClaimStatus(payload.status),
-                use=ClaimUse(payload.use),
+                status=ClaimStatus(payload.status).value,
+                use=ClaimUse(payload.use).value,
                 created=payload.created,
                 type_system=payload.type_system,
                 type_code=payload.type_code,
@@ -633,9 +633,9 @@ class ClaimRepository:
             updates = payload.model_dump(exclude_unset=True)
             for field, value in updates.items():
                 if field == "status" and value is not None:
-                    setattr(claim, field, ClaimStatus(value))
+                    setattr(claim, field, ClaimStatus(value).value)
                 elif field == "use" and value is not None:
-                    setattr(claim, field, ClaimUse(value))
+                    setattr(claim, field, ClaimUse(value).value)
                 else:
                     setattr(claim, field, value)
             claim.updated_by = updated_by
