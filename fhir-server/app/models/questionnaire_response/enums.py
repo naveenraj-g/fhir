@@ -10,27 +10,27 @@ class QuestionnaireResponseStatus(str, Enum):
 
 
 class QuestionnaireResponseAuthorReferenceType(str, Enum):
-    DEVICE = "Device"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    ORGANIZATION = "Organization"
+    Device = "Device"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Organization = "Organization"
 
 
 class QuestionnaireResponseSourceReferenceType(str, Enum):
     """R4 allowed types for QuestionnaireResponse.source."""
-    PATIENT = "Patient"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    RELATED_PERSON = "RelatedPerson"
+    Patient = "Patient"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    RelatedPerson = "RelatedPerson"
 
 
 class QRBasedOnReferenceType(str, Enum):
-    CARE_PLAN = "CarePlan"
-    SERVICE_REQUEST = "ServiceRequest"
+    CarePlan = "CarePlan"
+    ServiceRequest = "ServiceRequest"
 
 
 class QRPartOfReferenceType(str, Enum):
-    OBSERVATION = "Observation"
-    PROCEDURE = "Procedure"
+    Observation = "Observation"
+    Procedure = "Procedure"

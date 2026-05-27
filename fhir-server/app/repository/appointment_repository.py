@@ -146,7 +146,7 @@ class AppointmentRepository:
             stmt = stmt.where(AppointmentModel.status == status)
         if patient_id is not None:
             stmt = stmt.where(
-                AppointmentModel.subject_type == SubjectReferenceType.PATIENT,
+                AppointmentModel.subject_type == SubjectReferenceType.Patient,
                 AppointmentModel.subject_id == patient_id,
             )
         if start_from is not None:

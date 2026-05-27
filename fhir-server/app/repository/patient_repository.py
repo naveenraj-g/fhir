@@ -36,7 +36,7 @@ from app.schemas.resources import (
 
 
 def _parse_org_ref(ref: str) -> tuple:
-    """Parse 'Organization/123' → (OrganizationReferenceType.ORGANIZATION, 123)."""
+    """Parse 'Organization/123' → (OrganizationReferenceType.Organization, 123)."""
     parts = ref.split("/", 1)
     if len(parts) != 2:
         raise HTTPException(

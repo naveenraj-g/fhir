@@ -22,76 +22,76 @@ class AppointmentParticipantStatus(str, Enum):
 
 
 class AppointmentParticipantActorType(str, Enum):
-    PATIENT = "Patient"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    RELATED_PERSON = "RelatedPerson"
-    DEVICE = "Device"
-    HEALTHCARE_SERVICE = "HealthcareService"
-    LOCATION = "Location"
-    GROUP = "Group"
-    CARE_TEAM = "CareTeam"
+    Patient = "Patient"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    RelatedPerson = "RelatedPerson"
+    Device = "Device"
+    HealthcareService = "HealthcareService"
+    Location = "Location"
+    Group = "Group"
+    CareTeam = "CareTeam"
 
 
 class AppointmentReasonReferenceType(str, Enum):
     """Allowed reference types for Appointment.reason.reference (CodeableReference)."""
 
-    CONDITION = "Condition"
-    PROCEDURE = "Procedure"
-    OBSERVATION = "Observation"
-    IMMUNIZATION_RECOMMENDATION = "ImmunizationRecommendation"
-    DIAGNOSTIC_REPORT = "DiagnosticReport"
+    Condition = "Condition"
+    Procedure = "Procedure"
+    Observation = "Observation"
+    ImmunizationRecommendation = "ImmunizationRecommendation"
+    DiagnosticReport = "DiagnosticReport"
 
 
 class AppointmentNoteAuthorReferenceType(str, Enum):
     """Allowed reference types for Appointment.note.author[x] (Annotation.authorReference)."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    ORGANIZATION = "Organization"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Organization = "Organization"
 
 
 class AppointmentPatientInstructionReferenceType(str, Enum):
     """Allowed reference types for Appointment.patientInstruction.reference (CodeableReference)."""
 
-    DOCUMENT_REFERENCE = "DocumentReference"
-    BINARY = "Binary"
-    COMMUNICATION = "Communication"
+    DocumentReference = "DocumentReference"
+    Binary = "Binary"
+    Communication = "Communication"
 
 
 class AppointmentReplacesReferenceType(str, Enum):
     """Allowed reference types for Appointment.replaces[]."""
 
-    APPOINTMENT = "Appointment"
+    Appointment = "Appointment"
 
 
 class AppointmentSlotReferenceType(str, Enum):
     """Allowed reference types for Appointment.slot[]."""
 
-    SLOT = "Slot"
+    Slot = "Slot"
 
 
 class AppointmentAccountReferenceType(str, Enum):
     """Allowed reference types for Appointment.account[]."""
 
-    ACCOUNT = "Account"
+    Account = "Account"
 
 
 class AppointmentServiceTypeReferenceType(str, Enum):
     """Allowed reference types for Appointment.serviceType.reference (CodeableReference)."""
 
-    HEALTHCARE_SERVICE = "HealthcareService"
+    HealthcareService = "HealthcareService"
 
 
 class AppointmentBasedOnReferenceType(str, Enum):
     """Allowed reference types for Appointment.basedOn (Reference)."""
 
-    CARE_PLAN = "CarePlan"
-    DEVICE_REQUEST = "DeviceRequest"
-    MEDICATION_REQUEST = "MedicationRequest"
-    SERVICE_REQUEST = "ServiceRequest"
-    REQUEST_ORCHESTRATION = "RequestOrchestration"
-    NUTRITION_ORDER = "NutritionOrder"
-    VISION_PRESCRIPTION = "VisionPrescription"
+    CarePlan = "CarePlan"
+    DeviceRequest = "DeviceRequest"
+    MedicationRequest = "MedicationRequest"
+    ServiceRequest = "ServiceRequest"
+    RequestOrchestration = "RequestOrchestration"
+    NutritionOrder = "NutritionOrder"
+    VisionPrescription = "VisionPrescription"

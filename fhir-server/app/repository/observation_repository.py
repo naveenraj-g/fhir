@@ -165,7 +165,7 @@ class ObservationRepository:
             stmt = stmt.where(ObservationModel.status == ObservationStatus(obs_status))
         if patient_id is not None:
             stmt = stmt.where(
-                ObservationModel.subject_type == ObservationSubjectReferenceType.PATIENT,
+                ObservationModel.subject_type == ObservationSubjectReferenceType.Patient,
                 ObservationModel.subject_id == patient_id,
             )
         if effective_from is not None:

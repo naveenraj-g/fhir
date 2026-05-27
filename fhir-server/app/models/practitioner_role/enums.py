@@ -14,16 +14,16 @@ class DayOfWeek(str, Enum):
 class PractitionerRoleLocationReferenceType(str, Enum):
     """Allowed reference types for PractitionerRole.location[]."""
 
-    LOCATION = "Location"
+    Location = "Location"
 
 
 class PractitionerRoleHealthcareServiceReferenceType(str, Enum):
     """Allowed reference types for PractitionerRole.healthcareService[]."""
 
-    HEALTHCARE_SERVICE = "HealthcareService"
+    HealthcareService = "HealthcareService"
 
 
 class PractitionerRoleEndpointReferenceType(str, Enum):
     """Allowed reference types for PractitionerRole.endpoint[]."""
 
-    ENDPOINT = "Endpoint"
+    Endpoint = "Endpoint"

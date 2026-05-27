@@ -126,7 +126,7 @@ class ConditionRepository:
             stmt = stmt.where(ConditionModel.clinical_status_code == clinical_status)
         if patient_id is not None:
             stmt = stmt.where(
-                ConditionModel.subject_type == ConditionSubjectType.PATIENT,
+                ConditionModel.subject_type == ConditionSubjectType.Patient,
                 ConditionModel.subject_id == patient_id,
             )
         if recorded_from is not None:
@@ -224,7 +224,7 @@ class ConditionRepository:
                 subject_type=subject_type,
                 subject_id=subject_id,
                 subject_display=payload.subject_display,
-                encounter_type=EncounterReferenceType.ENCOUNTER if internal_encounter_id else None,
+                encounter_type=EncounterReferenceType.Encounter if internal_encounter_id else None,
                 encounter_id=internal_encounter_id,
                 encounter_display=payload.encounter_display,
                 onset_datetime=payload.onset_datetime,

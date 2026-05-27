@@ -309,7 +309,7 @@ class ImmunizationRepository:
             manufacturer_pk, manufacturer_type = None, None
             if data.manufacturer:
                 manufacturer_pk = await _resolve_manufacturer_pk(session, data.manufacturer, "manufacturer")
-                manufacturer_type = OrganizationReferenceType.ORGANIZATION
+                manufacturer_type = OrganizationReferenceType.Organization
 
             children = _build_children(data, data.org_id)
 
@@ -449,7 +449,7 @@ class ImmunizationRepository:
                 ref = updates.pop("manufacturer")
                 if ref:
                     pk = await _resolve_manufacturer_pk(session, ref, "manufacturer")
-                    db_model.manufacturer_type = OrganizationReferenceType.ORGANIZATION
+                    db_model.manufacturer_type = OrganizationReferenceType.Organization
                     db_model.manufacturer_id = pk
                 else:
                     db_model.manufacturer_type = None

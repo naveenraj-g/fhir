@@ -14,35 +14,35 @@ class EpisodeOfCareStatus(str, Enum):
 class EpisodeOfCarePatientReferenceType(str, Enum):
     """Allowed reference type for EpisodeOfCare.patient."""
 
-    PATIENT = "Patient"
+    Patient = "Patient"
 
 
 class EpisodeOfCareCareManagerReferenceType(str, Enum):
     """Allowed reference types for EpisodeOfCare.careManager."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
 
 
 class EpisodeOfCareDiagnosisReferenceType(str, Enum):
     """Allowed reference type for EpisodeOfCare.diagnosis.condition."""
 
-    CONDITION = "Condition"
+    Condition = "Condition"
 
 
 class EpisodeOfCareReferralRequestReferenceType(str, Enum):
     """Allowed reference type for EpisodeOfCare.referralRequest."""
 
-    SERVICE_REQUEST = "ServiceRequest"
+    ServiceRequest = "ServiceRequest"
 
 
 class EpisodeOfCareTeamReferenceType(str, Enum):
     """Allowed reference type for EpisodeOfCare.team."""
 
-    CARE_TEAM = "CareTeam"
+    CareTeam = "CareTeam"
 
 
 class EpisodeOfCareAccountReferenceType(str, Enum):
     """Allowed reference type for EpisodeOfCare.account."""
 
-    ACCOUNT = "Account"
+    Account = "Account"

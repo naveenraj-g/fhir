@@ -117,7 +117,7 @@ class ProcedureRepository:
             stmt = stmt.where(ProcedureModel.status == ProcedureStatus(proc_status))
         if patient_id is not None:
             stmt = stmt.where(
-                ProcedureModel.subject_type == ProcedureSubjectType.PATIENT,
+                ProcedureModel.subject_type == ProcedureSubjectType.Patient,
                 ProcedureModel.subject_id == patient_id,
             )
         if performed_from is not None:

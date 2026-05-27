@@ -21,7 +21,7 @@ def parse_reference(ref: str, enum_class: Type[E]) -> tuple[E, int]:
     Parse a FHIR reference string and validate the resource type against an enum.
 
     parse_reference("Patient/10001", SubjectReferenceType)
-    → (SubjectReferenceType.PATIENT, 10001)
+    → (SubjectReferenceType.Patient, 10001)
 
     Raises HTTP 422 on invalid format, unknown type, or non-integer id.
     """
@@ -63,7 +63,7 @@ async def resolve_subject(
     Raises HTTP 404 if the referenced resource does not exist (or is not owned by the caller).
     Raises HTTP 422 if the subject type is not yet supported.
     """
-    if subject_type == SubjectReferenceType.PATIENT:
+    if subject_type == SubjectReferenceType.Patient:
         if patient_service is None:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -77,7 +77,7 @@ async def resolve_subject(
             )
         return f"{patient.given_name or ''} {patient.family_name or ''}".strip()
 
-    elif subject_type == SubjectReferenceType.GROUP:
+    elif subject_type == SubjectReferenceType.Group:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Group subject references are not yet supported.",

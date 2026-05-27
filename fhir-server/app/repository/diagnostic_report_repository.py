@@ -109,7 +109,7 @@ class DiagnosticReportRepository:
             stmt = stmt.where(DiagnosticReportModel.status == DiagnosticReportStatus(dr_status))
         if patient_id is not None:
             stmt = stmt.where(
-                DiagnosticReportModel.subject_type == DiagnosticReportSubjectType.PATIENT,
+                DiagnosticReportModel.subject_type == DiagnosticReportSubjectType.Patient,
                 DiagnosticReportModel.subject_id == patient_id,
             )
         if issued_from is not None:
@@ -211,7 +211,7 @@ class DiagnosticReportRepository:
                 subject_type=subject_type,
                 subject_id=subject_id,
                 subject_display=payload.subject_display,
-                encounter_type=EncounterReferenceType.ENCOUNTER if internal_encounter_id else None,
+                encounter_type=EncounterReferenceType.Encounter if internal_encounter_id else None,
                 encounter_id=internal_encounter_id,
                 encounter_display=payload.encounter_display,
                 effective_datetime=payload.effective_datetime,

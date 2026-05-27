@@ -39,66 +39,66 @@ class DeviceRequestPriority(str, Enum):
 class DeviceRequestSubjectType(str, Enum):
     """Allowed subject reference types for DeviceRequest.subject."""
 
-    PATIENT = "Patient"
-    GROUP = "Group"
-    LOCATION = "Location"
-    DEVICE = "Device"
+    Patient = "Patient"
+    Group = "Group"
+    Location = "Location"
+    Device = "Device"
 
 
 class DeviceRequestRequesterType(str, Enum):
     """Allowed reference types for DeviceRequest.requester."""
 
-    DEVICE = "Device"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
+    Device = "Device"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
 
 
 class DeviceRequestPerformerReferenceType(str, Enum):
     """Allowed reference types for DeviceRequest.performer."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    CARE_TEAM = "CareTeam"
-    HEALTHCARE_SERVICE = "HealthcareService"
-    PATIENT = "Patient"
-    DEVICE = "Device"
-    RELATED_PERSON = "RelatedPerson"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    CareTeam = "CareTeam"
+    HealthcareService = "HealthcareService"
+    Patient = "Patient"
+    Device = "Device"
+    RelatedPerson = "RelatedPerson"
 
 
 class DeviceRequestCodeReferenceType(str, Enum):
     """Allowed reference types for DeviceRequest.codeReference."""
 
-    DEVICE = "Device"
+    Device = "Device"
 
 
 class DeviceRequestReasonReferenceType(str, Enum):
     """Allowed reference types for DeviceRequest.reasonReference[]."""
 
-    CONDITION = "Condition"
-    OBSERVATION = "Observation"
-    DIAGNOSTIC_REPORT = "DiagnosticReport"
-    DOCUMENT_REFERENCE = "DocumentReference"
+    Condition = "Condition"
+    Observation = "Observation"
+    DiagnosticReport = "DiagnosticReport"
+    DocumentReference = "DocumentReference"
 
 
 class DeviceRequestInsuranceReferenceType(str, Enum):
     """Allowed reference types for DeviceRequest.insurance[]."""
 
-    COVERAGE = "Coverage"
-    CLAIM_RESPONSE = "ClaimResponse"
+    Coverage = "Coverage"
+    ClaimResponse = "ClaimResponse"
 
 
 class DeviceRequestNoteAuthorReferenceType(str, Enum):
     """Allowed reference types for DeviceRequest.note[].author (Annotation.authorReference)."""
 
-    PRACTITIONER = "Practitioner"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    ORGANIZATION = "Organization"
+    Practitioner = "Practitioner"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Organization = "Organization"
 
 
 class DeviceRequestRelevantHistoryReferenceType(str, Enum):
     """Allowed reference types for DeviceRequest.relevantHistory[]."""
 
-    PROVENANCE = "Provenance"
+    Provenance = "Provenance"

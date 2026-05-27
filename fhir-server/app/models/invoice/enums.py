@@ -12,32 +12,32 @@ class InvoiceStatus(str, Enum):
 
 class InvoiceSubjectReferenceType(str, Enum):
     """Allowed reference types for Invoice.subject."""
-    PATIENT = "Patient"
-    GROUP = "Group"
+    Patient = "Patient"
+    Group = "Group"
 
 
 class InvoiceRecipientReferenceType(str, Enum):
     """Allowed reference types for Invoice.recipient."""
-    ORGANIZATION = "Organization"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
+    Organization = "Organization"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
 
 
 class InvoiceParticipantActorReferenceType(str, Enum):
     """Allowed reference types for Invoice.participant.actor."""
-    PRACTITIONER = "Practitioner"
-    ORGANIZATION = "Organization"
-    PATIENT = "Patient"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    DEVICE = "Device"
-    RELATED_PERSON = "RelatedPerson"
+    Practitioner = "Practitioner"
+    Organization = "Organization"
+    Patient = "Patient"
+    PractitionerRole = "PractitionerRole"
+    Device = "Device"
+    RelatedPerson = "RelatedPerson"
 
 
 class InvoiceAccountReferenceType(str, Enum):
     """Allowed reference types for Invoice.account."""
-    ACCOUNT = "Account"
+    Account = "Account"
 
 
 class InvoiceLineItemChargeItemReferenceType(str, Enum):
     """Allowed reference type for Invoice.lineItem.chargeItem[x] Reference variant."""
-    CHARGE_ITEM = "ChargeItem"
+    ChargeItem = "ChargeItem"

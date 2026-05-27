@@ -17,29 +17,29 @@ class DocumentReferenceDocStatus(str, Enum):
 class DocumentReferenceSubjectReferenceType(str, Enum):
     """Allowed reference types for DocumentReference.subject."""
 
-    PATIENT = "Patient"
-    PRACTITIONER = "Practitioner"
-    GROUP = "Group"
-    DEVICE = "Device"
+    Patient = "Patient"
+    Practitioner = "Practitioner"
+    Group = "Group"
+    Device = "Device"
 
 
 class DocumentReferenceAuthenticatorReferenceType(str, Enum):
     """Allowed reference types for DocumentReference.authenticator."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
 
 
 class DocumentReferenceAuthorReferenceType(str, Enum):
     """Allowed reference types for DocumentReference.author."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    DEVICE = "Device"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    Device = "Device"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
 
 
 class DocumentReferenceRelatesToCode(str, Enum):
@@ -54,17 +54,17 @@ class DocumentReferenceRelatesToCode(str, Enum):
 class DocumentReferenceRelatesToTargetType(str, Enum):
     """Allowed reference type for DocumentReference.relatesTo.target."""
 
-    DOCUMENT_REFERENCE = "DocumentReference"
+    DocumentReference = "DocumentReference"
 
 
 class DocumentReferenceContextEncounterType(str, Enum):
     """Allowed reference types for DocumentReference.context.encounter."""
 
-    ENCOUNTER = "Encounter"
-    EPISODE_OF_CARE = "EpisodeOfCare"
+    Encounter = "Encounter"
+    EpisodeOfCare = "EpisodeOfCare"
 
 
 class DocumentReferenceContextSourcePatientInfoType(str, Enum):
     """Allowed reference type for DocumentReference.context.sourcePatientInfo."""
 
-    PATIENT = "Patient"
+    Patient = "Patient"

@@ -137,7 +137,7 @@ class EncounterRepository:
             stmt = stmt.where(EncounterModel.status == status)
         if patient_id is not None:
             stmt = stmt.where(
-                EncounterModel.subject_type == SubjectReferenceType.PATIENT,
+                EncounterModel.subject_type == SubjectReferenceType.Patient,
                 EncounterModel.subject_id == patient_id,
             )
         if actual_period_start_from is not None:

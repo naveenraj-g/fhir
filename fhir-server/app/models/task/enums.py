@@ -36,46 +36,46 @@ class TaskPriority(str, Enum):
 
 
 class TaskRequesterReferenceType(str, Enum):
-    DEVICE = "Device"
-    ORGANIZATION = "Organization"
-    PATIENT = "Patient"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    RELATED_PERSON = "RelatedPerson"
+    Device = "Device"
+    Organization = "Organization"
+    Patient = "Patient"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    RelatedPerson = "RelatedPerson"
 
 
 class TaskOwnerReferenceType(str, Enum):
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    CARE_TEAM = "CareTeam"
-    HEALTHCARE_SERVICE = "HealthcareService"
-    PATIENT = "Patient"
-    DEVICE = "Device"
-    RELATED_PERSON = "RelatedPerson"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    CareTeam = "CareTeam"
+    HealthcareService = "HealthcareService"
+    Patient = "Patient"
+    Device = "Device"
+    RelatedPerson = "RelatedPerson"
 
 
 class TaskLocationReferenceType(str, Enum):
-    LOCATION = "Location"
+    Location = "Location"
 
 
 class TaskInsuranceReferenceType(str, Enum):
-    COVERAGE = "Coverage"
-    CLAIM_RESPONSE = "ClaimResponse"
+    Coverage = "Coverage"
+    ClaimResponse = "ClaimResponse"
 
 
 class TaskRelevantHistoryReferenceType(str, Enum):
-    PROVENANCE = "Provenance"
+    Provenance = "Provenance"
 
 
 class TaskPartOfReferenceType(str, Enum):
-    TASK = "Task"
+    Task = "Task"
 
 
 class TaskRestrictionRecipientReferenceType(str, Enum):
-    PATIENT = "Patient"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    RELATED_PERSON = "RelatedPerson"
-    GROUP = "Group"
-    ORGANIZATION = "Organization"
+    Patient = "Patient"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    RelatedPerson = "RelatedPerson"
+    Group = "Group"
+    Organization = "Organization"

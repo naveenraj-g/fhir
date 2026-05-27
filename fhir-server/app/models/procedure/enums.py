@@ -17,108 +17,108 @@ class ProcedureStatus(str, Enum):
 class ProcedureSubjectType(str, Enum):
     """Allowed subject reference types for Procedure.subject (R4)."""
 
-    PATIENT = "Patient"
-    GROUP = "Group"
+    Patient = "Patient"
+    Group = "Group"
 
 
 class ProcedureRecorderType(str, Enum):
     """Allowed reference types for Procedure.recorder."""
 
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
 
 
 class ProcedureAsserterType(str, Enum):
     """Allowed reference types for Procedure.asserter."""
 
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
 
 
 class ProcedureLocationReferenceType(str, Enum):
     """Allowed reference types for Procedure.location."""
 
-    LOCATION = "Location"
+    Location = "Location"
 
 
 class ProcedurePerformerActorType(str, Enum):
     """Allowed reference types for Procedure.performer.actor."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    DEVICE = "Device"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Device = "Device"
 
 
 class ProcedurePerformerOnBehalfOfType(str, Enum):
     """Allowed reference types for Procedure.performer.onBehalfOf."""
 
-    ORGANIZATION = "Organization"
+    Organization = "Organization"
 
 
 class ProcedureBasedOnReferenceType(str, Enum):
     """Allowed reference types for Procedure.basedOn[]."""
 
-    CARE_PLAN = "CarePlan"
-    SERVICE_REQUEST = "ServiceRequest"
+    CarePlan = "CarePlan"
+    ServiceRequest = "ServiceRequest"
 
 
 class ProcedurePartOfReferenceType(str, Enum):
     """Allowed reference types for Procedure.partOf[]."""
 
-    PROCEDURE = "Procedure"
-    OBSERVATION = "Observation"
-    MEDICATION_ADMINISTRATION = "MedicationAdministration"
+    Procedure = "Procedure"
+    Observation = "Observation"
+    MedicationAdministration = "MedicationAdministration"
 
 
 class ProcedureReasonReferenceType(str, Enum):
     """Allowed reference types for Procedure.reasonReference[]."""
 
-    CONDITION = "Condition"
-    OBSERVATION = "Observation"
-    PROCEDURE = "Procedure"
-    DIAGNOSTIC_REPORT = "DiagnosticReport"
-    DOCUMENT_REFERENCE = "DocumentReference"
+    Condition = "Condition"
+    Observation = "Observation"
+    Procedure = "Procedure"
+    DiagnosticReport = "DiagnosticReport"
+    DocumentReference = "DocumentReference"
 
 
 class ProcedureReportReferenceType(str, Enum):
     """Allowed reference types for Procedure.report[]."""
 
-    DIAGNOSTIC_REPORT = "DiagnosticReport"
-    DOCUMENT_REFERENCE = "DocumentReference"
-    COMPOSITION = "Composition"
+    DiagnosticReport = "DiagnosticReport"
+    DocumentReference = "DocumentReference"
+    Composition = "Composition"
 
 
 class ProcedureComplicationDetailReferenceType(str, Enum):
     """Allowed reference types for Procedure.complicationDetail[]."""
 
-    CONDITION = "Condition"
+    Condition = "Condition"
 
 
 class ProcedureNoteAuthorReferenceType(str, Enum):
     """Allowed reference types for Procedure.note[].author (Annotation.authorReference)."""
 
-    PRACTITIONER = "Practitioner"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    ORGANIZATION = "Organization"
+    Practitioner = "Practitioner"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Organization = "Organization"
 
 
 class ProcedureFocalDeviceManipulatedReferenceType(str, Enum):
     """Allowed reference types for Procedure.focalDevice[].manipulated."""
 
-    DEVICE = "Device"
+    Device = "Device"
 
 
 class ProcedureUsedReferenceType(str, Enum):
     """Allowed reference types for Procedure.usedReference[]."""
 
-    DEVICE = "Device"
-    MEDICATION = "Medication"
-    SUBSTANCE = "Substance"
+    Device = "Device"
+    Medication = "Medication"
+    Substance = "Substance"

@@ -3,10 +3,10 @@ from enum import Enum
 
 class ScheduleActorReferenceType(str, Enum):
     """Allowed reference types for Schedule.actor."""
-    PATIENT = "Patient"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    RELATED_PERSON = "RelatedPerson"
-    DEVICE = "Device"
-    HEALTHCARE_SERVICE = "HealthcareService"
-    LOCATION = "Location"
+    Patient = "Patient"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    RelatedPerson = "RelatedPerson"
+    Device = "Device"
+    HealthcareService = "HealthcareService"
+    Location = "Location"

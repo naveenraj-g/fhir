@@ -250,7 +250,7 @@ class EpisodeOfCareRepository:
             managing_org_type = None
             if data.managing_organization:
                 managing_org_pk = await _resolve_managing_org_pk(session, data.managing_organization)
-                managing_org_type = OrganizationReferenceType.ORGANIZATION
+                managing_org_type = OrganizationReferenceType.Organization
 
             children = _build_children(data, data.org_id)
 
@@ -339,7 +339,7 @@ class EpisodeOfCareRepository:
                     if value is not None:
                         pk = await _resolve_managing_org_pk(session, value)
                         db_model.managing_organization_id = pk
-                        db_model.managing_organization_type = OrganizationReferenceType.ORGANIZATION
+                        db_model.managing_organization_type = OrganizationReferenceType.Organization
                     else:
                         db_model.managing_organization_id = None
                         db_model.managing_organization_type = None

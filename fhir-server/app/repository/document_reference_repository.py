@@ -280,7 +280,7 @@ class DocumentReferenceRepository:
                 org_row = result.scalar_one_or_none()
                 if org_row is None:
                     raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Organization/{cust_public_id} not found.")
-                custodian_type = OrganizationReferenceType.ORGANIZATION
+                custodian_type = OrganizationReferenceType.Organization
                 custodian_db_id = org_row.id
 
             dr = DocumentReferenceModel(
@@ -383,7 +383,7 @@ class DocumentReferenceRepository:
                 org_row = org_result.scalar_one_or_none()
                 if org_row is None:
                     raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Organization/{cust_public_id} not found.")
-                dr.custodian_type = OrganizationReferenceType.ORGANIZATION
+                dr.custodian_type = OrganizationReferenceType.Organization
                 dr.custodian_id = org_row.id
 
             if "context" in data and data["context"] is not None:

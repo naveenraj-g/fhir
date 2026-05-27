@@ -12,5 +12,5 @@ class MedicationStatus(str, Enum):
 class MedicationIngredientItemReferenceType(str, Enum):
     """Allowed reference types for Medication.ingredient.item[x] reference variant."""
 
-    SUBSTANCE = "Substance"
-    MEDICATION = "Medication"
+    Substance = "Substance"
+    Medication = "Medication"

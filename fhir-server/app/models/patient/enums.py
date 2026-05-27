@@ -22,13 +22,13 @@ class PatientLinkType(str, Enum):
 class PatientGeneralPractitionerType(str, Enum):
     """Allowed reference types for Patient.generalPractitioner."""
 
-    ORGANIZATION = "Organization"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
+    Organization = "Organization"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
 
 
 class PatientLinkOtherType(str, Enum):
     """Allowed reference types for Patient.link.other."""
 
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"

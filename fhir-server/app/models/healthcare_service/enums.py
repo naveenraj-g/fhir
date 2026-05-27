@@ -4,16 +4,16 @@ from enum import Enum
 class HealthcareServiceLocationReferenceType(str, Enum):
     """Allowed reference types for HealthcareService.location[]."""
 
-    LOCATION = "Location"
+    Location = "Location"
 
 
 class HealthcareServiceCoverageAreaReferenceType(str, Enum):
     """Allowed reference types for HealthcareService.coverageArea[]."""
 
-    LOCATION = "Location"
+    Location = "Location"
 
 
 class HealthcareServiceEndpointReferenceType(str, Enum):
     """Allowed reference types for HealthcareService.endpoint[]."""
 
-    ENDPOINT = "Endpoint"
+    Endpoint = "Endpoint"

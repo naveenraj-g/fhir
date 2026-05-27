@@ -19,64 +19,64 @@ class CarePlanIntent(str, Enum):
 
 
 class CarePlanSubjectReferenceType(str, Enum):
-    PATIENT = "Patient"
-    GROUP = "Group"
+    Patient = "Patient"
+    Group = "Group"
 
 
 class CarePlanAuthorReferenceType(str, Enum):
-    PATIENT = "Patient"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    DEVICE = "Device"
-    RELATED_PERSON = "RelatedPerson"
-    ORGANIZATION = "Organization"
-    CARE_TEAM = "CareTeam"
+    Patient = "Patient"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Device = "Device"
+    RelatedPerson = "RelatedPerson"
+    Organization = "Organization"
+    CareTeam = "CareTeam"
 
 
 class CarePlanContributorReferenceType(str, Enum):
-    PATIENT = "Patient"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    DEVICE = "Device"
-    RELATED_PERSON = "RelatedPerson"
-    ORGANIZATION = "Organization"
-    CARE_TEAM = "CareTeam"
+    Patient = "Patient"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Device = "Device"
+    RelatedPerson = "RelatedPerson"
+    Organization = "Organization"
+    CareTeam = "CareTeam"
 
 
 class CarePlanBasedOnReferenceType(str, Enum):
-    CARE_PLAN = "CarePlan"
+    CarePlan = "CarePlan"
 
 
 class CarePlanReplacesReferenceType(str, Enum):
-    CARE_PLAN = "CarePlan"
+    CarePlan = "CarePlan"
 
 
 class CarePlanPartOfReferenceType(str, Enum):
-    CARE_PLAN = "CarePlan"
+    CarePlan = "CarePlan"
 
 
 class CarePlanCareTeamReferenceType(str, Enum):
-    CARE_TEAM = "CareTeam"
+    CareTeam = "CareTeam"
 
 
 class CarePlanAddressesReferenceType(str, Enum):
-    CONDITION = "Condition"
+    Condition = "Condition"
 
 
 class CarePlanGoalReferenceType(str, Enum):
-    GOAL = "Goal"
+    Goal = "Goal"
 
 
 class CarePlanActivityReferenceType(str, Enum):
-    APPOINTMENT = "Appointment"
-    COMMUNICATION_REQUEST = "CommunicationRequest"
-    DEVICE_REQUEST = "DeviceRequest"
-    MEDICATION_REQUEST = "MedicationRequest"
-    NUTRITION_ORDER = "NutritionOrder"
-    TASK = "Task"
-    SERVICE_REQUEST = "ServiceRequest"
-    VISION_PRESCRIPTION = "VisionPrescription"
-    REQUEST_GROUP = "RequestGroup"
+    Appointment = "Appointment"
+    CommunicationRequest = "CommunicationRequest"
+    DeviceRequest = "DeviceRequest"
+    MedicationRequest = "MedicationRequest"
+    NutritionOrder = "NutritionOrder"
+    Task = "Task"
+    ServiceRequest = "ServiceRequest"
+    VisionPrescription = "VisionPrescription"
+    RequestGroup = "RequestGroup"
 
 
 class CarePlanDetailActivityStatus(str, Enum):
@@ -92,31 +92,31 @@ class CarePlanDetailActivityStatus(str, Enum):
 
 
 class CarePlanDetailLocationReferenceType(str, Enum):
-    LOCATION = "Location"
+    Location = "Location"
 
 
 class CarePlanDetailPerformerReferenceType(str, Enum):
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    RELATED_PERSON = "RelatedPerson"
-    PATIENT = "Patient"
-    CARE_TEAM = "CareTeam"
-    HEALTHCARE_SERVICE = "HealthcareService"
-    DEVICE = "Device"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    RelatedPerson = "RelatedPerson"
+    Patient = "Patient"
+    CareTeam = "CareTeam"
+    HealthcareService = "HealthcareService"
+    Device = "Device"
 
 
 class CarePlanDetailReasonReferenceType(str, Enum):
-    CONDITION = "Condition"
-    OBSERVATION = "Observation"
-    DIAGNOSTIC_REPORT = "DiagnosticReport"
-    DOCUMENT_REFERENCE = "DocumentReference"
+    Condition = "Condition"
+    Observation = "Observation"
+    DiagnosticReport = "DiagnosticReport"
+    DocumentReference = "DocumentReference"
 
 
 class CarePlanDetailGoalReferenceType(str, Enum):
-    GOAL = "Goal"
+    Goal = "Goal"
 
 
 class CarePlanDetailProductReferenceType(str, Enum):
-    MEDICATION = "Medication"
-    SUBSTANCE = "Substance"
+    Medication = "Medication"
+    Substance = "Substance"

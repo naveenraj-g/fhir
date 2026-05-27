@@ -27,73 +27,73 @@ class EncounterLocationStatus(str, Enum):
 class EncounterParticipantReferenceType(str, Enum):
     """FHIR R5 reference types for Encounter.participant.actor."""
 
-    PATIENT = "Patient"
-    GROUP = "Group"
-    RELATED_PERSON = "RelatedPerson"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    DEVICE = "Device"
-    HEALTHCARE_SERVICE = "HealthcareService"
+    Patient = "Patient"
+    Group = "Group"
+    RelatedPerson = "RelatedPerson"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Device = "Device"
+    HealthcareService = "HealthcareService"
 
 
 class EncounterBasedOnReferenceType(str, Enum):
     """FHIR R5 reference types for Encounter.basedOn."""
 
-    CARE_PLAN = "CarePlan"
-    DEVICE_REQUEST = "DeviceRequest"
-    MEDICATION_REQUEST = "MedicationRequest"
-    SERVICE_REQUEST = "ServiceRequest"
-    REQUEST_ORCHESTRATION = "RequestOrchestration"
-    NUTRITION_ORDER = "NutritionOrder"
-    VISION_PRESCRIPTION = "VisionPrescription"
+    CarePlan = "CarePlan"
+    DeviceRequest = "DeviceRequest"
+    MedicationRequest = "MedicationRequest"
+    ServiceRequest = "ServiceRequest"
+    RequestOrchestration = "RequestOrchestration"
+    NutritionOrder = "NutritionOrder"
+    VisionPrescription = "VisionPrescription"
 
 
 class EncounterDiagnosisConditionType(str, Enum):
     """FHIR R5 reference types for Encounter.diagnosis.condition (CodeableReference)."""
 
-    CONDITION = "Condition"
+    Condition = "Condition"
 
 
 class EncounterServiceTypeReferenceType(str, Enum):
     """FHIR R5 reference types for Encounter.serviceType.reference (CodeableReference)."""
 
-    HEALTHCARE_SERVICE = "HealthcareService"
+    HealthcareService = "HealthcareService"
 
 
 class EncounterReasonValueReferenceType(str, Enum):
     """FHIR R5 reference types for Encounter.reason.value.reference (CodeableReference)."""
 
-    CONDITION = "Condition"
-    DIAGNOSTIC_REPORT = "DiagnosticReport"
-    OBSERVATION = "Observation"
-    PROCEDURE = "Procedure"
+    Condition = "Condition"
+    DiagnosticReport = "DiagnosticReport"
+    Observation = "Observation"
+    Procedure = "Procedure"
 
 
 class EncounterEpisodeOfCareReferenceType(str, Enum):
     """Allowed reference types for Encounter.episodeOfCare[]."""
 
-    EPISODE_OF_CARE = "EpisodeOfCare"
+    EpisodeOfCare = "EpisodeOfCare"
 
 
 class EncounterCareTeamReferenceType(str, Enum):
     """Allowed reference types for Encounter.careTeam[] — R5 new."""
 
-    CARE_TEAM = "CareTeam"
+    CareTeam = "CareTeam"
 
 
 class EncounterAppointmentReferenceType(str, Enum):
     """Allowed reference types for Encounter.appointment[]."""
 
-    APPOINTMENT = "Appointment"
+    Appointment = "Appointment"
 
 
 class EncounterAccountReferenceType(str, Enum):
     """Allowed reference types for Encounter.account[]."""
 
-    ACCOUNT = "Account"
+    Account = "Account"
 
 
 class EncounterLocationReferenceType(str, Enum):
     """Allowed reference types for Encounter.location[].location."""
 
-    LOCATION = "Location"
+    Location = "Location"

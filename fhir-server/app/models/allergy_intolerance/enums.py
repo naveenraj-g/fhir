@@ -36,7 +36,7 @@ class AllergyIntoleranceReactionSeverity(str, Enum):
 class AllergyIntolerancePatientReferenceType(str, Enum):
     """Allowed reference type for AllergyIntolerance.patient (1..1)."""
 
-    PATIENT = "Patient"
+    Patient = "Patient"
 
 
 class AllergyIntoleranceParticipantReferenceType(str, Enum):
@@ -46,7 +46,7 @@ class AllergyIntoleranceParticipantReferenceType(str, Enum):
     used for both recorder_type and asserter_type columns (second uses create_type=False).
     """
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"

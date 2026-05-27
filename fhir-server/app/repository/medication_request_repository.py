@@ -142,7 +142,7 @@ class MedicationRequestRepository:
             stmt = stmt.where(MedicationRequestModel.status == MedicationRequestStatus(mr_status))
         if patient_id is not None:
             stmt = stmt.where(
-                MedicationRequestModel.subject_type == MedicationSubjectType.PATIENT,
+                MedicationRequestModel.subject_type == MedicationSubjectType.Patient,
                 MedicationRequestModel.subject_id == patient_id,
             )
         if authored_from is not None:

@@ -10,4 +10,4 @@ class SlotStatus(str, Enum):
 
 
 class SlotScheduleReferenceType(str, Enum):
-    SCHEDULE = "Schedule"
+    Schedule = "Schedule"

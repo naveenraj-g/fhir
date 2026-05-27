@@ -9,29 +9,29 @@ class SpecimenStatus(str, Enum):
 
 
 class SpecimenSubjectReferenceType(str, Enum):
-    PATIENT = "Patient"
-    GROUP = "Group"
-    DEVICE = "Device"
-    SUBSTANCE = "Substance"
-    LOCATION = "Location"
+    Patient = "Patient"
+    Group = "Group"
+    Device = "Device"
+    Substance = "Substance"
+    Location = "Location"
 
 
 class SpecimenCollectorReferenceType(str, Enum):
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
 
 
 class SpecimenParentReferenceType(str, Enum):
-    SPECIMEN = "Specimen"
+    Specimen = "Specimen"
 
 
 class SpecimenRequestReferenceType(str, Enum):
-    SERVICE_REQUEST = "ServiceRequest"
+    ServiceRequest = "ServiceRequest"
 
 
 class SpecimenProcessingAdditiveReferenceType(str, Enum):
-    SUBSTANCE = "Substance"
+    Substance = "Substance"
 
 
 class SpecimenContainerAdditiveReferenceType(str, Enum):
-    SUBSTANCE = "Substance"
+    Substance = "Substance"

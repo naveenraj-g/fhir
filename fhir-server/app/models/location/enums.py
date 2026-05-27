@@ -19,10 +19,10 @@ class LocationMode(str, Enum):
 class LocationPartOfReferenceType(str, Enum):
     """Allowed reference types for Location.partOf."""
 
-    LOCATION = "Location"
+    Location = "Location"
 
 
 class LocationEndpointReferenceType(str, Enum):
     """Allowed reference types for Location.endpoint[]."""
 
-    ENDPOINT = "Endpoint"
+    Endpoint = "Endpoint"

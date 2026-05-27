@@ -249,7 +249,7 @@ class QuestionnaireResponseRepository:
             stmt = stmt.where(QuestionnaireResponseModel.status == status)
         if patient_id is not None:
             stmt = stmt.where(
-                QuestionnaireResponseModel.subject_type == SubjectReferenceType.PATIENT,
+                QuestionnaireResponseModel.subject_type == SubjectReferenceType.Patient,
                 QuestionnaireResponseModel.subject_id == patient_id,
             )
         if questionnaire:

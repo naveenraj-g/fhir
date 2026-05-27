@@ -13,62 +13,62 @@ class ObservationStatus(str, Enum):
 
 
 class ObservationSubjectReferenceType(str, Enum):
-    PATIENT = "Patient"
-    GROUP = "Group"
-    DEVICE = "Device"
-    LOCATION = "Location"
+    Patient = "Patient"
+    Group = "Group"
+    Device = "Device"
+    Location = "Location"
 
 
 class ObservationEncounterReferenceType(str, Enum):
-    ENCOUNTER = "Encounter"
+    Encounter = "Encounter"
 
 
 class ObservationSpecimenReferenceType(str, Enum):
-    SPECIMEN = "Specimen"
+    Specimen = "Specimen"
 
 
 class ObservationDeviceReferenceType(str, Enum):
-    DEVICE = "Device"
-    DEVICE_METRIC = "DeviceMetric"
+    Device = "Device"
+    DeviceMetric = "DeviceMetric"
 
 
 class ObservationBasedOnReferenceType(str, Enum):
-    CARE_PLAN = "CarePlan"
-    DEVICE_REQUEST = "DeviceRequest"
-    IMMUNIZATION_RECOMMENDATION = "ImmunizationRecommendation"
-    MEDICATION_REQUEST = "MedicationRequest"
-    NUTRITION_ORDER = "NutritionOrder"
-    SERVICE_REQUEST = "ServiceRequest"
+    CarePlan = "CarePlan"
+    DeviceRequest = "DeviceRequest"
+    ImmunizationRecommendation = "ImmunizationRecommendation"
+    MedicationRequest = "MedicationRequest"
+    NutritionOrder = "NutritionOrder"
+    ServiceRequest = "ServiceRequest"
 
 
 class ObservationPartOfReferenceType(str, Enum):
-    MEDICATION_ADMINISTRATION = "MedicationAdministration"
-    MEDICATION_DISPENSE = "MedicationDispense"
-    MEDICATION_STATEMENT = "MedicationStatement"
-    PROCEDURE = "Procedure"
-    IMMUNIZATION = "Immunization"
-    IMAGING_STUDY = "ImagingStudy"
+    MedicationAdministration = "MedicationAdministration"
+    MedicationDispense = "MedicationDispense"
+    MedicationStatement = "MedicationStatement"
+    Procedure = "Procedure"
+    Immunization = "Immunization"
+    ImagingStudy = "ImagingStudy"
 
 
 class ObservationPerformerReferenceType(str, Enum):
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    CARE_TEAM = "CareTeam"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    CareTeam = "CareTeam"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
 
 
 class ObservationHasMemberReferenceType(str, Enum):
-    OBSERVATION = "Observation"
-    QUESTIONNAIRE_RESPONSE = "QuestionnaireResponse"
-    MOLECULAR_SEQUENCE = "MolecularSequence"
+    Observation = "Observation"
+    QuestionnaireResponse = "QuestionnaireResponse"
+    MolecularSequence = "MolecularSequence"
 
 
 class ObservationDerivedFromReferenceType(str, Enum):
-    DOCUMENT_REFERENCE = "DocumentReference"
-    IMAGING_STUDY = "ImagingStudy"
-    MEDIA = "Media"
-    QUESTIONNAIRE_RESPONSE = "QuestionnaireResponse"
-    OBSERVATION = "Observation"
-    MOLECULAR_SEQUENCE = "MolecularSequence"
+    DocumentReference = "DocumentReference"
+    ImagingStudy = "ImagingStudy"
+    Media = "Media"
+    QuestionnaireResponse = "QuestionnaireResponse"
+    Observation = "Observation"
+    MolecularSequence = "MolecularSequence"

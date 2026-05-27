@@ -125,7 +125,7 @@ class DeviceRequestRepository:
             stmt = stmt.where(DeviceRequestModel.status == DeviceRequestStatus(dr_status))
         if patient_id is not None:
             stmt = stmt.where(
-                DeviceRequestModel.subject_type == DeviceRequestSubjectType.PATIENT,
+                DeviceRequestModel.subject_type == DeviceRequestSubjectType.Patient,
                 DeviceRequestModel.subject_id == patient_id,
             )
         if authored_from is not None:
@@ -250,7 +250,7 @@ class DeviceRequestRepository:
                 subject_type=subject_type,
                 subject_id=subject_id,
                 subject_display=payload.subject_display,
-                encounter_type=EncounterReferenceType.ENCOUNTER if internal_encounter_id else None,
+                encounter_type=EncounterReferenceType.Encounter if internal_encounter_id else None,
                 encounter_id=internal_encounter_id,
                 encounter_display=payload.encounter_display,
                 occurrence_datetime=payload.occurrence_datetime,

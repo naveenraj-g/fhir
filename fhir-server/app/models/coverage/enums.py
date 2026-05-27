@@ -13,33 +13,33 @@ class CoverageStatus(str, Enum):
 class CoveragePolicyHolderReferenceType(str, Enum):
     """Allowed reference types for Coverage.policyHolder."""
 
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    ORGANIZATION = "Organization"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Organization = "Organization"
 
 
 class CoverageSubscriberReferenceType(str, Enum):
     """Allowed reference types for Coverage.subscriber."""
 
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
 
 
 class CoverageBeneficiaryReferenceType(str, Enum):
     """Allowed reference types for Coverage.beneficiary."""
 
-    PATIENT = "Patient"
+    Patient = "Patient"
 
 
 class CoveragePayorReferenceType(str, Enum):
     """Allowed reference types for Coverage.payor[]."""
 
-    ORGANIZATION = "Organization"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
+    Organization = "Organization"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
 
 
 class CoverageContractReferenceType(str, Enum):
     """Allowed reference types for Coverage.contract[]."""
 
-    CONTRACT = "Contract"
+    Contract = "Contract"

@@ -143,7 +143,7 @@ class ServiceRequestRepository:
             stmt = stmt.where(ServiceRequestModel.status == ServiceRequestStatus(sr_status))
         if patient_id is not None:
             stmt = stmt.where(
-                ServiceRequestModel.subject_type == ServiceRequestSubjectType.PATIENT,
+                ServiceRequestModel.subject_type == ServiceRequestSubjectType.Patient,
                 ServiceRequestModel.subject_id == patient_id,
             )
         if authored_from is not None:
@@ -253,7 +253,7 @@ class ServiceRequestRepository:
                 subject_type=subject_type,
                 subject_id=subject_id,
                 subject_display=payload.subject_display,
-                encounter_type=EncounterReferenceType.ENCOUNTER if internal_encounter_id else None,
+                encounter_type=EncounterReferenceType.Encounter if internal_encounter_id else None,
                 encounter_id=internal_encounter_id,
                 encounter_display=payload.encounter_display,
                 occurrence_datetime=payload.occurrence_datetime,

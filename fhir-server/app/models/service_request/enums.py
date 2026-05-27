@@ -39,88 +39,88 @@ class ServiceRequestPriority(str, Enum):
 class ServiceRequestSubjectType(str, Enum):
     """Allowed subject reference types for ServiceRequest.subject."""
 
-    PATIENT = "Patient"
-    GROUP = "Group"
-    LOCATION = "Location"
-    DEVICE = "Device"
+    Patient = "Patient"
+    Group = "Group"
+    Location = "Location"
+    Device = "Device"
 
 
 class ServiceRequestRequesterType(str, Enum):
     """Allowed reference types for ServiceRequest.requester."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    DEVICE = "Device"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Device = "Device"
 
 
 class ServiceRequestPerformerReferenceType(str, Enum):
     """Allowed reference types for ServiceRequest.performer[]."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    CARE_TEAM = "CareTeam"
-    HEALTHCARE_SERVICE = "HealthcareService"
-    PATIENT = "Patient"
-    DEVICE = "Device"
-    RELATED_PERSON = "RelatedPerson"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    CareTeam = "CareTeam"
+    HealthcareService = "HealthcareService"
+    Patient = "Patient"
+    Device = "Device"
+    RelatedPerson = "RelatedPerson"
 
 
 class ServiceRequestBasedOnReferenceType(str, Enum):
     """Allowed reference types for ServiceRequest.basedOn[]."""
 
-    CARE_PLAN = "CarePlan"
-    SERVICE_REQUEST = "ServiceRequest"
-    MEDICATION_REQUEST = "MedicationRequest"
+    CarePlan = "CarePlan"
+    ServiceRequest = "ServiceRequest"
+    MedicationRequest = "MedicationRequest"
 
 
 class ServiceRequestReplacesReferenceType(str, Enum):
     """Allowed reference types for ServiceRequest.replaces[]."""
 
-    SERVICE_REQUEST = "ServiceRequest"
+    ServiceRequest = "ServiceRequest"
 
 
 class ServiceRequestReasonReferenceType(str, Enum):
     """Allowed reference types for ServiceRequest.reasonReference[]."""
 
-    CONDITION = "Condition"
-    OBSERVATION = "Observation"
-    DIAGNOSTIC_REPORT = "DiagnosticReport"
-    DOCUMENT_REFERENCE = "DocumentReference"
+    Condition = "Condition"
+    Observation = "Observation"
+    DiagnosticReport = "DiagnosticReport"
+    DocumentReference = "DocumentReference"
 
 
 class ServiceRequestInsuranceReferenceType(str, Enum):
     """Allowed reference types for ServiceRequest.insurance[]."""
 
-    COVERAGE = "Coverage"
-    CLAIM_RESPONSE = "ClaimResponse"
+    Coverage = "Coverage"
+    ClaimResponse = "ClaimResponse"
 
 
 class ServiceRequestLocationReferenceType(str, Enum):
     """Allowed reference types for ServiceRequest.locationReference[]."""
 
-    LOCATION = "Location"
+    Location = "Location"
 
 
 class ServiceRequestSpecimenReferenceType(str, Enum):
     """Allowed reference types for ServiceRequest.specimen[]."""
 
-    SPECIMEN = "Specimen"
+    Specimen = "Specimen"
 
 
 class ServiceRequestRelevantHistoryReferenceType(str, Enum):
     """Allowed reference types for ServiceRequest.relevantHistory[]."""
 
-    PROVENANCE = "Provenance"
+    Provenance = "Provenance"
 
 
 class ServiceRequestNoteAuthorReferenceType(str, Enum):
     """Allowed reference types for ServiceRequest.note[].author (Annotation.authorReference)."""
 
-    PRACTITIONER = "Practitioner"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    ORGANIZATION = "Organization"
+    Practitioner = "Practitioner"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Organization = "Organization"

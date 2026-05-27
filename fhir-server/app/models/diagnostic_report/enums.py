@@ -19,50 +19,50 @@ class DiagnosticReportStatus(str, Enum):
 class DiagnosticReportSubjectType(str, Enum):
     """Allowed subject reference types for DiagnosticReport.subject."""
 
-    PATIENT = "Patient"
-    GROUP = "Group"
-    DEVICE = "Device"
-    LOCATION = "Location"
+    Patient = "Patient"
+    Group = "Group"
+    Device = "Device"
+    Location = "Location"
 
 
 class DiagnosticReportParticipantType(str, Enum):
     """Allowed reference types for DiagnosticReport.performer and resultsInterpreter."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    CARE_TEAM = "CareTeam"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    CareTeam = "CareTeam"
 
 
 class DiagnosticReportBasedOnReferenceType(str, Enum):
     """Allowed reference types for DiagnosticReport.basedOn[]."""
 
-    CARE_PLAN = "CarePlan"
-    IMMUNIZATION_RECOMMENDATION = "ImmunizationRecommendation"
-    MEDICATION_REQUEST = "MedicationRequest"
-    NUTRITION_ORDER = "NutritionOrder"
-    SERVICE_REQUEST = "ServiceRequest"
+    CarePlan = "CarePlan"
+    ImmunizationRecommendation = "ImmunizationRecommendation"
+    MedicationRequest = "MedicationRequest"
+    NutritionOrder = "NutritionOrder"
+    ServiceRequest = "ServiceRequest"
 
 
 class DiagnosticReportSpecimenReferenceType(str, Enum):
     """Allowed reference types for DiagnosticReport.specimen[]."""
 
-    SPECIMEN = "Specimen"
+    Specimen = "Specimen"
 
 
 class DiagnosticReportResultReferenceType(str, Enum):
     """Allowed reference types for DiagnosticReport.result[]."""
 
-    OBSERVATION = "Observation"
+    Observation = "Observation"
 
 
 class DiagnosticReportImagingStudyReferenceType(str, Enum):
     """Allowed reference types for DiagnosticReport.imagingStudy[]."""
 
-    IMAGING_STUDY = "ImagingStudy"
+    ImagingStudy = "ImagingStudy"
 
 
 class DiagnosticReportMediaLinkReferenceType(str, Enum):
     """Allowed reference types for DiagnosticReport.media[].link."""
 
-    MEDIA = "Media"
+    Media = "Media"

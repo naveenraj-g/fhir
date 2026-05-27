@@ -4,4 +4,4 @@ from enum import Enum
 class RelatedPersonPatientReferenceType(str, Enum):
     """Allowed reference types for RelatedPerson.patient."""
 
-    PATIENT = "Patient"
+    Patient = "Patient"

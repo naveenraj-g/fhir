@@ -39,107 +39,107 @@ class MedicationRequestPriority(str, Enum):
 class MedicationSubjectType(str, Enum):
     """Allowed subject reference types for MedicationRequest.subject."""
 
-    PATIENT = "Patient"
-    GROUP = "Group"
+    Patient = "Patient"
+    Group = "Group"
 
 
 class MedicationRequesterType(str, Enum):
     """Allowed reference types for MedicationRequest.requester."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    DEVICE = "Device"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Device = "Device"
 
 
 class MedicationPerformerType(str, Enum):
     """Allowed reference types for MedicationRequest.performer (R4 single performer)."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    PATIENT = "Patient"
-    DEVICE = "Device"
-    RELATED_PERSON = "RelatedPerson"
-    CARE_TEAM = "CareTeam"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    Patient = "Patient"
+    Device = "Device"
+    RelatedPerson = "RelatedPerson"
+    CareTeam = "CareTeam"
 
 
 class MedicationRecorderType(str, Enum):
     """Allowed reference types for MedicationRequest.recorder."""
 
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
 
 
 class MedicationReportedReferenceType(str, Enum):
     """Allowed reference types for MedicationRequest.reportedReference."""
 
-    PATIENT = "Patient"
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    RELATED_PERSON = "RelatedPerson"
-    ORGANIZATION = "Organization"
+    Patient = "Patient"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    RelatedPerson = "RelatedPerson"
+    Organization = "Organization"
 
 
 class MedicationRequestMedicationReferenceType(str, Enum):
     """Allowed reference types for MedicationRequest.medicationReference."""
 
-    MEDICATION = "Medication"
+    Medication = "Medication"
 
 
 class MedicationRequestPriorPrescriptionType(str, Enum):
     """Allowed reference types for MedicationRequest.priorPrescription."""
 
-    MEDICATION_REQUEST = "MedicationRequest"
+    MedicationRequest = "MedicationRequest"
 
 
 class MedicationRequestReasonReferenceType(str, Enum):
     """Allowed reference types for MedicationRequest.reasonReference[]."""
 
-    CONDITION = "Condition"
-    OBSERVATION = "Observation"
+    Condition = "Condition"
+    Observation = "Observation"
 
 
 class MedicationRequestBasedOnReferenceType(str, Enum):
     """Allowed reference types for MedicationRequest.basedOn[]."""
 
-    CARE_PLAN = "CarePlan"
-    MEDICATION_REQUEST = "MedicationRequest"
-    SERVICE_REQUEST = "ServiceRequest"
-    IMMUNIZATION_RECOMMENDATION = "ImmunizationRecommendation"
+    CarePlan = "CarePlan"
+    MedicationRequest = "MedicationRequest"
+    ServiceRequest = "ServiceRequest"
+    ImmunizationRecommendation = "ImmunizationRecommendation"
 
 
 class MedicationRequestInsuranceReferenceType(str, Enum):
     """Allowed reference types for MedicationRequest.insurance[]."""
 
-    COVERAGE = "Coverage"
-    CLAIM_RESPONSE = "ClaimResponse"
+    Coverage = "Coverage"
+    ClaimResponse = "ClaimResponse"
 
 
 class MedicationRequestNoteAuthorReferenceType(str, Enum):
     """Allowed reference types for MedicationRequest.note[].author (Annotation.authorReference)."""
 
-    PRACTITIONER = "Practitioner"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
-    ORGANIZATION = "Organization"
+    Practitioner = "Practitioner"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
+    Organization = "Organization"
 
 
 class MedicationRequestDetectedIssueReferenceType(str, Enum):
     """Allowed reference types for MedicationRequest.detectedIssue[]."""
 
-    DETECTED_ISSUE = "DetectedIssue"
+    DetectedIssue = "DetectedIssue"
 
 
 class MedicationRequestEventHistoryReferenceType(str, Enum):
     """Allowed reference types for MedicationRequest.eventHistory[]."""
 
-    PROVENANCE = "Provenance"
+    Provenance = "Provenance"
 
 
 class MedicationRequestDispensePerformerType(str, Enum):
     """Allowed reference types for MedicationRequest.dispenseRequest.performer."""
 
-    ORGANIZATION = "Organization"
+    Organization = "Organization"

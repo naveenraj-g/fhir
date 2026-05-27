@@ -22,39 +22,39 @@ class ClaimResponseOutcome(str, Enum):
 
 
 class ClaimResponsePatientReferenceType(str, Enum):
-    PATIENT = "Patient"
+    Patient = "Patient"
 
 
 class ClaimResponseRequestorReferenceType(str, Enum):
     """Allowed types for ClaimResponse.requestor."""
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
 
 
 class ClaimResponseRequestReferenceType(str, Enum):
-    CLAIM = "Claim"
+    Claim = "Claim"
 
 
 class ClaimResponseAddItemProviderReferenceType(str, Enum):
     """Allowed types for ClaimResponse.addItem.provider."""
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
 
 
 class ClaimResponseAddItemLocationReferenceType(str, Enum):
     """Allowed Reference type for ClaimResponse.addItem.location[x] Reference variant."""
-    LOCATION = "Location"
+    Location = "Location"
 
 
 class ClaimResponseInsuranceCoverageReferenceType(str, Enum):
-    COVERAGE = "Coverage"
+    Coverage = "Coverage"
 
 
 class ClaimResponseInsuranceClaimResponseReferenceType(str, Enum):
-    CLAIM_RESPONSE = "ClaimResponse"
+    ClaimResponse = "ClaimResponse"
 
 
 class ClaimResponseCommunicationRequestReferenceType(str, Enum):
-    COMMUNICATION_REQUEST = "CommunicationRequest"
+    CommunicationRequest = "CommunicationRequest"

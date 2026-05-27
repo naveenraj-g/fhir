@@ -15,69 +15,69 @@ class ClaimUse(str, Enum):
 
 
 class ClaimPatientReferenceType(str, Enum):
-    PATIENT = "Patient"
+    Patient = "Patient"
 
 
 class ClaimEntererReferenceType(str, Enum):
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
 
 
 class ClaimProviderReferenceType(str, Enum):
     """Allowed types for claim.provider and careTeam.provider."""
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
 
 
 class ClaimPrescriptionReferenceType(str, Enum):
     """Allowed types for prescription and originalPrescription."""
-    DEVICE_REQUEST = "DeviceRequest"
-    MEDICATION_REQUEST = "MedicationRequest"
-    VISION_PRESCRIPTION = "VisionPrescription"
+    DeviceRequest = "DeviceRequest"
+    MedicationRequest = "MedicationRequest"
+    VisionPrescription = "VisionPrescription"
 
 
 class ClaimReferralReferenceType(str, Enum):
-    SERVICE_REQUEST = "ServiceRequest"
+    ServiceRequest = "ServiceRequest"
 
 
 class ClaimLocationReferenceType(str, Enum):
     """Allowed reference type for facility, accident.location, and item.location."""
-    LOCATION = "Location"
+    Location = "Location"
 
 
 class ClaimPayeePartyReferenceType(str, Enum):
-    PRACTITIONER = "Practitioner"
-    PRACTITIONER_ROLE = "PractitionerRole"
-    ORGANIZATION = "Organization"
-    PATIENT = "Patient"
-    RELATED_PERSON = "RelatedPerson"
+    Practitioner = "Practitioner"
+    PractitionerRole = "PractitionerRole"
+    Organization = "Organization"
+    Patient = "Patient"
+    RelatedPerson = "RelatedPerson"
 
 
 class ClaimRelatedClaimReferenceType(str, Enum):
-    CLAIM = "Claim"
+    Claim = "Claim"
 
 
 class ClaimDiagnosisConditionReferenceType(str, Enum):
-    CONDITION = "Condition"
+    Condition = "Condition"
 
 
 class ClaimProcedureReferenceType(str, Enum):
-    PROCEDURE = "Procedure"
+    Procedure = "Procedure"
 
 
 class ClaimDeviceReferenceType(str, Enum):
     """Allowed reference type for all UDI fields (procedure.udi, item.udi, detail.udi, subDetail.udi)."""
-    DEVICE = "Device"
+    Device = "Device"
 
 
 class ClaimInsuranceCoverageReferenceType(str, Enum):
-    COVERAGE = "Coverage"
+    Coverage = "Coverage"
 
 
 class ClaimInsuranceClaimResponseReferenceType(str, Enum):
-    CLAIM_RESPONSE = "ClaimResponse"
+    ClaimResponse = "ClaimResponse"
 
 
 class ClaimItemEncounterReferenceType(str, Enum):
-    ENCOUNTER = "Encounter"
+    Encounter = "Encounter"
