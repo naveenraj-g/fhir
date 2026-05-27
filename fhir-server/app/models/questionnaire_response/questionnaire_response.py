@@ -170,7 +170,7 @@ class QuestionnaireResponseItemModel(Base):
     )
     # item.answer.item — items nested under an answer (R4 §item.answer.item 0..*)
     parent_answer_id = Column(
-        Integer, ForeignKey("questionnaire_response_answer.id"), nullable=True, index=True
+        Integer, ForeignKey("questionnaire_response_answer.id", use_alter=True), nullable=True, index=True
     )
     org_id = Column(String, nullable=True)
 
