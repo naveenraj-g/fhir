@@ -24,7 +24,7 @@ from app.models.diagnostic_report.enums import (
 )
 from app.models.enums import EncounterReferenceType
 
-diagnostic_report_id_seq = Sequence("diagnostic_report_id_seq", start=110000, increment=1)
+diagnostic_report_id_seq = Sequence("diagnostic_report_pub_seq", start=110000, increment=1)
 
 
 class DiagnosticReportModel(Base):

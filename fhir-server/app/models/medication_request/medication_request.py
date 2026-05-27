@@ -35,7 +35,7 @@ from app.models.medication_request.enums import (
 )
 from app.models.enums import EncounterReferenceType
 
-medication_request_id_seq = Sequence("medication_request_id_seq", start=90000, increment=1)
+medication_request_id_seq = Sequence("medication_request_pub_seq", start=90000, increment=1)
 
 
 class MedicationRequestModel(Base):

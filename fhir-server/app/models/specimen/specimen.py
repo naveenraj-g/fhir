@@ -23,7 +23,7 @@ from app.models.specimen.enums import (
     SpecimenSubjectReferenceType,
 )
 
-specimen_id_seq = Sequence("specimen_id_seq", start=310000, increment=1)
+specimen_id_seq = Sequence("specimen_pub_seq", start=310000, increment=1)
 
 
 # ---------------------------------------------------------------------------

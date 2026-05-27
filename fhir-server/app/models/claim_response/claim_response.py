@@ -30,7 +30,7 @@ from app.models.claim_response.enums import (
     ClaimResponseCommunicationRequestReferenceType,
 )
 
-claim_response_id_seq = Sequence("claim_response_id_seq", start=180000, increment=1)
+claim_response_id_seq = Sequence("claim_response_pub_seq", start=180000, increment=1)
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ from sqlalchemy.sql import func
 
 from app.core.database import FHIRBase as Base
 
-vitals_id_seq = Sequence("vitals_id_seq", start=70000, increment=1)
+vitals_id_seq = Sequence("vitals_pub_seq", start=70000, increment=1)
 
 
 class VitalsModel(Base):

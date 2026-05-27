@@ -29,7 +29,7 @@ from app.models.task.enums import (
     TaskStatus,
 )
 
-task_id_seq = Sequence("task_id_seq", start=280000, increment=1)
+task_id_seq = Sequence("task_pub_seq", start=280000, increment=1)
 
 
 # ---------------------------------------------------------------------------

@@ -28,7 +28,7 @@ from app.models.appointment.enums import (
 )
 from app.models.enums import EncounterReferenceType, SubjectReferenceType
 
-appointment_id_seq = Sequence("appointment_id_seq", start=40000, increment=1)
+appointment_id_seq = Sequence("appointment_pub_seq", start=40000, increment=1)
 
 
 class AppointmentModel(Base):

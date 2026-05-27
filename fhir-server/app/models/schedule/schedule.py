@@ -14,7 +14,7 @@ from sqlalchemy.sql import func
 from app.core.database import FHIRBase as Base
 from app.models.schedule.enums import ScheduleActorReferenceType
 
-schedule_id_seq = Sequence("schedule_id_seq", start=200000, increment=1)
+schedule_id_seq = Sequence("schedule_pub_seq", start=200000, increment=1)
 
 
 # ---------------------------------------------------------------------------

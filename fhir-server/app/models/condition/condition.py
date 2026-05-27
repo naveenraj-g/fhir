@@ -22,7 +22,7 @@ from app.models.condition.enums import (
 )
 from app.models.enums import EncounterReferenceType
 
-condition_id_seq = Sequence("condition_id_seq", start=120000, increment=1)
+condition_id_seq = Sequence("condition_pub_seq", start=120000, increment=1)
 
 
 class ConditionModel(Base):

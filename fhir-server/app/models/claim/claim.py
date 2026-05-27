@@ -35,7 +35,7 @@ from app.models.claim.enums import (
     ClaimItemEncounterReferenceType,
 )
 
-claim_id_seq = Sequence("claim_id_seq", start=170000, increment=1)
+claim_id_seq = Sequence("claim_pub_seq", start=170000, increment=1)
 
 
 # ---------------------------------------------------------------------------

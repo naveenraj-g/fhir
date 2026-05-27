@@ -29,7 +29,7 @@ from app.models.encounter.enums import (
 )
 from app.models.enums import SubjectReferenceType, OrganizationReferenceType
 
-encounter_id_seq = Sequence("encounter_id_seq", start=20000, increment=1)
+encounter_id_seq = Sequence("encounter_pub_seq", start=20000, increment=1)
 
 
 class EncounterModel(Base):

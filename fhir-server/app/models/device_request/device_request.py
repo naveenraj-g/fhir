@@ -29,7 +29,7 @@ from app.models.device_request.enums import (
 )
 from app.models.enums import EncounterReferenceType
 
-device_request_id_seq = Sequence("device_request_id_seq", start=130000, increment=1)
+device_request_id_seq = Sequence("device_request_pub_seq", start=130000, increment=1)
 
 
 class DeviceRequestModel(Base):
