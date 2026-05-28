@@ -9,8 +9,9 @@ Download each file manually using the instructions below, then run the loaders.
 
 ```
 terminology_data/
-  valuesets.json              ← FHIR R4 built-in (already loaded)
-  v3-codesystems.json         ← FHIR R4 v3 code systems (already loaded)
+  valuesets.json              ← FHIR R4 built-in ValueSets
+  v3-codesystems.json         ← FHIR R4 v3 code systems
+  v2-tables.json              ← HL7 v2 code tables (424 code systems, ~6k concepts)
   icd10cm_codes_2026.txt      ← ICD-10-CM diagnosis codes
   LoincTableCore.csv          ← LOINC lab & clinical codes
   rrf/
@@ -29,7 +30,7 @@ Already loaded. Re-run anytime to pick up HL7 spec updates.
 
 ```powershell
 curl -L https://hl7.org/fhir/R4/definitions.json.zip -o fhir-r4.zip
-# Extract valuesets.json and v3-codesystems.json into this folder
+# Extract valuesets.json, v3-codesystems.json, and v2-tables.json into this folder
 ```
 
 ### 2. ICD-10-CM — ~72k diagnosis codes

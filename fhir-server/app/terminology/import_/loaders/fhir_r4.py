@@ -167,7 +167,20 @@ class FhirR4Loader(BaseLoader):
             if not system_url:
                 continue
             if filters:
-                continue  # filter-based expansion — can't resolve without runtime expansion
+                # is-not-a: one code excluded from a small flat system — whole-system fallback is safe.
+                # All other filter ops (is-a, regex, =) require hierarchy traversal; skip them.
+                if not any(f.get("op") == "is-not-a" for f in filters):
+                    continue
+                rows = await self.conn.fetch(
+                    """
+                    SELECT tc.id FROM terminology_concept tc
+                    JOIN terminology_code_system cs ON cs.id = tc.code_system_id
+                    WHERE cs.canonical_url = $1 AND tc.org_id IS NULL
+                    """,
+                    system_url,
+                )
+                concept_db_ids.extend(r["id"] for r in rows)
+                continue
 
             if codes:
                 # Explicit code list
