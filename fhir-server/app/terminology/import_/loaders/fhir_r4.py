@@ -183,15 +183,32 @@ class FhirR4Loader(BaseLoader):
                 continue
 
             if codes:
-                # Explicit code list
+                # Explicit code list — bootstrap the CodeSystem if it's not loaded yet.
+                # External systems (urn:ietf:bcp:47, urn:iso:std:iso:3166, UCUM, …) are
+                # not shipped in the FHIR definitions zip, so we create them on the fly
+                # from the codes that appear in the ValueSet compose.
+                cs_id = await self.conn.fetchval(
+                    "SELECT id FROM terminology_code_system WHERE canonical_url = $1",
+                    system_url,
+                )
+                if cs_id is None:
+                    cs_id = await self.upsert_code_system(
+                        canonical_url=system_url,
+                        name=system_url.split("/")[-1].split(":")[-1],
+                    )
+                    records = [
+                        (cs_id, c["code"], c.get("display") or c["code"], None)
+                        for c in codes if c.get("code")
+                    ]
+                    await self.bulk_insert_concepts(records)
+
                 rows = await self.conn.fetch(
                     """
                     SELECT tc.id FROM terminology_concept tc
-                    JOIN terminology_code_system cs ON cs.id = tc.code_system_id
-                    WHERE cs.canonical_url = $1 AND tc.code = ANY($2::text[])
+                    WHERE tc.code_system_id = $1 AND tc.code = ANY($2::text[])
                       AND tc.org_id IS NULL
                     """,
-                    system_url,
+                    cs_id,
                     [c["code"] for c in codes],
                 )
             else:
