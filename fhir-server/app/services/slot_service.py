@@ -25,12 +25,14 @@ class SlotService:
         org_id: str,
         slot_status: Optional[str] = None,
         schedule_id: Optional[int] = None,
+        practitioner_role_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[SlotModel], int]:
         return await self.repository.get_me(
             user_id, org_id,
             slot_status=slot_status, schedule_id=schedule_id,
+            practitioner_role_id=practitioner_role_id,
             limit=limit, offset=offset,
         )
 
@@ -40,12 +42,14 @@ class SlotService:
         org_id: Optional[str] = None,
         slot_status: Optional[str] = None,
         schedule_id: Optional[int] = None,
+        practitioner_role_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[SlotModel], int]:
         return await self.repository.list(
             user_id=user_id, org_id=org_id,
             slot_status=slot_status, schedule_id=schedule_id,
+            practitioner_role_id=practitioner_role_id,
             limit=limit, offset=offset,
         )
 

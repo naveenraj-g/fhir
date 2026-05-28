@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F40
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
-from app.models.schedule.schedule import ScheduleModel
+from app.models.schedule.schedule import ScheduleActor, ScheduleModel
+from app.models.schedule.enums import ScheduleActorReferenceType
 from app.models.slot.enums import SlotScheduleReferenceType, SlotStatus
 from app.models.slot.slot import (
     SlotIdentifier,
@@ -65,7 +66,7 @@ class SlotRepository:
             result = await session.execute(stmt)
             return result.scalars().first()
 
-    def _apply_list_filters(self, stmt, user_id, org_id, slot_status, schedule_id):
+    def _apply_list_filters(self, stmt, user_id, org_id, slot_status, schedule_id, practitioner_role_id=None):
         if user_id:
             stmt = stmt.where(SlotModel.user_id == user_id)
         if org_id:
@@ -79,6 +80,16 @@ class SlotRepository:
                 .scalar_subquery()
             )
             stmt = stmt.where(SlotModel.schedule_fk_id == sub)
+        if practitioner_role_id is not None:
+            sub = (
+                select(ScheduleActor.schedule_id)
+                .where(
+                    ScheduleActor.reference_type == ScheduleActorReferenceType.PractitionerRole,
+                    ScheduleActor.reference_id == practitioner_role_id,
+                )
+                .scalar_subquery()
+            )
+            stmt = stmt.where(SlotModel.schedule_fk_id == sub)
         return stmt
 
     async def get_me(
@@ -87,17 +98,18 @@ class SlotRepository:
         org_id: str,
         slot_status: Optional[str] = None,
         schedule_id: Optional[int] = None,
+        practitioner_role_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[SlotModel], int]:
         async with self.session_factory() as session:
             base = self._apply_list_filters(
                 _with_relationships(select(SlotModel)),
-                user_id, org_id, slot_status, schedule_id,
+                user_id, org_id, slot_status, schedule_id, practitioner_role_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(SlotModel),
-                user_id, org_id, slot_status, schedule_id,
+                user_id, org_id, slot_status, schedule_id, practitioner_role_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
@@ -111,17 +123,18 @@ class SlotRepository:
         org_id: Optional[str] = None,
         slot_status: Optional[str] = None,
         schedule_id: Optional[int] = None,
+        practitioner_role_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[SlotModel], int]:
         async with self.session_factory() as session:
             base = self._apply_list_filters(
                 _with_relationships(select(SlotModel)),
-                user_id, org_id, slot_status, schedule_id,
+                user_id, org_id, slot_status, schedule_id, practitioner_role_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(SlotModel),
-                user_id, org_id, slot_status, schedule_id,
+                user_id, org_id, slot_status, schedule_id, practitioner_role_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(

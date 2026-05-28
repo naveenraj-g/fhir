@@ -8,6 +8,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    true,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import relationship
@@ -30,7 +31,7 @@ class TerminologyCodeSystem(Base):
     jurisdiction = Column(String, nullable=True)
     content_mode = Column(String, nullable=True)
     experimental = Column(Boolean, default=False)
-    active = Column(Boolean, nullable=False, default=True)
+    active = Column(Boolean, nullable=False, default=True, server_default=true())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -59,7 +60,7 @@ class TerminologyConcept(Base):
     code = Column(String, nullable=False, index=True)
     display = Column(String, nullable=False)
     definition = Column(Text, nullable=True)
-    active = Column(Boolean, default=True)
+    active = Column(Boolean, default=True, server_default=true())
     deprecated = Column(Boolean, default=False)
     parent_concept_id = Column(
         Integer, ForeignKey("terminology_concept.id"), nullable=True, index=True
@@ -151,7 +152,7 @@ class TerminologyValueSet(Base):
     fhir_version = Column(String, nullable=True)
     binding_strength = Column(String, nullable=False)
     experimental = Column(Boolean, default=False)
-    active = Column(Boolean, default=True)
+    active = Column(Boolean, default=True, server_default=true())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -180,7 +181,7 @@ class TerminologyValueSetConcept(Base):
     concept_id = Column(
         Integer, ForeignKey("terminology_concept.id"), nullable=False, index=True
     )
-    active = Column(Boolean, default=True)
+    active = Column(Boolean, default=True, server_default=true())
 
     value_set = relationship("TerminologyValueSet", back_populates="concepts")
     concept = relationship("TerminologyConcept")
@@ -200,7 +201,7 @@ class TerminologyFieldBinding(Base):
     )
     binding_strength = Column(String, nullable=False)
     multiple_allowed = Column(Boolean, default=False)
-    active = Column(Boolean, default=True)
+    active = Column(Boolean, default=True, server_default=true())
 
     value_set = relationship("TerminologyValueSet", back_populates="field_bindings")
 

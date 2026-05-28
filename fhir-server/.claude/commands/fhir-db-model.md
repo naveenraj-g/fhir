@@ -77,32 +77,25 @@ reference_display = Column(String, nullable=True)
 
 Use `Enum(MyClass, name="pg_type_name")` when the allowed reference types are a **closed, known set**. Define the Python enum in `app/models/<resource>/enums.py`.
 
-### Two enum patterns — never mix them
+### Two enum patterns — key always equals value
 
-**Reference type enums** (FHIR resource names): member NAME is `UPPER_SNAKE_CASE`, member VALUE is the TitleCase FHIR resource name.
+**Reference type enums** (FHIR resource names): both name and value are the PascalCase FHIR resource name.
 
 ```python
 class MyResourceFieldReferenceType(str, Enum):
-    CONDITION = "Condition"       # name=CONDITION (stored in DB), value=Condition (FHIR output)
-    PRACTITIONER_ROLE = "PractitionerRole"
+    Condition = "Condition"
+    PractitionerRole = "PractitionerRole"
 ```
 
-**Status / code enums** (FHIR code values): member name **equals** its value, both lowercase.
+**Status / code enums** (FHIR code values): both name and value are the same lowercase FHIR code string.
 
 ```python
 class MyResourceStatus(str, Enum):
-    active = "active"             # name==value==lowercase (stored in DB and FHIR output)
+    active = "active"
     completed = "completed"
 ```
 
-### Why it matters — SQLAlchemy binding
-
-SQLAlchemy's `str, Enum` uses `member.name` (not `.value`) when writing to the DB and when reading back. So:
-
-- `CONDITION = "Condition"` → DB stores `"CONDITION"`, FHIR output returns `"Condition"` (via `.value`).
-- `active = "active"` → DB stores `"active"`, FHIR output returns `"active"`.
-
-**The PostgreSQL enum type must contain the same strings that SQLAlchemy stores** (the member names). For reference type enums those are `UPPERCASE_SNAKE_CASE`. For status enums those are `lowercase`. Never create PG enum types with TitleCase values like `'Condition'` or `'PractitionerRole'` — they won't match what SQLAlchemy sends.
+Because key = value in every enum, SQLAlchemy, the PostgreSQL enum type, and the FHIR output all use the same string — no mismatch is possible. Alembic autogenerate emits the correct values; no manual renaming needed.
 
 Naming: `<Resource><Field>ReferenceType` in Python, `<table_name>_reference_type` as the PostgreSQL type name.
 
@@ -160,13 +153,12 @@ After writing the model, generate a migration:
 uv run alembic revision --autogenerate -m "<description>"
 ```
 
-Then **manually fix** the generated file before applying:
-1. Alembic autogenerate emits `sa.Enum('VALUE1', 'VALUE2', ...)` using the Python member names — **keep those values exactly as-is**. For reference type enums the values will be UPPERCASE_SNAKE (e.g. `'CONDITION'`, `'PRACTITIONER_ROLE'`); for status enums they will be lowercase. Both are correct — they match what SQLAlchemy binds. **Never rename them to TitleCase** (e.g. `'Condition'`) — that would break every write.
-2. Replace `sa.Enum(...)` with `postgresql.ENUM(...)` at module level: `_my_enum = postgresql.ENUM('VALUE1', 'VALUE2', name='pg_type_name')`.
-3. Call `_my_enum.create(op.get_bind(), checkfirst=True)` at the start of `upgrade()`.
-4. Use `create_type=False` on any `add_column`/`alter_column` that references the type.
-5. If converting VARCHAR → Enum, add `postgresql_using='col::pg_type_name'`.
-6. In `downgrade()`, revert columns first, then call `_my_enum.drop(op.get_bind(), checkfirst=True)`.
+Autogenerate enum values are reliable (all enums use key = value convention — no name/value mismatch). Still update the generated file to use the `postgresql.ENUM` pattern for proper create/drop handling:
+1. Replace `sa.Enum(...)` with `postgresql.ENUM(...)` at module level: `_my_enum = postgresql.ENUM('VALUE1', 'VALUE2', name='pg_type_name')`.
+2. Call `_my_enum.create(op.get_bind(), checkfirst=True)` at the start of `upgrade()`.
+3. Use `create_type=False` on any `add_column`/`alter_column` that references the type.
+4. If converting VARCHAR → Enum, add `postgresql_using='col::pg_type_name'`.
+5. In `downgrade()`, revert columns first, then call `_my_enum.drop(op.get_bind(), checkfirst=True)`.
 
 Apply with: `uv run alembic upgrade head`
 
@@ -190,5 +182,5 @@ After the model and migration, walk every layer:
 - **Never model from memory** — always fetch the spec URL first.
 - **CodeableReference does not exist in R4** — in R4 use separate `reasonCode[]` + `reasonReference[]` arrays, separate `complication[]` + `complicationDetail[]`, separate `usedCode[]` + `usedReference[]`, etc.
 - **Exception: PractitionerRole** — this project intentionally uses the R5 structure for PractitionerRole (contact + availability). Do not change it.
-- **Autogenerate is wrong for enums** — always fix the migration manually.
+- **Enum values in autogenerate are correct** (key = value) — still apply the `postgresql.ENUM` create/drop pattern manually.
 - **Verify imports compile** — run `uv run python -c "from app.models.<resource> import ..."` after writing.

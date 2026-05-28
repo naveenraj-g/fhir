@@ -99,7 +99,7 @@ async def create_slot(
     description=(
         "Returns a paginated list of Slot records belonging to the authenticated user "
         "(identified by `sub` and `activeOrganizationId`). "
-        "Filter by `status` or `schedule_id`. "
+        "Filter by `status`, `schedule_id`, or `practitioner_role_id`. "
         + _CONTENT_NEG
     ),
     response_description="Paginated Slot resources for the current user",
@@ -112,6 +112,7 @@ async def get_my_slots(
         description="Filter by slot status (busy | free | busy-unavailable | busy-tentative | entered-in-error).",
     ),
     schedule_id: Optional[int] = Query(None, description="Filter by public schedule_id."),
+    practitioner_role_id: Optional[int] = Query(None, description="Filter by public practitioner_role_id — returns slots belonging to that practitioner's schedule."),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     slot_service: SlotService = Depends(get_slot_service),
@@ -121,6 +122,7 @@ async def get_my_slots(
     items, total = await slot_service.get_me(
         user_id, org_id,
         slot_status=slot_status, schedule_id=schedule_id,
+        practitioner_role_id=practitioner_role_id,
         limit=limit, offset=offset,
     )
     return format_paginated_response(
@@ -204,7 +206,7 @@ async def patch_slot(
     summary="List all Slot resources",
     description=(
         "Returns a paginated list of Slot resources. "
-        "Filter by `status`, `schedule_id`, `user_id`, or `org_id`. "
+        "Filter by `status`, `schedule_id`, `practitioner_role_id`, `user_id`, or `org_id`. "
         "Use `limit` and `offset` for pagination. "
         + _CONTENT_NEG
     ),
@@ -218,6 +220,7 @@ async def list_slots(
         description="Filter by slot status (busy | free | busy-unavailable | busy-tentative | entered-in-error).",
     ),
     schedule_id: Optional[int] = Query(None, description="Filter by public schedule_id."),
+    practitioner_role_id: Optional[int] = Query(None, description="Filter by public practitioner_role_id — returns slots belonging to that practitioner's schedule."),
     user_id: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
@@ -227,6 +230,7 @@ async def list_slots(
     items, total = await slot_service.list_slots(
         user_id=user_id, org_id=org_id,
         slot_status=slot_status, schedule_id=schedule_id,
+        practitioner_role_id=practitioner_role_id,
         limit=limit, offset=offset,
     )
     return format_paginated_response(
