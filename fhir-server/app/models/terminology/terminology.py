@@ -4,10 +4,12 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
+    text,
     true,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
@@ -43,15 +45,21 @@ class TerminologyCodeSystem(Base):
 
 
 class TerminologyConcept(Base):
-    """Stores individual codes from any CodeSystem.
-
-    Supports both global (org_id=NULL) and org-specific codes.
-    Uniqueness enforced by two partial indexes in the migration:
-      - (code_system_id, code) WHERE org_id IS NULL
-      - (code_system_id, code, org_id) WHERE org_id IS NOT NULL
-    """
-
     __tablename__ = "terminology_concept"
+    __table_args__ = (
+        Index(
+            "uq_terminology_concept_system_code_null_org",
+            "code_system_id", "code",
+            unique=True,
+            postgresql_where=text("org_id IS NULL"),
+        ),
+        Index(
+            "uq_terminology_concept_system_code_org",
+            "code_system_id", "code", "org_id",
+            unique=True,
+            postgresql_where=text("org_id IS NOT NULL"),
+        ),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     code_system_id = Column(

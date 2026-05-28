@@ -96,7 +96,7 @@ class BaseLoader:
                 INSERT INTO terminology_concept
                     (code_system_id, code, display, definition, search_vector)
                 VALUES ($1, $2, $3, $4, to_tsvector('english', $5))
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (code_system_id, code) WHERE org_id IS NULL DO NOTHING
                 """,
                 expanded,
             )
