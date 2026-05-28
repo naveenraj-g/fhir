@@ -1,9 +1,18 @@
 version: "3.9"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# FHIR Server — production / shared stack
+#
+# Usage:
+#   1. Copy .env.example to .env and fill in the required values
+#   2. docker compose -f docker-compose.prod.yml up -d
+#
+# The API image is pulled from GitHub Container Registry — no source code needed.
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
   api:
-    build: .
-    # image: ghcr.io/naveenraj-g/fhir-server:latest  # use pre-built image instead
+    image: ghcr.io/naveenraj-g/fhir-server-v1:latest
     container_name: fhir-server
     ports:
       - "8000:8000"
@@ -16,13 +25,19 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
       interval: 30s
       timeout: 5s
-      start_period: 15s
+      start_period: 30s
       retries: 3
     networks:
-      - bezs-net
+      - fhir-net
 
   db:
     image: postgres:15-alpine
@@ -35,13 +50,17 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-fhir-server}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-fhir-server}",
+        ]
       interval: 10s
       timeout: 5s
       start_period: 10s
       retries: 5
     networks:
-      - bezs-net
+      - fhir-net
 
   redis:
     image: redis:7-alpine
@@ -57,12 +76,12 @@ services:
       start_period: 5s
       retries: 5
     networks:
-      - bezs-net
+      - fhir-net
 
 volumes:
   postgres_data:
   redis_data:
 
 networks:
-  bezs-net:
+  fhir-net:
     driver: bridge

@@ -27,6 +27,14 @@ COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
 # Copy application source
 COPY --chown=appuser:appgroup app ./app
 
+# Alembic migrations — baked in so the container can apply schema on first boot
+COPY --chown=appuser:appgroup alembic.ini ./
+COPY --chown=appuser:appgroup migrations ./migrations
+
+# Entrypoint runs migrations then hands off to uvicorn
+COPY --chown=appuser:appgroup entrypoint.sh ./
+RUN chmod +x ./entrypoint.sh
+
 USER appuser
 
 # Activate venv
@@ -38,7 +46,7 @@ EXPOSE 8000
 
 # Liveness probe used by Docker / container runtimes that don't support
 # HTTP healthchecks natively.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+ENTRYPOINT ["./entrypoint.sh"]

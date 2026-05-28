@@ -41,7 +41,5 @@ tests/
 AGENTS.md
 PRODUCTION_READINESS_REPORT.md
 
-# Migrations run outside the container
-migrations/
-alembic.ini
 justfile
+docker-compose*.yml
