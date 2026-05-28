@@ -108,19 +108,58 @@ class FhirR4Loader(BaseLoader):
             return 0
 
         records: list[tuple] = []
-        self._flatten_concepts(concepts, cs_id, records)
+        parent_links: list[tuple[str, str]] = []  # (child_code, parent_code)
+        self._flatten_concepts(concepts, cs_id, records, parent_links)
         await self.bulk_insert_concepts(records)
+        if parent_links:
+            await self._set_parent_concept_ids(cs_id, parent_links)
         return len(records)
 
-    def _flatten_concepts(self, concepts: list[dict], cs_id: int, out: list) -> None:
+    def _flatten_concepts(
+        self,
+        concepts: list[dict],
+        cs_id: int,
+        out: list,
+        parent_links: list,
+        parent_code: str | None = None,
+    ) -> None:
         for c in concepts:
             code = (c.get("code") or "").strip()
             display = (c.get("display") or code).strip()
             definition = (c.get("definition") or "").strip() or None
             if code:
                 out.append((cs_id, code, display, definition))
+                if parent_code:
+                    parent_links.append((code, parent_code))
             for child in c.get("concept", []):
-                self._flatten_concepts([child], cs_id, out)
+                self._flatten_concepts([child], cs_id, out, parent_links, parent_code=code or parent_code)
+
+    async def _set_parent_concept_ids(
+        self, cs_id: int, parent_links: list[tuple[str, str]]
+    ) -> None:
+        """Set parent_concept_id for all child concepts using a single bulk update."""
+        child_codes = [link[0] for link in parent_links]
+        parent_codes = [link[1] for link in parent_links]
+        await self.conn.execute(
+            """
+            UPDATE terminology_concept child
+            SET parent_concept_id = parent.id
+            FROM (
+                SELECT unnest($1::text[]) AS child_code,
+                       unnest($2::text[]) AS parent_code
+            ) lnk
+            JOIN terminology_concept parent
+              ON parent.code_system_id = $3
+             AND parent.code = lnk.parent_code
+             AND parent.org_id IS NULL
+            WHERE child.code_system_id = $3
+              AND child.code = lnk.child_code
+              AND child.org_id IS NULL
+            """,
+            child_codes,
+            parent_codes,
+            cs_id,
+        )
 
     # ── ValueSet ───────────────────────────────────────────────────────────────
 
@@ -167,19 +206,44 @@ class FhirR4Loader(BaseLoader):
             if not system_url:
                 continue
             if filters:
-                # is-not-a: one code excluded from a small flat system — whole-system fallback is safe.
-                # All other filter ops (is-a, regex, =) require hierarchy traversal; skip them.
-                if not any(f.get("op") == "is-not-a" for f in filters):
-                    continue
-                rows = await self.conn.fetch(
-                    """
-                    SELECT tc.id FROM terminology_concept tc
-                    JOIN terminology_code_system cs ON cs.id = tc.code_system_id
-                    WHERE cs.canonical_url = $1 AND tc.org_id IS NULL
-                    """,
-                    system_url,
-                )
-                concept_db_ids.extend(r["id"] for r in rows)
+                for f in filters:
+                    op = f.get("op")
+                    value = f.get("value", "")
+                    if op == "is-a":
+                        # Resolve via recursive CTE over parent_concept_id links.
+                        rows = await self.conn.fetch(
+                            """
+                            WITH RECURSIVE subtree AS (
+                                SELECT tc.id
+                                FROM terminology_concept tc
+                                JOIN terminology_code_system cs ON cs.id = tc.code_system_id
+                                WHERE cs.canonical_url = $1
+                                  AND tc.code = $2
+                                  AND tc.org_id IS NULL
+                                UNION ALL
+                                SELECT child.id
+                                FROM terminology_concept child
+                                JOIN subtree s ON child.parent_concept_id = s.id
+                                WHERE child.org_id IS NULL
+                            )
+                            SELECT id FROM subtree
+                            """,
+                            system_url,
+                            value,
+                        )
+                        concept_db_ids.extend(r["id"] for r in rows)
+                    elif op == "is-not-a":
+                        # Whole-system minus the excluded subtree — safe for flat systems.
+                        rows = await self.conn.fetch(
+                            """
+                            SELECT tc.id FROM terminology_concept tc
+                            JOIN terminology_code_system cs ON cs.id = tc.code_system_id
+                            WHERE cs.canonical_url = $1 AND tc.org_id IS NULL
+                            """,
+                            system_url,
+                        )
+                        concept_db_ids.extend(r["id"] for r in rows)
+                    # Other ops (regex, =) are skipped — can't resolve without expansion
                 continue
 
             if codes:
