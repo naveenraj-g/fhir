@@ -1,6 +1,6 @@
 {
-"user_id": "user-admin-001",
-  "org_id": "org-sunrise-001",
+  "user_id": "user-admin-001",
+  "org_id": "f5ea33b0-60b1-4a30-9791-8040829d9cc6",
   "provided_by": "Organization/190000",
   "provided_by_display": "Sunrise Medical Center",
   "active": true,
@@ -34,11 +34,12 @@
     }
   ],
   "location": [
-    { "reference": "Location/230000", "reference_display": "Sunrise Medical Center — Main Clinic" }
+    {
+      "reference": "Location/230000",
+      "reference_display": "Sunrise Medical Center — Main Clinic"
+    }
   ],
-  "telecom": [
-    { "system": "phone", "value": "+1-555-900-1020", "use": "work" }
-  ],
+  "telecom": [{ "system": "phone", "value": "+1-555-900-1020", "use": "work" }],
   "available_time": [
     {
       "days_of_week": ["mon", "wed", "fri"],

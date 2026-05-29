@@ -1,6 +1,6 @@
 {
-"user_id": "user-admin-001",
-  "org_id": "org-sunrise-001",
+  "user_id": "user-admin-001",
+  "org_id": "f5ea33b0-60b1-4a30-9791-8040829d9cc6",
   "practitioner": "Practitioner/30001",
   "practitioner_display": "Dr. Sarah K. Patel",
   "organization": "Organization/190000",
@@ -25,10 +25,16 @@
     }
   ],
   "location": [
-    { "reference": "Location/230000", "reference_display": "Sunrise Medical Center — Main Clinic" }
+    {
+      "reference": "Location/230000",
+      "reference_display": "Sunrise Medical Center — Main Clinic"
+    }
   ],
   "healthcare_service": [
-    { "reference": "HealthcareService/150001", "reference_display": "Neurology Consultation" }
+    {
+      "reference": "HealthcareService/150001",
+      "reference_display": "Neurology Consultation"
+    }
   ],
   "availability": [
     {

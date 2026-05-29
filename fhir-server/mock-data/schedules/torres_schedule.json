@@ -1,6 +1,6 @@
 {
-"user_id": "user-admin-001",
-  "org_id": "org-sunrise-001",
+  "user_id": "user-admin-001",
+  "org_id": "f5ea33b0-60b1-4a30-9791-8040829d9cc6",
   "active": true,
   "comment": "Dr. Michael A. Torres — General Practice schedule, Mon–Fri",
   "planning_horizon_start": "2026-06-01T00:00:00Z",
@@ -27,8 +27,17 @@
     }
   ],
   "actor": [
-    { "reference": "Practitioner/30002",     "reference_display": "Dr. Michael A. Torres" },
-    { "reference": "PractitionerRole/140002", "reference_display": "Dr. Torres — GP" },
-    { "reference": "Location/230000",         "reference_display": "Sunrise Medical Center — Main Clinic" }
+    {
+      "reference": "Practitioner/30002",
+      "reference_display": "Dr. Michael A. Torres"
+    },
+    {
+      "reference": "PractitionerRole/140002",
+      "reference_display": "Dr. Torres — GP"
+    },
+    {
+      "reference": "Location/230000",
+      "reference_display": "Sunrise Medical Center — Main Clinic"
+    }
   ]
 }

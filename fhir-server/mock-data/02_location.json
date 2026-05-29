@@ -1,6 +1,6 @@
 {
-"user_id": "user-admin-001",
-  "org_id": "org-sunrise-001",
+  "user_id": "user-admin-001",
+  "org_id": "f5ea33b0-60b1-4a30-9791-8040829d9cc6",
   "status": "active",
   "name": "Sunrise Medical Center — Main Clinic",
   "description": "Primary outpatient clinic building with cardiology, neurology, and general practice wings.",
@@ -15,7 +15,11 @@
   ],
   "telecoms": [
     { "system": "phone", "value": "+1-555-900-1001", "use": "work", "rank": 1 },
-    { "system": "email", "value": "clinic@sunrisemedical.example.com", "use": "work" }
+    {
+      "system": "email",
+      "value": "clinic@sunrisemedical.example.com",
+      "use": "work"
+    }
   ],
   "address_use": "work",
   "address_type": "both",
