@@ -33,6 +33,7 @@ terminology-icd10cm FILE="terminology_data/icd10cm_codes_2026.txt":
 
 # RxNorm — free, no account, ~100k drugs, ~3 min
 # Download: https://www.nlm.nih.gov/research/umls/rxnorm/docs/rxnormfiles.html
+# You can download the RxNorm data here: https://uts.nlm.nih.gov/uts/login
 #   -> "RxNorm Full Monthly Release" ZIP -> extract rrf/ folder
 terminology-rxnorm FILE="terminology_data/rrf/RXNCONSO.RRF":
     uv run python -m app.terminology.import_.cli --source rxnorm --file {{FILE}}

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 
@@ -19,6 +20,10 @@ class Database:
             class_=AsyncSession,
             expire_on_commit=False,
         )
+
+    async def create_extensions(self) -> None:
+        async with self.engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
 
     async def disconnect(self):
         await self.engine.dispose()

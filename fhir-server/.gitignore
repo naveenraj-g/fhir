@@ -59,3 +59,5 @@ terminology_data/**
 # Track .claude/commands/ (shared skill definitions); ignore local settings
 .claude/settings.local.json
 .claude/settings.json
+
+.commandcode

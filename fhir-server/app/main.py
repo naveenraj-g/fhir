@@ -37,6 +37,8 @@ db: Database = container.core.database()
 async def lifespan(app: FastAPI):
     logger.info("🟢 Starting up the application")
 
+    await db.create_extensions()
+
     try:
         await cast(Any, redis_client.ping())
         app.state.redis = redis_client
