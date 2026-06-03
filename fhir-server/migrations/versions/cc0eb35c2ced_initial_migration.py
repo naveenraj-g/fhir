@@ -860,40 +860,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_task_org_id'), 'task', ['org_id'], unique=False)
     op.create_index(op.f('ix_task_task_id'), 'task', ['task_id'], unique=True)
     op.create_index(op.f('ix_task_user_id'), 'task', ['user_id'], unique=False)
-    op.create_table('terminology_code_system',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('canonical_url', sa.String(), nullable=False),
-    sa.Column('name', sa.String(), nullable=False),
-    sa.Column('title', sa.String(), nullable=True),
-    sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('version', sa.String(), nullable=True),
-    sa.Column('fhir_version', sa.String(), nullable=True),
-    sa.Column('publisher', sa.String(), nullable=True),
-    sa.Column('jurisdiction', sa.String(), nullable=True),
-    sa.Column('content_mode', sa.String(), nullable=True),
-    sa.Column('experimental', sa.Boolean(), nullable=True),
-    sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_terminology_code_system_canonical_url'), 'terminology_code_system', ['canonical_url'], unique=True)
-    op.create_table('terminology_value_set',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('canonical_url', sa.String(), nullable=False),
-    sa.Column('name', sa.String(), nullable=False),
-    sa.Column('title', sa.String(), nullable=True),
-    sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('version', sa.String(), nullable=True),
-    sa.Column('fhir_version', sa.String(), nullable=True),
-    sa.Column('binding_strength', sa.String(), nullable=False),
-    sa.Column('experimental', sa.Boolean(), nullable=True),
-    sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_terminology_value_set_canonical_url'), 'terminology_value_set', ['canonical_url'], unique=True)
     op.create_table('vitals',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('vitals_id', sa.Integer(), server_default=sa.text("nextval('vitals_pub_seq')"), nullable=False),
@@ -4090,45 +4056,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_task_restriction_recipient_task_id'), 'task_restriction_recipient', ['task_id'], unique=False)
-    op.create_table('terminology_concept',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('code_system_id', sa.Integer(), nullable=False),
-    sa.Column('code', sa.String(), nullable=False),
-    sa.Column('display', sa.String(), nullable=False),
-    sa.Column('definition', sa.Text(), nullable=True),
-    sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=True),
-    sa.Column('deprecated', sa.Boolean(), nullable=True),
-    sa.Column('parent_concept_id', sa.Integer(), nullable=True),
-    sa.Column('search_vector', postgresql.TSVECTOR(), nullable=True),
-    sa.Column('org_id', sa.String(), nullable=True),
-    sa.Column('user_id', sa.String(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.ForeignKeyConstraint(['code_system_id'], ['terminology_code_system.id'], ),
-    sa.ForeignKeyConstraint(['parent_concept_id'], ['terminology_concept.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_terminology_concept_code'), 'terminology_concept', ['code'], unique=False)
-    op.create_index(op.f('ix_terminology_concept_code_system_id'), 'terminology_concept', ['code_system_id'], unique=False)
-    op.create_index(op.f('ix_terminology_concept_org_id'), 'terminology_concept', ['org_id'], unique=False)
-    op.create_index(op.f('ix_terminology_concept_parent_concept_id'), 'terminology_concept', ['parent_concept_id'], unique=False)
-    op.create_index(op.f('ix_terminology_concept_user_id'), 'terminology_concept', ['user_id'], unique=False)
-    op.create_index('uq_terminology_concept_system_code_null_org', 'terminology_concept', ['code_system_id', 'code'], unique=True, postgresql_where=sa.text('org_id IS NULL'))
-    op.create_index('uq_terminology_concept_system_code_org', 'terminology_concept', ['code_system_id', 'code', 'org_id'], unique=True, postgresql_where=sa.text('org_id IS NOT NULL'))
-    op.create_table('terminology_field_binding',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('resource_type', sa.String(), nullable=False),
-    sa.Column('field_name', sa.String(), nullable=False),
-    sa.Column('value_set_id', sa.Integer(), nullable=False),
-    sa.Column('binding_strength', sa.String(), nullable=False),
-    sa.Column('multiple_allowed', sa.Boolean(), nullable=True),
-    sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=True),
-    sa.ForeignKeyConstraint(['value_set_id'], ['terminology_value_set.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('resource_type', 'field_name')
-    )
-    op.create_index(op.f('ix_terminology_field_binding_resource_type'), 'terminology_field_binding', ['resource_type'], unique=False)
-    op.create_index(op.f('ix_terminology_field_binding_value_set_id'), 'terminology_field_binding', ['value_set_id'], unique=False)
     op.create_table('allergy_intolerance_reaction_manifestation',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('reaction_id', sa.Integer(), nullable=False),
@@ -6809,88 +6736,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_specimen_processing_additive_processing_id'), 'specimen_processing_additive', ['processing_id'], unique=False)
-    op.create_table('terminology_audit_log',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('action', sa.String(), nullable=False),
-    sa.Column('concept_id', sa.Integer(), nullable=True),
-    sa.Column('value_set_id', sa.Integer(), nullable=True),
-    sa.Column('performed_by', sa.String(), nullable=True),
-    sa.Column('old_value', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    sa.Column('new_value', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.ForeignKeyConstraint(['concept_id'], ['terminology_concept.id'], ),
-    sa.ForeignKeyConstraint(['value_set_id'], ['terminology_value_set.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_terminology_audit_log_action'), 'terminology_audit_log', ['action'], unique=False)
-    op.create_index(op.f('ix_terminology_audit_log_concept_id'), 'terminology_audit_log', ['concept_id'], unique=False)
-    op.create_index(op.f('ix_terminology_audit_log_value_set_id'), 'terminology_audit_log', ['value_set_id'], unique=False)
-    op.create_table('terminology_concept_embedding',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('concept_id', sa.Integer(), nullable=False),
-    sa.Column('embedding', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    sa.Column('model', sa.String(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.ForeignKeyConstraint(['concept_id'], ['terminology_concept.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_terminology_concept_embedding_concept_id'), 'terminology_concept_embedding', ['concept_id'], unique=True)
-    op.create_table('terminology_concept_map',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('source_concept_id', sa.Integer(), nullable=False),
-    sa.Column('target_concept_id', sa.Integer(), nullable=False),
-    sa.Column('mapping_type', sa.String(), nullable=True),
-    sa.Column('confidence', sa.Float(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.ForeignKeyConstraint(['source_concept_id'], ['terminology_concept.id'], ),
-    sa.ForeignKeyConstraint(['target_concept_id'], ['terminology_concept.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('source_concept_id', 'target_concept_id', 'mapping_type')
-    )
-    op.create_index(op.f('ix_terminology_concept_map_source_concept_id'), 'terminology_concept_map', ['source_concept_id'], unique=False)
-    op.create_index(op.f('ix_terminology_concept_map_target_concept_id'), 'terminology_concept_map', ['target_concept_id'], unique=False)
-    op.create_table('terminology_concept_synonym',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('concept_id', sa.Integer(), nullable=False),
-    sa.Column('synonym', sa.String(), nullable=False),
-    sa.ForeignKeyConstraint(['concept_id'], ['terminology_concept.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_terminology_concept_synonym_concept_id'), 'terminology_concept_synonym', ['concept_id'], unique=False)
-    op.create_table('terminology_concept_translation',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('concept_id', sa.Integer(), nullable=False),
-    sa.Column('language_code', sa.String(), nullable=False),
-    sa.Column('display', sa.String(), nullable=False),
-    sa.ForeignKeyConstraint(['concept_id'], ['terminology_concept.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('concept_id', 'language_code')
-    )
-    op.create_index(op.f('ix_terminology_concept_translation_concept_id'), 'terminology_concept_translation', ['concept_id'], unique=False)
-    op.create_table('terminology_relationship',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('parent_concept_id', sa.Integer(), nullable=False),
-    sa.Column('child_concept_id', sa.Integer(), nullable=False),
-    sa.Column('relationship_type', sa.String(), nullable=False),
-    sa.ForeignKeyConstraint(['child_concept_id'], ['terminology_concept.id'], ),
-    sa.ForeignKeyConstraint(['parent_concept_id'], ['terminology_concept.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('parent_concept_id', 'child_concept_id', 'relationship_type')
-    )
-    op.create_index(op.f('ix_terminology_relationship_child_concept_id'), 'terminology_relationship', ['child_concept_id'], unique=False)
-    op.create_index(op.f('ix_terminology_relationship_parent_concept_id'), 'terminology_relationship', ['parent_concept_id'], unique=False)
-    op.create_table('terminology_value_set_concept',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('value_set_id', sa.Integer(), nullable=False),
-    sa.Column('concept_id', sa.Integer(), nullable=False),
-    sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=True),
-    sa.ForeignKeyConstraint(['concept_id'], ['terminology_concept.id'], ),
-    sa.ForeignKeyConstraint(['value_set_id'], ['terminology_value_set.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('value_set_id', 'concept_id')
-    )
-    op.create_index(op.f('ix_terminology_value_set_concept_concept_id'), 'terminology_value_set_concept', ['concept_id'], unique=False)
-    op.create_index(op.f('ix_terminology_value_set_concept_value_set_id'), 'terminology_value_set_concept', ['value_set_id'], unique=False)
     op.create_table('appointment_participant_type',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('participant_id', sa.Integer(), nullable=False),
@@ -7442,25 +7287,6 @@ def downgrade() -> None:
     op.drop_table('claim_item_detail_modifier')
     op.drop_index(op.f('ix_appointment_participant_type_participant_id'), table_name='appointment_participant_type')
     op.drop_table('appointment_participant_type')
-    op.drop_index(op.f('ix_terminology_value_set_concept_value_set_id'), table_name='terminology_value_set_concept')
-    op.drop_index(op.f('ix_terminology_value_set_concept_concept_id'), table_name='terminology_value_set_concept')
-    op.drop_table('terminology_value_set_concept')
-    op.drop_index(op.f('ix_terminology_relationship_parent_concept_id'), table_name='terminology_relationship')
-    op.drop_index(op.f('ix_terminology_relationship_child_concept_id'), table_name='terminology_relationship')
-    op.drop_table('terminology_relationship')
-    op.drop_index(op.f('ix_terminology_concept_translation_concept_id'), table_name='terminology_concept_translation')
-    op.drop_table('terminology_concept_translation')
-    op.drop_index(op.f('ix_terminology_concept_synonym_concept_id'), table_name='terminology_concept_synonym')
-    op.drop_table('terminology_concept_synonym')
-    op.drop_index(op.f('ix_terminology_concept_map_target_concept_id'), table_name='terminology_concept_map')
-    op.drop_index(op.f('ix_terminology_concept_map_source_concept_id'), table_name='terminology_concept_map')
-    op.drop_table('terminology_concept_map')
-    op.drop_index(op.f('ix_terminology_concept_embedding_concept_id'), table_name='terminology_concept_embedding')
-    op.drop_table('terminology_concept_embedding')
-    op.drop_index(op.f('ix_terminology_audit_log_value_set_id'), table_name='terminology_audit_log')
-    op.drop_index(op.f('ix_terminology_audit_log_concept_id'), table_name='terminology_audit_log')
-    op.drop_index(op.f('ix_terminology_audit_log_action'), table_name='terminology_audit_log')
-    op.drop_table('terminology_audit_log')
     op.drop_index(op.f('ix_specimen_processing_additive_processing_id'), table_name='specimen_processing_additive')
     op.drop_table('specimen_processing_additive')
     op.drop_index(op.f('ix_specimen_container_identifier_container_id'), table_name='specimen_container_identifier')
@@ -7857,17 +7683,6 @@ def downgrade() -> None:
     op.drop_table('allergy_intolerance_reaction_note')
     op.drop_index(op.f('ix_allergy_intolerance_reaction_manifestation_reaction_id'), table_name='allergy_intolerance_reaction_manifestation')
     op.drop_table('allergy_intolerance_reaction_manifestation')
-    op.drop_index(op.f('ix_terminology_field_binding_value_set_id'), table_name='terminology_field_binding')
-    op.drop_index(op.f('ix_terminology_field_binding_resource_type'), table_name='terminology_field_binding')
-    op.drop_table('terminology_field_binding')
-    op.drop_index('uq_terminology_concept_system_code_org', table_name='terminology_concept', postgresql_where=sa.text('org_id IS NOT NULL'))
-    op.drop_index('uq_terminology_concept_system_code_null_org', table_name='terminology_concept', postgresql_where=sa.text('org_id IS NULL'))
-    op.drop_index(op.f('ix_terminology_concept_user_id'), table_name='terminology_concept')
-    op.drop_index(op.f('ix_terminology_concept_parent_concept_id'), table_name='terminology_concept')
-    op.drop_index(op.f('ix_terminology_concept_org_id'), table_name='terminology_concept')
-    op.drop_index(op.f('ix_terminology_concept_code_system_id'), table_name='terminology_concept')
-    op.drop_index(op.f('ix_terminology_concept_code'), table_name='terminology_concept')
-    op.drop_table('terminology_concept')
     op.drop_index(op.f('ix_task_restriction_recipient_task_id'), table_name='task_restriction_recipient')
     op.drop_table('task_restriction_recipient')
     op.drop_index(op.f('ix_task_relevant_history_task_id'), table_name='task_relevant_history')
@@ -8276,10 +8091,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_vitals_org_id'), table_name='vitals')
     op.drop_index(op.f('ix_vitals_id'), table_name='vitals')
     op.drop_table('vitals')
-    op.drop_index(op.f('ix_terminology_value_set_canonical_url'), table_name='terminology_value_set')
-    op.drop_table('terminology_value_set')
-    op.drop_index(op.f('ix_terminology_code_system_canonical_url'), table_name='terminology_code_system')
-    op.drop_table('terminology_code_system')
     op.drop_index(op.f('ix_task_user_id'), table_name='task')
     op.drop_index(op.f('ix_task_task_id'), table_name='task')
     op.drop_index(op.f('ix_task_org_id'), table_name='task')

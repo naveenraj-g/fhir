@@ -59,8 +59,7 @@ app: FastAPI = FastAPI(
     description=(
         "FHIR R4-compliant REST API server for managing healthcare resources. "
         "Supports 34 FHIR R4 resources with dual-format responses (application/json and "
-        "application/fhir+json), JWT authentication, multi-tenancy, and a full terminology "
-        "platform (ICD-10-CM, LOINC, RxNorm, SNOMED CT, FHIR R4 built-ins). "
+        "application/fhir+json). Pure CRUD data layer — no auth, no business rules. "
         "Designed for integration with AI agents via FastMCP dynamic tool generation."
     ),
     openapi_tags=OPENAPI_TAGS,

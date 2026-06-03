@@ -244,16 +244,6 @@ OPENAPI_TAGS: list[dict] = [
             "Coding, date, etc.)."
         ),
     },
-    # ── Terminology ───────────────────────────────────────────────────────────
-    {
-        "name": "Terminology",
-        "description": (
-            "FHIR R4 Terminology platform — CodeSystems, ValueSets, concept search, field bindings, "
-            "validation, AI-assisted mapping, cross-system translation (ConceptMap), "
-            "org-specific concepts, and governance audit log. "
-            "Covers ICD-10-CM, LOINC, RxNorm, SNOMED CT, and all FHIR R4 built-in code systems."
-        ),
-    },
     # ── Infrastructure ────────────────────────────────────────────────────────
     {
         "name": "Vitals",

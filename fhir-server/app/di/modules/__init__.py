@@ -32,7 +32,6 @@ from .document_reference import DocumentReferenceContainer
 from .immunization import ImmunizationContainer
 from .audit_event import AuditEventContainer
 from .episode_of_care import EpisodeOfCareContainer
-from .terminology import TerminologyContainer
 
 __all__ = [
     "PatientContainer",
@@ -69,5 +68,4 @@ __all__ = [
     "ImmunizationContainer",
     "AuditEventContainer",
     "EpisodeOfCareContainer",
-    "TerminologyContainer",
 ]
