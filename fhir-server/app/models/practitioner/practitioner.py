@@ -25,7 +25,7 @@ from app.schemas.enums import (
     IdentifierUse,
 )
 
-practitioner_id_seq = Sequence("practitioner_pub_seq", start=30000, increment=1)
+practitioner_id_seq = Sequence("practitioner_pub_seq", start=30000, increment=1, metadata=Base.metadata)
 
 
 class PractitionerModel(Base):

@@ -27,7 +27,7 @@ from app.models.observation.enums import (
     ObservationSubjectReferenceType,
 )
 
-observation_id_seq = Sequence("observation_pub_seq", start=160000, increment=1)
+observation_id_seq = Sequence("observation_pub_seq", start=160000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

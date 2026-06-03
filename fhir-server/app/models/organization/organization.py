@@ -16,7 +16,7 @@ from app.core.database import FHIRBase as Base
 from app.models.enums import OrganizationReferenceType
 from app.models.organization.enums import OrganizationEndpointReferenceType
 
-organization_id_seq = Sequence("organization_pub_seq", start=190000, increment=1)
+organization_id_seq = Sequence("organization_pub_seq", start=190000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

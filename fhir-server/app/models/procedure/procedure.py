@@ -32,7 +32,7 @@ from app.models.procedure.enums import (
 )
 from app.models.enums import EncounterReferenceType
 
-procedure_id_seq = Sequence("procedure_pub_seq", start=100000, increment=1)
+procedure_id_seq = Sequence("procedure_pub_seq", start=100000, increment=1, metadata=Base.metadata)
 
 
 class ProcedureModel(Base):

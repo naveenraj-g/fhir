@@ -25,7 +25,7 @@ from app.schemas.enums import (
 )
 from app.models.related_person.enums import RelatedPersonPatientReferenceType
 
-related_person_id_seq = Sequence("related_person_pub_seq", start=300000, increment=1)
+related_person_id_seq = Sequence("related_person_pub_seq", start=300000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

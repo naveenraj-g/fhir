@@ -30,7 +30,7 @@ from app.schemas.enums import (
     IdentifierUse,
 )
 
-patient_id_seq = Sequence("patient_pub_seq", start=10000, increment=1)
+patient_id_seq = Sequence("patient_pub_seq", start=10000, increment=1, metadata=Base.metadata)
 
 
 class PatientModel(Base):

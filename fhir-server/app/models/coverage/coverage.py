@@ -23,7 +23,7 @@ from app.models.coverage.enums import (
     CoverageSubscriberReferenceType,
 )
 
-coverage_id_seq = Sequence("coverage_pub_seq", start=240000, increment=1)
+coverage_id_seq = Sequence("coverage_pub_seq", start=240000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

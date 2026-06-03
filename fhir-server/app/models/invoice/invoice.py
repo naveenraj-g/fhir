@@ -23,7 +23,7 @@ from app.models.invoice.enums import (
     InvoiceSubjectReferenceType,
 )
 
-invoice_id_seq = Sequence("invoice_pub_seq", start=210000, increment=1)
+invoice_id_seq = Sequence("invoice_pub_seq", start=210000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

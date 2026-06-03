@@ -37,7 +37,7 @@ from app.models.care_plan.enums import (
     CarePlanSubjectReferenceType,
 )
 
-care_plan_id_seq = Sequence("care_plan_pub_seq", start=290000, increment=1)
+care_plan_id_seq = Sequence("care_plan_pub_seq", start=290000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

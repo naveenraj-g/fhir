@@ -23,7 +23,7 @@ from app.models.location.enums import (
 )
 from app.schemas.enums import ContactPointSystem, ContactPointUse
 
-location_id_seq = Sequence("location_pub_seq", start=230000, increment=1)
+location_id_seq = Sequence("location_pub_seq", start=230000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

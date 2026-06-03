@@ -24,7 +24,7 @@ from app.schemas.enums import (
     ContactPointUse,
 )
 
-healthcare_service_id_seq = Sequence("healthcare_service_pub_seq", start=150000, increment=1)
+healthcare_service_id_seq = Sequence("healthcare_service_pub_seq", start=150000, increment=1, metadata=Base.metadata)
 
 
 class HealthcareServiceModel(Base):

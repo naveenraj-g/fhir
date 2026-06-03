@@ -25,7 +25,7 @@ from app.models.document_reference.enums import (
 )
 from app.models.enums import OrganizationReferenceType
 
-document_reference_id_seq = Sequence("document_reference_pub_seq", start=320000, increment=1)
+document_reference_id_seq = Sequence("document_reference_pub_seq", start=320000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

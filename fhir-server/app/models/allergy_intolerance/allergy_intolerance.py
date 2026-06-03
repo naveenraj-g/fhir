@@ -25,7 +25,7 @@ from app.models.allergy_intolerance.enums import (
 )
 
 allergy_intolerance_id_seq = Sequence(
-    "allergy_intolerance_pub_seq", start=260000, increment=1
+    "allergy_intolerance_pub_seq", start=260000, increment=1, metadata=Base.metadata
 )
 
 

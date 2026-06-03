@@ -19,7 +19,7 @@ from app.models.medication.enums import (
     MedicationStatus,
 )
 
-medication_id_seq = Sequence("medication_pub_seq", start=250000, increment=1)
+medication_id_seq = Sequence("medication_pub_seq", start=250000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

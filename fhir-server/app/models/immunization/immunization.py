@@ -25,7 +25,7 @@ from app.models.immunization.enums import (
     ImmunizationStatus,
 )
 
-immunization_id_seq = Sequence("immunization_pub_seq", start=330000, increment=1)
+immunization_id_seq = Sequence("immunization_pub_seq", start=330000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

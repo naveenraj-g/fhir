@@ -18,7 +18,7 @@ from app.models.provenance.enums import (
     ProvenanceLocationReferenceType,
 )
 
-provenance_id_seq = Sequence("provenance_pub_seq", start=270000, increment=1)
+provenance_id_seq = Sequence("provenance_pub_seq", start=270000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

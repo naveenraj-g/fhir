@@ -23,7 +23,7 @@ from app.models.episode_of_care.enums import (
     EpisodeOfCareTeamReferenceType,
 )
 
-episode_of_care_id_seq = Sequence("episode_of_care_pub_seq", start=350000, increment=1)
+episode_of_care_id_seq = Sequence("episode_of_care_pub_seq", start=350000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

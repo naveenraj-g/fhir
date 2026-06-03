@@ -32,7 +32,7 @@ from app.models.service_request.enums import (
 )
 from app.models.enums import EncounterReferenceType
 
-service_request_id_seq = Sequence("service_request_pub_seq", start=80000, increment=1)
+service_request_id_seq = Sequence("service_request_pub_seq", start=80000, increment=1, metadata=Base.metadata)
 
 
 class ServiceRequestModel(Base):

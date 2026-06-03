@@ -15,7 +15,7 @@ from app.core.database import FHIRBase as Base
 from app.models.slot.enums import SlotScheduleReferenceType, SlotStatus
 from app.schemas.enums import IdentifierUse
 
-slot_id_seq = Sequence("slot_pub_seq", start=220000, increment=1)
+slot_id_seq = Sequence("slot_pub_seq", start=220000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------

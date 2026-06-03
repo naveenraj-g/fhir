@@ -23,7 +23,7 @@ from app.models.questionnaire_response.enums import (
 from app.models.enums import EncounterReferenceType, SubjectReferenceType, IdentifierUse
 
 questionnaire_response_id_seq = Sequence(
-    "questionnaire_response_pub_seq", start=60000, increment=1
+    "questionnaire_response_pub_seq", start=60000, increment=1, metadata=Base.metadata
 )
 
 

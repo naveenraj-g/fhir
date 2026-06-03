@@ -18,7 +18,7 @@ from app.models.audit_event.enums import (
     AuditEventWhoReferenceType,
 )
 
-audit_event_id_seq = Sequence("audit_event_pub_seq", start=340000, increment=1)
+audit_event_id_seq = Sequence("audit_event_pub_seq", start=340000, increment=1, metadata=Base.metadata)
 
 
 # ---------------------------------------------------------------------------
