@@ -195,6 +195,7 @@ class PractitionerRoleCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
     org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+    created_by: Optional[str] = None
 
     practitioner: Optional[str] = Field(None, description="Reference to Practitioner, e.g. 'Practitioner/30001'.")
     practitioner_display: Optional[str] = None
@@ -225,3 +226,4 @@ class PractitionerRolePatchSchema(BaseModel):
     period_start: Optional[datetime] = None
     period_end: Optional[datetime] = None
     availability_exceptions: Optional[str] = None
+    updated_by: Optional[str] = None

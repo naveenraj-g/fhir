@@ -189,6 +189,7 @@ class HealthcareServiceCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
     org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+    created_by: Optional[str] = None
 
     provided_by: Optional[str] = Field(None, description="Reference to Organization, e.g. 'Organization/190001'.")
     provided_by_display: Optional[str] = None
@@ -245,3 +246,4 @@ class HealthcareServicePatchSchema(BaseModel):
     photo_hash: Optional[str] = None
     photo_title: Optional[str] = None
     photo_creation: Optional[datetime] = None
+    updated_by: Optional[str] = None

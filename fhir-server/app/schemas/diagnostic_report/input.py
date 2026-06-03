@@ -130,6 +130,7 @@ class DiagnosticReportCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     # Required
     status: str = Field(
@@ -191,3 +192,4 @@ class DiagnosticReportPatchSchema(BaseModel):
     effective_period_end: Optional[datetime] = None
     issued: Optional[datetime] = None
     conclusion: Optional[str] = None
+    updated_by: Optional[str] = None

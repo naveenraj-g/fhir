@@ -2,8 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.slot_deps import resolve_slot
-from app.auth.dependencies import require_permission
+from app.deps.slot_deps import resolve_slot
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.slot import get_slot_service
@@ -24,10 +23,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Slot not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -57,7 +52,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("slot", "create"))],
     operation_id="create_slot",
     summary="Create a new Slot resource",
     description=(
@@ -69,14 +63,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created Slot resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_slot(
     payload: SlotCreateSchema,
     request: Request,
     slot_service: SlotService = Depends(get_slot_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     slot = await slot_service.create_slot(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -87,57 +81,12 @@ async def create_slot(
     )
 
 
-# ── Get own Slots (/me) ────────────────────────────────────────────────────────
 # Declared before /{slot_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("slot", "read"))],
-    operation_id="get_my_slots",
-    summary="List Slot resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of Slot records belonging to the authenticated user "
-        "(identified by `sub` and `activeOrganizationId`). "
-        "Filter by `status`, `schedule_id`, or `practitioner_role_id`. "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated Slot resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_slots(
-    request: Request,
-    slot_status: Optional[str] = Query(
-        None, alias="status",
-        description="Filter by slot status (busy | free | busy-unavailable | busy-tentative | entered-in-error).",
-    ),
-    schedule_id: Optional[int] = Query(None, description="Filter by public schedule_id."),
-    practitioner_role_id: Optional[int] = Query(None, description="Filter by public practitioner_role_id — returns slots belonging to that practitioner's schedule."),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    slot_service: SlotService = Depends(get_slot_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    items, total = await slot_service.get_me(
-        user_id, org_id,
-        slot_status=slot_status, schedule_id=schedule_id,
-        practitioner_role_id=practitioner_role_id,
-        limit=limit, offset=offset,
-    )
-    return format_paginated_response(
-        [slot_service._to_fhir(s) for s in items],
-        [slot_service._to_plain(s) for s in items],
-        total, limit, offset, request,
-    )
-
-
-# ── Get Slot by public slot_id ────────────────────────────────────────────────
 
 
 @router.get(
     "/{slot_id}",
-    dependencies=[Depends(require_permission("slot", "read"))],
     operation_id="get_slot_by_id",
     summary="Retrieve a Slot resource by public slot_id",
     description=(
@@ -145,7 +94,7 @@ async def get_my_slots(
         + _CONTENT_NEG
     ),
     response_description="The requested Slot resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_slot(
     request: Request,
@@ -164,7 +113,6 @@ async def get_slot(
 
 @router.patch(
     "/{slot_id}",
-    dependencies=[Depends(require_permission("slot", "update"))],
     operation_id="patch_slot",
     summary="Partially update a Slot resource",
     description=(
@@ -177,7 +125,7 @@ async def get_slot(
         + _CONTENT_NEG
     ),
     response_description="The updated Slot resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_slot(
     payload: SlotPatchSchema,
@@ -185,7 +133,7 @@ async def patch_slot(
     slot: SlotModel = Depends(resolve_slot),
     slot_service: SlotService = Depends(get_slot_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await slot_service.patch_slot(slot.slot_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Slot not found")
@@ -201,7 +149,6 @@ async def patch_slot(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("slot", "read"))],
     operation_id="list_slots",
     summary="List all Slot resources",
     description=(
@@ -211,7 +158,7 @@ async def patch_slot(
         + _CONTENT_NEG
     ),
     response_description="Paginated Slot resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_slots(
     request: Request,
@@ -246,7 +193,6 @@ async def list_slots(
 @router.delete(
     "/{slot_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("slot", "delete"))],
     operation_id="delete_slot",
     summary="Delete a Slot resource",
     description=(
@@ -254,7 +200,7 @@ async def list_slots(
         "(identifier, serviceCategory, serviceType, specialty). "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_slot(
     slot: SlotModel = Depends(resolve_slot),

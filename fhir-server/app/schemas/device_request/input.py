@@ -128,6 +128,7 @@ class DeviceRequestCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     # Required
     intent: str = Field(..., description="proposal|plan|directive|order|original-order|reflex-order|filler-order|instance-order|option")
@@ -279,3 +280,4 @@ class DeviceRequestPatchSchema(BaseModel):
 
     instantiates_canonical: Optional[str] = None
     instantiates_uri: Optional[str] = None
+    updated_by: Optional[str] = None

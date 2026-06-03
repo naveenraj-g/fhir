@@ -90,6 +90,7 @@ class LocationCreateSchema(BaseModel):
 
     user_id: str
     org_id: str
+    created_by: Optional[str] = None
 
     status: Optional[str] = Field(None, description="active | suspended | inactive")
     operational_status_system: Optional[str] = None
@@ -174,3 +175,4 @@ class LocationPatchSchema(BaseModel):
     position_longitude: Optional[Decimal] = None
     position_latitude: Optional[Decimal] = None
     position_altitude: Optional[Decimal] = None
+    updated_by: Optional[str] = None

@@ -91,6 +91,7 @@ class MedicationCreateSchema(BaseModel):
 
     user_id: str
     org_id: str
+    created_by: Optional[str] = None
 
     # code (0..1 CodeableConcept)
     code_system: Optional[str] = None
@@ -162,3 +163,4 @@ class MedicationPatchSchema(BaseModel):
 
     batch_lot_number: Optional[str] = None
     batch_expiration_date: Optional[datetime] = None
+    updated_by: Optional[str] = None

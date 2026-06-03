@@ -152,6 +152,7 @@ class RelatedPersonCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub (tenant user).")
     org_id: Optional[str] = Field(None, description="JWT activeOrganizationId (tenant org).")
+    created_by: Optional[str] = None
     active: Optional[bool] = None
     patient: Optional[str] = Field(
         None,
@@ -192,3 +193,4 @@ class RelatedPersonPatchSchema(BaseModel):
     photos: Optional[List[RelatedPersonPhotoCreate]] = None
     identifiers: Optional[List[RelatedPersonIdentifierCreate]] = None
     communications: Optional[List[RelatedPersonCommunicationCreate]] = None
+    updated_by: Optional[str] = None

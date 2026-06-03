@@ -3,8 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.procedure_deps import resolve_procedure
-from app.auth.dependencies import require_permission
+from app.deps.procedure_deps import resolve_procedure
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.procedure import get_procedure_service
@@ -25,10 +24,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Procedure not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -58,7 +53,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("procedure", "create"))],
     operation_id="create_procedure",
     summary="Create a new Procedure resource",
     description=(
@@ -70,14 +64,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created Procedure resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_procedure(
     payload: ProcedureCreateSchema,
     request: Request,
     proc_service: ProcedureService = Depends(get_procedure_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     proc = await proc_service.create_procedure(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -88,58 +82,12 @@ async def create_procedure(
     )
 
 
-# ── Get own Procedures (/me) ───────────────────────────────────────────────────
 # Declared before /{procedure_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("procedure", "read"))],
-    operation_id="get_my_procedures",
-    summary="List Procedure resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of Procedure records belonging to the authenticated user "
-        "(identified by `sub` and `activeOrganizationId`). "
-        "Filter by `status`, `patient_id`, `performed_from`, or `performed_to`. "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated Procedure resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_procedures(
-    request: Request,
-    proc_status: Optional[str] = Query(None, alias="status", description="Filter by status e.g. 'completed'."),
-    patient_id: Optional[int] = Query(None, description="Filter by patient subject_id."),
-    performed_from: Optional[datetime] = Query(None, description="Filter by performedDateTime >= this value."),
-    performed_to: Optional[datetime] = Query(None, description="Filter by performedDateTime <= this value."),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    proc_service: ProcedureService = Depends(get_procedure_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    items, total = await proc_service.get_me(
-        user_id, org_id,
-        proc_status=proc_status,
-        patient_id=patient_id,
-        performed_from=performed_from,
-        performed_to=performed_to,
-        limit=limit,
-        offset=offset,
-    )
-    return format_paginated_response(
-        [proc_service._to_fhir(p) for p in items],
-        [proc_service._to_plain(p) for p in items],
-        total, limit, offset, request,
-    )
-
-
-# ── Get Procedure by public procedure_id ──────────────────────────────────────
 
 
 @router.get(
     "/{procedure_id}",
-    dependencies=[Depends(require_permission("procedure", "read"))],
     operation_id="get_procedure_by_id",
     summary="Retrieve a Procedure resource by public procedure_id",
     description=(
@@ -147,7 +95,7 @@ async def get_my_procedures(
         + _CONTENT_NEG
     ),
     response_description="The requested Procedure resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_procedure(
     request: Request,
@@ -166,7 +114,6 @@ async def get_procedure(
 
 @router.patch(
     "/{procedure_id}",
-    dependencies=[Depends(require_permission("procedure", "update"))],
     operation_id="patch_procedure",
     summary="Partially update a Procedure resource",
     description=(
@@ -180,7 +127,7 @@ async def get_procedure(
         + _CONTENT_NEG
     ),
     response_description="The updated Procedure resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_procedure(
     payload: ProcedurePatchSchema,
@@ -188,7 +135,7 @@ async def patch_procedure(
     proc: ProcedureModel = Depends(resolve_procedure),
     proc_service: ProcedureService = Depends(get_procedure_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await proc_service.patch_procedure(
         proc.procedure_id, payload, updated_by
     )
@@ -206,7 +153,6 @@ async def patch_procedure(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("procedure", "read"))],
     operation_id="list_procedures",
     summary="List all Procedure resources",
     description=(
@@ -216,7 +162,7 @@ async def patch_procedure(
         + _CONTENT_NEG
     ),
     response_description="Paginated Procedure resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_procedures(
     request: Request,
@@ -253,7 +199,6 @@ async def list_procedures(
 @router.delete(
     "/{procedure_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("procedure", "delete"))],
     operation_id="delete_procedure",
     summary="Delete a Procedure resource",
     description=(
@@ -262,7 +207,7 @@ async def list_procedures(
         "report, complication, complicationDetail, followUp, note, focalDevice, usedReference, usedCode). "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_procedure(
     proc: ProcedureModel = Depends(resolve_procedure),

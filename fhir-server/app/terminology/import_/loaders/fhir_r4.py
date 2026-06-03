@@ -290,12 +290,12 @@ class FhirR4Loader(BaseLoader):
         if not concept_db_ids:
             return False  # nothing to link
 
-        await self.conn.executemany(
+        await self.conn.execute(
             """
             INSERT INTO terminology_value_set_concept (value_set_id, concept_id)
-            VALUES ($1, $2)
+            SELECT $1, unnest($2::bigint[])
             ON CONFLICT DO NOTHING
             """,
-            [(vs_id, cid) for cid in concept_db_ids],
+            vs_id, concept_db_ids,
         )
         return True

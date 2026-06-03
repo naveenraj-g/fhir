@@ -111,6 +111,7 @@ class ImmunizationCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     status: ImmunizationStatus
     occurrence_datetime: Optional[datetime] = None
@@ -285,3 +286,4 @@ class ImmunizationPatchSchema(BaseModel):
     program_eligibilities: Optional[List[ImmunizationProgramEligibilityInput]] = None
     reactions: Optional[List[ImmunizationReactionInput]] = None
     protocol_applied: Optional[List[ImmunizationProtocolAppliedInput]] = None
+    updated_by: Optional[str] = None

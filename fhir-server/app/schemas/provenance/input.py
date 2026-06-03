@@ -156,6 +156,7 @@ class ProvenanceCreateSchema(BaseModel):
 
     user_id: str
     org_id: str
+    created_by: Optional[str] = None
 
     # recorded (1..1 instant)
     recorded: datetime = Field(..., description="When the activity was documented.")
@@ -221,3 +222,4 @@ class ProvenancePatchSchema(BaseModel):
     agents: Optional[List[ProvenanceAgentInput]] = None
     entities: Optional[List[ProvenanceEntityInput]] = None
     signatures: Optional[List[ProvenanceSignatureInput]] = None
+    updated_by: Optional[str] = None

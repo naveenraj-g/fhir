@@ -3,8 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.allergy_intolerance_deps import resolve_allergy_intolerance
-from app.auth.dependencies import require_permission
+from app.deps.allergy_intolerance_deps import resolve_allergy_intolerance
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.allergy_intolerance import get_allergy_intolerance_service
@@ -28,10 +27,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "AllergyIntolerance not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error"}}
 
@@ -61,7 +56,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("allergy_intolerance", "create"))],
     operation_id="create_allergy_intolerance",
     summary="Create a new AllergyIntolerance resource",
     description=(
@@ -71,14 +65,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created AllergyIntolerance resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_allergy_intolerance(
     payload: AllergyIntoleranceCreateSchema,
     request: Request,
     allergy_intolerance_service: AllergyIntoleranceService = Depends(get_allergy_intolerance_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     ai = await allergy_intolerance_service.create_allergy_intolerance(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -92,53 +86,13 @@ async def create_allergy_intolerance(
 # ── Get my allergy intolerances ────────────────────────────────────────────────
 
 
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("allergy_intolerance", "read"))],
-    operation_id="list_my_allergy_intolerances",
-    summary="List AllergyIntolerance records for the authenticated user",
-    description=(
-        "Returns AllergyIntolerance records scoped to the authenticated user's `sub` and `activeOrganizationId`. "
-        + _CONTENT_NEG
-    ),
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_allergy_intolerances(
-    request: Request,
-    clinical_status: Optional[str] = Query(None, alias="clinicalStatus", description="Filter by clinical status code."),
-    allergy_type: Optional[str] = Query(None, alias="type", description="Filter by type (allergy | intolerance)."),
-    criticality: Optional[str] = Query(None, description="Filter by criticality (low | high | unable-to-assess)."),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    allergy_intolerance_service: AllergyIntoleranceService = Depends(get_allergy_intolerance_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    rows, total = await allergy_intolerance_service.get_me(
-        user_id, org_id,
-        clinical_status=clinical_status,
-        allergy_type=allergy_type,
-        criticality=criticality,
-        limit=limit,
-        offset=offset,
-    )
-    return format_paginated_response(
-        [allergy_intolerance_service._to_fhir(r) for r in rows],
-        [allergy_intolerance_service._to_plain(r) for r in rows],
-        total, limit, offset, request,
-    )
-
-
-# ── Get by ID ──────────────────────────────────────────────────────────────────
-
 
 @router.get(
     "/{allergy_intolerance_id}",
-    dependencies=[Depends(require_permission("allergy_intolerance", "read"))],
     operation_id="get_allergy_intolerance",
     summary="Retrieve a single AllergyIntolerance by public ID",
     description="Fetches a single AllergyIntolerance resource by its public allergy_intolerance_id. " + _CONTENT_NEG,
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_allergy_intolerance(
     request: Request,
@@ -157,7 +111,6 @@ async def get_allergy_intolerance(
 
 @router.patch(
     "/{allergy_intolerance_id}",
-    dependencies=[Depends(require_permission("allergy_intolerance", "update"))],
     operation_id="patch_allergy_intolerance",
     summary="Partially update an AllergyIntolerance resource",
     description=(
@@ -165,7 +118,7 @@ async def get_allergy_intolerance(
         "Child arrays (categories, notes, reactions, identifiers) are fully replaced when supplied. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def patch_allergy_intolerance(
     request: Request,
@@ -173,7 +126,7 @@ async def patch_allergy_intolerance(
     ai: AllergyIntoleranceModel = Depends(resolve_allergy_intolerance),
     allergy_intolerance_service: AllergyIntoleranceService = Depends(get_allergy_intolerance_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await allergy_intolerance_service.patch_allergy_intolerance(
         ai.allergy_intolerance_id, payload, updated_by
     )
@@ -191,11 +144,10 @@ async def patch_allergy_intolerance(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("allergy_intolerance", "read"))],
     operation_id="list_allergy_intolerances",
     summary="List AllergyIntolerance resources",
     description="Returns a paginated list of AllergyIntolerance resources. " + _CONTENT_NEG,
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_allergy_intolerances(
     request: Request,
@@ -226,11 +178,10 @@ async def list_allergy_intolerances(
 @router.delete(
     "/{allergy_intolerance_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("allergy_intolerance", "delete"))],
     operation_id="delete_allergy_intolerance",
     summary="Delete an AllergyIntolerance resource",
     description="Permanently deletes an AllergyIntolerance and all its child resources.",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, 204: {"description": "AllergyIntolerance deleted"}},
+    responses={**_ERR_NOT_FOUND, 204: {"description": "AllergyIntolerance deleted"}},
 )
 async def delete_allergy_intolerance(
     ai: AllergyIntoleranceModel = Depends(resolve_allergy_intolerance),

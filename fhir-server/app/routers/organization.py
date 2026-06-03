@@ -2,8 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.organization_deps import resolve_organization
-from app.auth.dependencies import require_permission
+from app.deps.organization_deps import resolve_organization
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.organization import get_organization_service
@@ -24,10 +23,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Organization not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -57,7 +52,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("organization", "create"))],
     operation_id="create_organization",
     summary="Create a new Organization resource",
     description=(
@@ -68,14 +62,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created Organization resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_organization(
     payload: OrganizationCreateSchema,
     request: Request,
     org_service: OrganizationService = Depends(get_organization_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     org = await org_service.create_organization(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -86,54 +80,12 @@ async def create_organization(
     )
 
 
-# ── Get own Organizations (/me) ────────────────────────────────────────────────
 # Declared before /{organization_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("organization", "read"))],
-    operation_id="get_my_organizations",
-    summary="List Organization resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of Organization records belonging to the authenticated user "
-        "(identified by `sub` and `activeOrganizationId`). "
-        "Filter by `active` or `name` (case-insensitive substring match). "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated Organization resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_organizations(
-    request: Request,
-    active: Optional[bool] = Query(None, description="Filter by active status."),
-    name: Optional[str] = Query(None, description="Case-insensitive substring match on organization name."),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    org_service: OrganizationService = Depends(get_organization_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    items, total = await org_service.get_me(
-        user_id, org_id,
-        active=active,
-        name=name,
-        limit=limit,
-        offset=offset,
-    )
-    return format_paginated_response(
-        [org_service._to_fhir(org) for org in items],
-        [org_service._to_plain(org) for org in items],
-        total, limit, offset, request,
-    )
-
-
-# ── Get Organization by public organization_id ─────────────────────────────────
 
 
 @router.get(
     "/{organization_id}",
-    dependencies=[Depends(require_permission("organization", "read"))],
     operation_id="get_organization_by_id",
     summary="Retrieve an Organization resource by public organization_id",
     description=(
@@ -141,7 +93,7 @@ async def get_my_organizations(
         + _CONTENT_NEG
     ),
     response_description="The requested Organization resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_organization(
     request: Request,
@@ -160,7 +112,6 @@ async def get_organization(
 
 @router.patch(
     "/{organization_id}",
-    dependencies=[Depends(require_permission("organization", "update"))],
     operation_id="patch_organization",
     summary="Partially update an Organization resource",
     description=(
@@ -170,7 +121,7 @@ async def get_organization(
         + _CONTENT_NEG
     ),
     response_description="The updated Organization resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_organization(
     payload: OrganizationPatchSchema,
@@ -178,7 +129,7 @@ async def patch_organization(
     org: OrganizationModel = Depends(resolve_organization),
     org_service: OrganizationService = Depends(get_organization_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await org_service.patch_organization(
         org.organization_id, payload, updated_by
     )
@@ -196,7 +147,6 @@ async def patch_organization(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("organization", "read"))],
     operation_id="list_organizations",
     summary="List all Organization resources",
     description=(
@@ -206,7 +156,7 @@ async def patch_organization(
         + _CONTENT_NEG
     ),
     response_description="Paginated Organization resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_organizations(
     request: Request,
@@ -239,7 +189,6 @@ async def list_organizations(
 @router.delete(
     "/{organization_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("organization", "delete"))],
     operation_id="delete_organization",
     summary="Delete an Organization resource",
     description=(
@@ -247,7 +196,7 @@ async def list_organizations(
         "(identifier, type, alias, telecom, address, contact and their nested telecoms, endpoint). "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_organization(
     org: OrganizationModel = Depends(resolve_organization),

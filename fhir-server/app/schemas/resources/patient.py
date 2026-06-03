@@ -176,6 +176,7 @@ class PatientCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
     active: Optional[bool] = True
     gender: Optional[PatientGender] = None
     birth_date: Optional[date] = None
@@ -207,6 +208,7 @@ class PatientPatchSchema(BaseModel):
     multiple_birth_integer: Optional[int] = None
     managing_organization_id: Optional[int] = None
     managing_organization_display: Optional[str] = None
+    updated_by: Optional[str] = None
 
 
 # ── Plain response sub-schemas (used by PatientResponseSchema) ─────────────────
@@ -264,6 +266,7 @@ class PatientResponseSchema(BaseModel):
     id: int
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
     active: Optional[bool] = None
     gender: Optional[str] = None
     birth_date: Optional[str] = None

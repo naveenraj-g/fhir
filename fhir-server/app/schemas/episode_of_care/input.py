@@ -78,6 +78,7 @@ class EpisodeOfCareCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     status: EpisodeOfCareStatus
 
@@ -160,3 +161,4 @@ class EpisodeOfCarePatchSchema(BaseModel):
     referral_requests: Optional[List[EpisodeOfCareReferralRequestInput]] = None
     team: Optional[List[EpisodeOfCareTeamInput]] = None
     accounts: Optional[List[EpisodeOfCareAccountInput]] = None
+    updated_by: Optional[str] = None

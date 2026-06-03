@@ -3,8 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.dependencies import require_permission
-from app.auth.questionnaire_response_deps import resolve_questionnaire_response
+from app.deps.questionnaire_response_deps import resolve_questionnaire_response
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.questionnaire_response import get_questionnaire_response_service
@@ -28,10 +27,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "QuestionnaireResponse not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -62,7 +57,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("questionnaire_response", "create"))],
     operation_id="create_questionnaire_response",
     summary="Create a new QuestionnaireResponse resource",
     description=(
@@ -75,14 +69,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created QuestionnaireResponse resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_questionnaire_response(
     payload: QuestionnaireResponseCreateSchema,
     request: Request,
     qr_service: QuestionnaireResponseService = Depends(get_questionnaire_response_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     qr = await qr_service.create_questionnaire_response(payload, payload.user_id, payload.org_id, created_by)
     return format_response(
         qr_service._to_fhir(qr),
@@ -91,55 +85,12 @@ async def create_questionnaire_response(
     )
 
 
-# ── Get own QuestionnaireResponses (/me) ───────────────────────────────────
 # Declared before /{questionnaire_response_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("questionnaire_response", "read"))],
-    operation_id="get_my_questionnaire_responses",
-    summary="List QuestionnaireResponse resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of QuestionnaireResponse records authored by or linked to the "
-        "authenticated user's `sub` claim and `activeOrganizationId`. "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated QuestionnaireResponse resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_questionnaire_responses(
-    request: Request,
-    qr_status: Optional[str] = Query(None, alias="status"),
-    patient_id: Optional[int] = Query(None),
-    questionnaire: Optional[str] = Query(None),
-    authored_from: Optional[datetime] = Query(None),
-    authored_to: Optional[datetime] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    qr_service: QuestionnaireResponseService = Depends(get_questionnaire_response_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    responses, total = await qr_service.get_me(
-        user_id, org_id,
-        status=qr_status, patient_id=patient_id, questionnaire=questionnaire,
-        authored_from=authored_from, authored_to=authored_to,
-        limit=limit, offset=offset,
-    )
-    return format_paginated_response(
-        [qr_service._to_fhir(qr) for qr in responses],
-        [qr_service._to_plain(qr) for qr in responses],
-        total, limit, offset, request,
-    )
-
-
-# ── Get QuestionnaireResponse by public id ─────────────────────────────────
 
 
 @router.get(
     "/{questionnaire_response_id}",
-    dependencies=[Depends(require_permission("questionnaire_response", "read"))],
     operation_id="get_questionnaire_response_by_id",
     summary="Retrieve a QuestionnaireResponse resource by public questionnaire_response_id",
     description=(
@@ -150,7 +101,6 @@ async def get_my_questionnaire_responses(
     response_description="The requested QuestionnaireResponse resource",
     responses={
         **_SINGLE_200,
-        **_ERR_AUTH,
         403: {"description": "Forbidden — caller lacks `questionnaire_response:read` permission or the resource belongs to a different organization"},
         **_ERR_NOT_FOUND,
     },
@@ -172,7 +122,6 @@ async def get_questionnaire_response(
 
 @router.patch(
     "/{questionnaire_response_id}",
-    dependencies=[Depends(require_permission("questionnaire_response", "update"))],
     operation_id="patch_questionnaire_response",
     summary="Partially update a QuestionnaireResponse resource",
     description=(
@@ -181,7 +130,7 @@ async def get_questionnaire_response(
         + _CONTENT_NEG
     ),
     response_description="The updated QuestionnaireResponse resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_questionnaire_response(
     payload: QuestionnaireResponsePatchSchema,
@@ -189,7 +138,7 @@ async def patch_questionnaire_response(
     qr: QuestionnaireResponseModel = Depends(resolve_questionnaire_response),
     qr_service: QuestionnaireResponseService = Depends(get_questionnaire_response_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await qr_service.patch_questionnaire_response(
         qr.questionnaire_response_id, payload, updated_by
     )
@@ -207,7 +156,6 @@ async def patch_questionnaire_response(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("questionnaire_response", "read"))],
     operation_id="list_questionnaire_responses",
     summary="List all QuestionnaireResponse resources",
     description=(
@@ -217,7 +165,7 @@ async def patch_questionnaire_response(
         + _CONTENT_NEG
     ),
     response_description="Paginated QuestionnaireResponse resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_questionnaire_responses(
     request: Request,
@@ -250,14 +198,13 @@ async def list_questionnaire_responses(
 @router.delete(
     "/{questionnaire_response_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("questionnaire_response", "delete"))],
     operation_id="delete_questionnaire_response",
     summary="Delete a QuestionnaireResponse resource",
     description=(
         "Permanently deletes the QuestionnaireResponse and all its nested item/answer records. "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_questionnaire_response(
     qr: QuestionnaireResponseModel = Depends(resolve_questionnaire_response),

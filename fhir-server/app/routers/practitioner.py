@@ -3,8 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.dependencies import require_permission
-from app.auth.practitioner_deps import resolve_practitioner
+from app.deps.practitioner_deps import resolve_practitioner
 from app.core.content_negotiation import format_response, format_paginated_response, wants_fhir
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.practitioner import get_practitioner_service
@@ -56,10 +55,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Practitioner not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -118,7 +113,6 @@ _SUBRES_COMMUNICATIONS_200 = {200: {"description": "List of communication langua
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("practitioner", "create"))],
     operation_id="create_practitioner",
     summary="Create a new Practitioner resource",
     description=(
@@ -129,14 +123,14 @@ _SUBRES_COMMUNICATIONS_200 = {200: {"description": "List of communication langua
         + _CONTENT_NEG
     ),
     response_description="The newly created Practitioner resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_practitioner(
     payload: PractitionerCreateSchema,
     request: Request,
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     practitioner = await practitioner_service.create_practitioner(payload, payload.user_id, payload.org_id, created_by)
     return format_response(
         practitioner_service._to_fhir(practitioner),
@@ -145,49 +139,12 @@ async def create_practitioner(
     )
 
 
-# ── Get own Practitioner profile (/me) ────────────────────────────────────
 # Declared before /{practitioner_id} so "me" is not matched by the int path param.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("practitioner", "read"))],
-    operation_id="get_my_practitioner_profile",
-    summary="Get the Practitioner profile for the currently authenticated user",
-    description=(
-        "Looks up the Practitioner record bound to the authenticated user's `sub` claim and `activeOrganizationId`. "
-        "Returns 404 if no Practitioner profile has been created for this user in the current organization. "
-        + _CONTENT_NEG
-    ),
-    response_description="The authenticated user's Practitioner resource",
-    responses={
-        **_SINGLE_200,
-        **_ERR_AUTH,
-        404: {"description": "No Practitioner profile found for the current authenticated user"},
-    },
-)
-async def get_my_practitioner_profile(
-    request: Request,
-    practitioner_service: PractitionerService = Depends(get_practitioner_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    practitioner = await practitioner_service.get_me(user_id, org_id)
-    if not practitioner:
-        raise HTTPException(status_code=404, detail="Practitioner profile not found")
-    return format_response(
-        practitioner_service._to_fhir(practitioner),
-        practitioner_service._to_plain(practitioner),
-        request,
-    )
-
-
-# ── Get Practitioner by public practitioner_id ─────────────────────────────
 
 
 @router.get(
     "/{practitioner_id}",
-    dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="get_practitioner_by_id",
     summary="Retrieve a Practitioner resource by public practitioner_id",
     description=(
@@ -196,7 +153,7 @@ async def get_my_practitioner_profile(
         + _CONTENT_NEG
     ),
     response_description="The requested Practitioner resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_practitioner(
     request: Request,
@@ -215,7 +172,6 @@ async def get_practitioner(
 
 @router.patch(
     "/{practitioner_id}",
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="patch_practitioner",
     summary="Partially update a Practitioner resource",
     description=(
@@ -226,7 +182,7 @@ async def get_practitioner(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_practitioner(
     payload: PractitionerPatchSchema,
@@ -234,7 +190,7 @@ async def patch_practitioner(
     practitioner: PractitionerModel = Depends(resolve_practitioner),
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await practitioner_service.patch_practitioner(practitioner.practitioner_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Practitioner not found")
@@ -250,7 +206,6 @@ async def patch_practitioner(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="list_practitioners",
     summary="List all Practitioner resources",
     description=(
@@ -261,7 +216,7 @@ async def patch_practitioner(
         + _CONTENT_NEG
     ),
     response_description="Paginated Practitioner resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_practitioners(
     request: Request,
@@ -292,7 +247,6 @@ async def list_practitioners(
 @router.delete(
     "/{practitioner_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("practitioner", "delete"))],
     operation_id="delete_practitioner",
     summary="Delete a Practitioner resource",
     description=(
@@ -300,7 +254,7 @@ async def list_practitioners(
         "(names, identifiers, telecom, addresses, photos, qualifications, communications). "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_practitioner(
     practitioner: PractitionerModel = Depends(resolve_practitioner),
@@ -316,7 +270,6 @@ async def delete_practitioner(
 @router.post(
     "/{practitioner_id}/names",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_name",
     summary="Add a HumanName to a Practitioner",
     description=(
@@ -327,7 +280,7 @@ async def delete_practitioner(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new name appended",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_name(
     payload: PractitionerNameCreate,
@@ -351,7 +304,6 @@ async def add_name(
 @router.post(
     "/{practitioner_id}/identifiers",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_identifier",
     summary="Add a business identifier to a Practitioner (e.g. NPI, license, DEA)",
     description=(
@@ -363,7 +315,7 @@ async def add_name(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new identifier appended",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_identifier(
     payload: PractitionerIdentifierCreate,
@@ -387,7 +339,6 @@ async def add_identifier(
 @router.post(
     "/{practitioner_id}/telecom",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_telecom",
     summary="Add a contact point (telecom) to a Practitioner",
     description=(
@@ -398,7 +349,7 @@ async def add_identifier(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new contact point appended",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_telecom(
     payload: PractitionerTelecomCreate,
@@ -422,7 +373,6 @@ async def add_telecom(
 @router.post(
     "/{practitioner_id}/addresses",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_address",
     summary="Add an address to a Practitioner",
     description=(
@@ -434,7 +384,7 @@ async def add_telecom(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new address appended",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_address(
     payload: PractitionerAddressCreate,
@@ -458,7 +408,6 @@ async def add_address(
 @router.post(
     "/{practitioner_id}/photos",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_photo",
     summary="Add a photo (Attachment) to a Practitioner",
     description=(
@@ -469,7 +418,7 @@ async def add_address(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new photo appended",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_photo(
     payload: PractitionerPhotoCreate,
@@ -493,7 +442,6 @@ async def add_photo(
 @router.post(
     "/{practitioner_id}/qualifications",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_qualification",
     summary="Add a professional qualification to a Practitioner",
     description=(
@@ -505,7 +453,7 @@ async def add_photo(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new qualification appended",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_qualification(
     payload: PractitionerQualificationCreate,
@@ -529,7 +477,6 @@ async def add_qualification(
 @router.post(
     "/{practitioner_id}/communications",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="add_practitioner_communication",
     summary="Add a communication language to a Practitioner",
     description=(
@@ -540,7 +487,7 @@ async def add_qualification(
         + _CONTENT_NEG
     ),
     response_description="The updated Practitioner resource with the new communication language appended",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_communication(
     payload: PractitionerCommunicationCreate,
@@ -563,7 +510,6 @@ async def add_communication(
 
 @router.get(
     "/{practitioner_id}/names",
-    dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="list_practitioner_names",
     summary="List all HumanName entries for a Practitioner",
     description=(
@@ -571,7 +517,7 @@ async def add_communication(
         "Each item includes `id` — use it to remove a specific name via "
         "`DELETE /{practitioner_id}/names/{name_id}`."
     ),
-    responses={**_SUBRES_NAMES_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_NAMES_200, **_ERR_NOT_FOUND},
 )
 async def list_names(
     request: Request,
@@ -588,7 +534,6 @@ async def list_names(
 
 @router.get(
     "/{practitioner_id}/identifiers",
-    dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="list_practitioner_identifiers",
     summary="List all business identifiers for a Practitioner",
     description=(
@@ -596,7 +541,7 @@ async def list_names(
         "Each item includes `id` — use it to remove a specific identifier via "
         "`DELETE /{practitioner_id}/identifiers/{identifier_id}`."
     ),
-    responses={**_SUBRES_IDENTIFIERS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_IDENTIFIERS_200, **_ERR_NOT_FOUND},
 )
 async def list_identifiers(
     request: Request,
@@ -613,7 +558,6 @@ async def list_identifiers(
 
 @router.get(
     "/{practitioner_id}/telecom",
-    dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="list_practitioner_telecom",
     summary="List all contact points (telecom) for a Practitioner",
     description=(
@@ -621,7 +565,7 @@ async def list_identifiers(
         "Each item includes `id` — use it to remove a specific contact point via "
         "`DELETE /{practitioner_id}/telecom/{telecom_id}`."
     ),
-    responses={**_SUBRES_TELECOM_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_TELECOM_200, **_ERR_NOT_FOUND},
 )
 async def list_telecom(
     request: Request,
@@ -638,7 +582,6 @@ async def list_telecom(
 
 @router.get(
     "/{practitioner_id}/addresses",
-    dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="list_practitioner_addresses",
     summary="List all addresses for a Practitioner",
     description=(
@@ -646,7 +589,7 @@ async def list_telecom(
         "Each item includes `id` — use it to remove a specific address via "
         "`DELETE /{practitioner_id}/addresses/{address_id}`."
     ),
-    responses={**_SUBRES_ADDRESSES_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_ADDRESSES_200, **_ERR_NOT_FOUND},
 )
 async def list_addresses(
     request: Request,
@@ -663,7 +606,6 @@ async def list_addresses(
 
 @router.get(
     "/{practitioner_id}/photos",
-    dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="list_practitioner_photos",
     summary="List all photos for a Practitioner",
     description=(
@@ -671,7 +613,7 @@ async def list_addresses(
         "Each item includes `id` — use it to remove a specific photo via "
         "`DELETE /{practitioner_id}/photos/{photo_id}`."
     ),
-    responses={**_SUBRES_PHOTOS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_PHOTOS_200, **_ERR_NOT_FOUND},
 )
 async def list_photos(
     request: Request,
@@ -688,7 +630,6 @@ async def list_photos(
 
 @router.get(
     "/{practitioner_id}/qualifications",
-    dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="list_practitioner_qualifications",
     summary="List all qualifications for a Practitioner",
     description=(
@@ -698,7 +639,7 @@ async def list_photos(
         "Each item includes `id` — use it to remove a specific qualification via "
         "`DELETE /{practitioner_id}/qualifications/{qualification_id}`."
     ),
-    responses={**_SUBRES_QUALIFICATIONS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_QUALIFICATIONS_200, **_ERR_NOT_FOUND},
 )
 async def list_qualifications(
     request: Request,
@@ -715,7 +656,6 @@ async def list_qualifications(
 
 @router.get(
     "/{practitioner_id}/communications",
-    dependencies=[Depends(require_permission("practitioner", "read"))],
     operation_id="list_practitioner_communications",
     summary="List all communication languages for a Practitioner",
     description=(
@@ -723,7 +663,7 @@ async def list_qualifications(
         "Each item includes `id` — use it to remove a specific language entry via "
         "`DELETE /{practitioner_id}/communications/{comm_id}`."
     ),
-    responses={**_SUBRES_COMMUNICATIONS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_COMMUNICATIONS_200, **_ERR_NOT_FOUND},
 )
 async def list_communications(
     request: Request,
@@ -744,7 +684,6 @@ async def list_communications(
 @router.delete(
     "/{practitioner_id}/names/{name_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="delete_practitioner_name",
     summary="Remove a HumanName entry from a Practitioner",
     description=(
@@ -752,7 +691,7 @@ async def list_communications(
         "The `name_id` is the `id` returned by `GET /{practitioner_id}/names`. "
         "Returns 404 if the name does not exist or belongs to a different Practitioner."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_name(
     name_id: int,
@@ -768,7 +707,6 @@ async def delete_name(
 @router.delete(
     "/{practitioner_id}/identifiers/{identifier_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="delete_practitioner_identifier",
     summary="Remove a business identifier from a Practitioner",
     description=(
@@ -776,7 +714,7 @@ async def delete_name(
         "The `identifier_id` is the `id` returned by `GET /{practitioner_id}/identifiers`. "
         "Returns 404 if the identifier does not exist or belongs to a different Practitioner."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_identifier(
     identifier_id: int,
@@ -792,7 +730,6 @@ async def delete_identifier(
 @router.delete(
     "/{practitioner_id}/telecom/{telecom_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="delete_practitioner_telecom",
     summary="Remove a contact point from a Practitioner",
     description=(
@@ -800,7 +737,7 @@ async def delete_identifier(
         "The `telecom_id` is the `id` returned by `GET /{practitioner_id}/telecom`. "
         "Returns 404 if the contact point does not exist or belongs to a different Practitioner."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_telecom(
     telecom_id: int,
@@ -816,7 +753,6 @@ async def delete_telecom(
 @router.delete(
     "/{practitioner_id}/addresses/{address_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="delete_practitioner_address",
     summary="Remove an address from a Practitioner",
     description=(
@@ -824,7 +760,7 @@ async def delete_telecom(
         "The `address_id` is the `id` returned by `GET /{practitioner_id}/addresses`. "
         "Returns 404 if the address does not exist or belongs to a different Practitioner."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_address(
     address_id: int,
@@ -840,7 +776,6 @@ async def delete_address(
 @router.delete(
     "/{practitioner_id}/photos/{photo_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="delete_practitioner_photo",
     summary="Remove a photo from a Practitioner",
     description=(
@@ -848,7 +783,7 @@ async def delete_address(
         "The `photo_id` is the `id` returned by `GET /{practitioner_id}/photos`. "
         "Returns 404 if the photo does not exist or belongs to a different Practitioner."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_photo(
     photo_id: int,
@@ -864,7 +799,6 @@ async def delete_photo(
 @router.delete(
     "/{practitioner_id}/qualifications/{qualification_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="delete_practitioner_qualification",
     summary="Remove a qualification from a Practitioner",
     description=(
@@ -872,7 +806,7 @@ async def delete_photo(
         "The `qualification_id` is the `id` returned by `GET /{practitioner_id}/qualifications`. "
         "Returns 404 if the qualification does not exist or belongs to a different Practitioner."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_qualification(
     qualification_id: int,
@@ -888,7 +822,6 @@ async def delete_qualification(
 @router.delete(
     "/{practitioner_id}/communications/{comm_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("practitioner", "update"))],
     operation_id="delete_practitioner_communication",
     summary="Remove a communication language from a Practitioner",
     description=(
@@ -896,7 +829,7 @@ async def delete_qualification(
         "The `comm_id` is the `id` returned by `GET /{practitioner_id}/communications`. "
         "Returns 404 if the entry does not exist or belongs to a different Practitioner."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_communication(
     comm_id: int,

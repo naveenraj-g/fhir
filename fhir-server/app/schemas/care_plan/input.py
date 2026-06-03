@@ -272,6 +272,7 @@ class CarePlanCreateSchema(BaseModel):
 
     user_id: str
     org_id: str
+    created_by: Optional[str] = None
 
     status: str = Field(..., description="draft | active | on-hold | revoked | completed | entered-in-error | unknown")
     intent: str = Field(..., description="proposal | plan | order | option")
@@ -342,3 +343,4 @@ class CarePlanPatchSchema(BaseModel):
     goals: Optional[List[CarePlanGoalInput]] = None
     activities: Optional[List[CarePlanActivityInput]] = None
     notes: Optional[List[CarePlanNoteInput]] = None
+    updated_by: Optional[str] = None

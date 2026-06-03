@@ -130,6 +130,7 @@ class AuditEventCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     # type (1..1 Coding)
     type_system: Optional[str] = None
@@ -212,3 +213,4 @@ class AuditEventPatchSchema(BaseModel):
     source_types: Optional[list[AuditEventSourceTypeInput]] = None
     agents: Optional[list[AuditEventAgentInput]] = None
     entities: Optional[list[AuditEventEntityInput]] = None
+    updated_by: Optional[str] = None

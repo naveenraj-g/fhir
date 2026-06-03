@@ -129,6 +129,7 @@ class ConditionCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     # clinicalStatus (0..1 CodeableConcept)
     clinical_status_system: Optional[str] = None
@@ -271,3 +272,4 @@ class ConditionPatchSchema(BaseModel):
     abatement_range_high_value: Optional[float] = None
     abatement_range_high_unit: Optional[str] = None
     abatement_string: Optional[str] = None
+    updated_by: Optional[str] = None

@@ -3,8 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.device_request_deps import resolve_device_request
-from app.auth.dependencies import require_permission
+from app.deps.device_request_deps import resolve_device_request
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.device_request import get_device_request_service
@@ -25,10 +24,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "DeviceRequest not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -58,7 +53,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("device_request", "create"))],
     operation_id="create_device_request",
     summary="Create a new DeviceRequest resource",
     description=(
@@ -70,14 +64,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created DeviceRequest resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_device_request(
     payload: DeviceRequestCreateSchema,
     request: Request,
     dr_service: DeviceRequestService = Depends(get_device_request_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     dr = await dr_service.create_device_request(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -88,58 +82,12 @@ async def create_device_request(
     )
 
 
-# ── Get own DeviceRequests (/me) ───────────────────────────────────────────────
 # Declared before /{device_request_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("device_request", "read"))],
-    operation_id="get_my_device_requests",
-    summary="List DeviceRequest resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of DeviceRequest records belonging to the authenticated user "
-        "(identified by `sub` and `activeOrganizationId`). "
-        "Filter by `status`, `patient_id`, `authored_from`, or `authored_to`. "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated DeviceRequest resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_device_requests(
-    request: Request,
-    dr_status: Optional[str] = Query(None, alias="status", description="Filter by status e.g. 'active'."),
-    patient_id: Optional[int] = Query(None, description="Filter by patient subject_id."),
-    authored_from: Optional[datetime] = Query(None),
-    authored_to: Optional[datetime] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    dr_service: DeviceRequestService = Depends(get_device_request_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    items, total = await dr_service.get_me(
-        user_id, org_id,
-        dr_status=dr_status,
-        patient_id=patient_id,
-        authored_from=authored_from,
-        authored_to=authored_to,
-        limit=limit,
-        offset=offset,
-    )
-    return format_paginated_response(
-        [dr_service._to_fhir(dr) for dr in items],
-        [dr_service._to_plain(dr) for dr in items],
-        total, limit, offset, request,
-    )
-
-
-# ── Get DeviceRequest by public device_request_id ─────────────────────────────
 
 
 @router.get(
     "/{device_request_id}",
-    dependencies=[Depends(require_permission("device_request", "read"))],
     operation_id="get_device_request_by_id",
     summary="Retrieve a DeviceRequest resource by public device_request_id",
     description=(
@@ -147,7 +95,7 @@ async def get_my_device_requests(
         + _CONTENT_NEG
     ),
     response_description="The requested DeviceRequest resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_device_request(
     request: Request,
@@ -166,7 +114,6 @@ async def get_device_request(
 
 @router.patch(
     "/{device_request_id}",
-    dependencies=[Depends(require_permission("device_request", "update"))],
     operation_id="patch_device_request",
     summary="Partially update a DeviceRequest resource",
     description=(
@@ -180,7 +127,7 @@ async def get_device_request(
         + _CONTENT_NEG
     ),
     response_description="The updated DeviceRequest resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_device_request(
     payload: DeviceRequestPatchSchema,
@@ -188,7 +135,7 @@ async def patch_device_request(
     dr: DeviceRequestModel = Depends(resolve_device_request),
     dr_service: DeviceRequestService = Depends(get_device_request_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await dr_service.patch_device_request(
         dr.device_request_id, payload, updated_by
     )
@@ -206,7 +153,6 @@ async def patch_device_request(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("device_request", "read"))],
     operation_id="list_device_requests",
     summary="List all DeviceRequest resources",
     description=(
@@ -216,7 +162,7 @@ async def patch_device_request(
         + _CONTENT_NEG
     ),
     response_description="Paginated DeviceRequest resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_device_requests(
     request: Request,
@@ -253,7 +199,6 @@ async def list_device_requests(
 @router.delete(
     "/{device_request_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("device_request", "delete"))],
     operation_id="delete_device_request",
     summary="Delete a DeviceRequest resource",
     description=(
@@ -262,7 +207,7 @@ async def list_device_requests(
         "insurance, supportingInfo, note, relevantHistory). "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_device_request(
     dr: DeviceRequestModel = Depends(resolve_device_request),

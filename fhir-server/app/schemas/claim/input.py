@@ -508,6 +508,7 @@ class ClaimCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
     org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+    created_by: Optional[str] = None
 
     # Required scalars
     status: str = Field(..., description="Claim status: active | cancelled | draft | entered-in-error.")
@@ -682,3 +683,4 @@ class ClaimPatchSchema(BaseModel):
     payee_party_display: Optional[str] = None
     referral_display: Optional[str] = None
     facility_display: Optional[str] = None
+    updated_by: Optional[str] = None

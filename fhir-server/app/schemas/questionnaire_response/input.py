@@ -143,6 +143,7 @@ class QuestionnaireResponseCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
     questionnaire: str = Field(
         ...,
         description="Canonical URL or id of the Questionnaire this response answers.",
@@ -204,3 +205,4 @@ class QuestionnaireResponsePatchSchema(BaseModel):
 
     status: Optional[QuestionnaireResponseStatus] = None
     authored: Optional[datetime] = None
+    updated_by: Optional[str] = None

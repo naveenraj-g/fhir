@@ -114,6 +114,7 @@ class DocumentReferenceCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     # masterIdentifier (0..1)
     master_identifier_use: Optional[str] = None
@@ -218,3 +219,4 @@ class DocumentReferencePatchSchema(BaseModel):
     identifiers: Optional[List[DocumentReferenceIdentifierInput]] = None
     categories: Optional[List[DocumentReferenceCategoryInput]] = None
     context: Optional[DocumentReferenceContextInput] = None
+    updated_by: Optional[str] = None

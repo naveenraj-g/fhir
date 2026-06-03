@@ -139,6 +139,7 @@ class ProcedureCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
     org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+    created_by: Optional[str] = None
 
     # Required
     status: str = Field(..., description="preparation|in-progress|not-done|on-hold|stopped|completed|entered-in-error|unknown")
@@ -288,3 +289,4 @@ class ProcedurePatchSchema(BaseModel):
     outcome_text: Optional[str] = None
     instantiates_canonical: Optional[List[str]] = None
     instantiates_uri: Optional[List[str]] = None
+    updated_by: Optional[str] = None

@@ -117,6 +117,7 @@ class AllergyIntoleranceCreateSchema(BaseModel):
 
     user_id: str
     org_id: str
+    created_by: Optional[str] = None
 
     # clinicalStatus (0..1 CodeableConcept)
     clinical_status_system: Optional[str] = None
@@ -253,3 +254,4 @@ class AllergyIntolerancePatchSchema(BaseModel):
     categories: Optional[List[str]] = None
     notes: Optional[List[AllergyIntoleranceNoteInput]] = None
     reactions: Optional[List[AllergyIntoleranceReactionInput]] = None
+    updated_by: Optional[str] = None

@@ -2,8 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.dependencies import require_permission
-from app.auth.healthcare_service_deps import resolve_healthcare_service
+from app.deps.healthcare_service_deps import resolve_healthcare_service
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.healthcare_service import get_healthcare_service_service
@@ -27,10 +26,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "HealthcareService not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -68,7 +63,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("healthcare_service", "create"))],
     operation_id="create_healthcare_service",
     summary="Create a new HealthcareService resource",
     description=(
@@ -78,14 +72,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created HealthcareService resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_healthcare_service(
     payload: HealthcareServiceCreateSchema,
     request: Request,
     hs_service: HealthcareServiceService = Depends(get_healthcare_service_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     hs = await hs_service.create_healthcare_service(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -96,52 +90,12 @@ async def create_healthcare_service(
     )
 
 
-# ── Get own HealthcareServices (/me) ──────────────────────────────────────────
 # Declared before /{healthcare_service_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("healthcare_service", "read"))],
-    operation_id="get_my_healthcare_services",
-    summary="List HealthcareService resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of HealthcareService records belonging to the "
-        "authenticated user (identified by `sub` and `activeOrganizationId`). "
-        "Filter by `active` or `name`. "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated HealthcareService resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_healthcare_services(
-    request: Request,
-    active: Optional[bool] = Query(None, description="Filter by active status."),
-    name: Optional[str] = Query(None, description="Filter by service name (case-insensitive partial match)."),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    hs_service: HealthcareServiceService = Depends(get_healthcare_service_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    items, total = await hs_service.get_me(
-        user_id, org_id,
-        active=active, name=name,
-        limit=limit, offset=offset,
-    )
-    return format_paginated_response(
-        [hs_service._to_fhir(hs) for hs in items],
-        [hs_service._to_plain(hs) for hs in items],
-        total, limit, offset, request,
-    )
-
-
-# ── Get HealthcareService by public id ────────────────────────────────────────
 
 
 @router.get(
     "/{healthcare_service_id}",
-    dependencies=[Depends(require_permission("healthcare_service", "read"))],
     operation_id="get_healthcare_service_by_id",
     summary="Retrieve a HealthcareService resource by public healthcare_service_id",
     description=(
@@ -149,7 +103,7 @@ async def get_my_healthcare_services(
         + _CONTENT_NEG
     ),
     response_description="The requested HealthcareService resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_healthcare_service(
     request: Request,
@@ -168,7 +122,6 @@ async def get_healthcare_service(
 
 @router.patch(
     "/{healthcare_service_id}",
-    dependencies=[Depends(require_permission("healthcare_service", "update"))],
     operation_id="patch_healthcare_service",
     summary="Partially update a HealthcareService resource",
     description=(
@@ -180,7 +133,7 @@ async def get_healthcare_service(
         + _CONTENT_NEG
     ),
     response_description="The updated HealthcareService resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_healthcare_service(
     payload: HealthcareServicePatchSchema,
@@ -188,7 +141,7 @@ async def patch_healthcare_service(
     hs: HealthcareServiceModel = Depends(resolve_healthcare_service),
     hs_service: HealthcareServiceService = Depends(get_healthcare_service_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await hs_service.patch_healthcare_service(
         hs.healthcare_service_id, payload, updated_by
     )
@@ -206,7 +159,6 @@ async def patch_healthcare_service(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("healthcare_service", "read"))],
     operation_id="list_healthcare_services",
     summary="List all HealthcareService resources",
     description=(
@@ -216,7 +168,7 @@ async def patch_healthcare_service(
         + _CONTENT_NEG
     ),
     response_description="Paginated HealthcareService resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_healthcare_services(
     request: Request,
@@ -246,14 +198,13 @@ async def list_healthcare_services(
 @router.delete(
     "/{healthcare_service_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("healthcare_service", "delete"))],
     operation_id="delete_healthcare_service",
     summary="Delete a HealthcareService resource",
     description=(
         "Permanently deletes the HealthcareService and all its associated child records. "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_healthcare_service(
     hs: HealthcareServiceModel = Depends(resolve_healthcare_service),

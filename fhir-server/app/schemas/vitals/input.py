@@ -34,6 +34,7 @@ class VitalsCreateSchema(BaseModel):
     # Identity
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
     pseudo_id: Optional[str] = None
     pseudo_id2: Optional[str] = None
     patient_id: Optional[int] = Field(None, description="Public patient_id.")
@@ -135,3 +136,4 @@ class VitalsPatchSchema(BaseModel):
 
     # Metadata — recorded_at is immutable after creation
     date: Optional[_Date] = None
+    updated_by: Optional[str] = None

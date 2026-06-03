@@ -122,6 +122,7 @@ class InvoiceCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
     org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+    created_by: Optional[str] = None
 
     status: str = Field(..., description="draft | issued | balanced | cancelled | entered-in-error")
     cancelled_reason: Optional[str] = None
@@ -183,3 +184,4 @@ class InvoicePatchSchema(BaseModel):
     total_gross_currency: Optional[str] = None
 
     payment_terms: Optional[str] = None
+    updated_by: Optional[str] = None

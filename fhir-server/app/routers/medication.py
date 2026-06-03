@@ -3,8 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.medication_deps import resolve_medication
-from app.auth.dependencies import require_permission
+from app.deps.medication_deps import resolve_medication
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.medication import get_medication_service
@@ -25,10 +24,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Medication not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error"}}
 
@@ -58,7 +53,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("medication", "create"))],
     operation_id="create_medication",
     summary="Create a new Medication resource",
     description=(
@@ -68,14 +62,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created Medication resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_medication(
     payload: MedicationCreateSchema,
     request: Request,
     medication_service: MedicationService = Depends(get_medication_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     medication = await medication_service.create_medication(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -89,46 +83,13 @@ async def create_medication(
 # ── Get my medications ─────────────────────────────────────────────────────────
 
 
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("medication", "read"))],
-    operation_id="list_my_medications",
-    summary="List medications for the authenticated user",
-    description=(
-        "Returns medications scoped to the authenticated user's `sub` and `activeOrganizationId`. "
-        + _CONTENT_NEG
-    ),
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_medications(
-    request: Request,
-    medication_status: Optional[str] = Query(None, alias="status", description="Filter by status."),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    medication_service: MedicationService = Depends(get_medication_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    rows, total = await medication_service.get_me(
-        user_id, org_id, medication_status=medication_status, limit=limit, offset=offset
-    )
-    return format_paginated_response(
-        [medication_service._to_fhir(r) for r in rows],
-        [medication_service._to_plain(r) for r in rows],
-        total, limit, offset, request,
-    )
-
-
-# ── Get by ID ──────────────────────────────────────────────────────────────────
-
 
 @router.get(
     "/{medication_id}",
-    dependencies=[Depends(require_permission("medication", "read"))],
     operation_id="get_medication",
     summary="Retrieve a single Medication by public ID",
     description="Fetches a single Medication resource by its public medication_id. " + _CONTENT_NEG,
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_medication(
     request: Request,
@@ -147,11 +108,10 @@ async def get_medication(
 
 @router.patch(
     "/{medication_id}",
-    dependencies=[Depends(require_permission("medication", "update"))],
     operation_id="patch_medication",
     summary="Partially update a Medication resource",
     description="Updates scalar fields on a Medication. Child arrays (ingredients, identifiers) are not modified via PATCH.",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def patch_medication(
     request: Request,
@@ -159,7 +119,7 @@ async def patch_medication(
     medication: MedicationModel = Depends(resolve_medication),
     medication_service: MedicationService = Depends(get_medication_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await medication_service.patch_medication(medication.medication_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication not found")
@@ -175,11 +135,10 @@ async def patch_medication(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("medication", "read"))],
     operation_id="list_medications",
     summary="List Medication resources",
     description="Returns a paginated list of Medication resources. " + _CONTENT_NEG,
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_medications(
     request: Request,
@@ -204,11 +163,10 @@ async def list_medications(
 @router.delete(
     "/{medication_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("medication", "delete"))],
     operation_id="delete_medication",
     summary="Delete a Medication resource",
     description="Permanently deletes a Medication and all its child resources (ingredients, identifiers).",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, 204: {"description": "Medication deleted"}},
+    responses={**_ERR_NOT_FOUND, 204: {"description": "Medication deleted"}},
 )
 async def delete_medication(
     medication: MedicationModel = Depends(resolve_medication),

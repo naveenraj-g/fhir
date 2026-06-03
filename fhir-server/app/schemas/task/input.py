@@ -134,6 +134,7 @@ class TaskCreateSchema(BaseModel):
 
     user_id: str
     org_id: str
+    created_by: Optional[str] = None
 
     # required
     status: str = Field(..., description="Task status code: draft | requested | received | accepted | rejected | ready | cancelled | in-progress | on-hold | failed | completed | entered-in-error")
@@ -320,3 +321,4 @@ class TaskPatchSchema(BaseModel):
     restriction_recipients: Optional[List[TaskRestrictionRecipientInput]] = None
     inputs: Optional[List[TaskInputItemInput]] = None
     outputs: Optional[List[TaskOutputItemInput]] = None
+    updated_by: Optional[str] = None

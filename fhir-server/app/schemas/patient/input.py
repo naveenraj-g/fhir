@@ -185,6 +185,7 @@ class PatientCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
     active: Optional[bool] = True
     gender: Optional[PatientGender] = None
     birth_date: Optional[date] = None
@@ -216,3 +217,4 @@ class PatientPatchSchema(BaseModel):
     multiple_birth_integer: Optional[int] = None
     managing_organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")
     managing_organization_display: Optional[str] = None
+    updated_by: Optional[str] = None

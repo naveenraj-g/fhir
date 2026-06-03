@@ -2,8 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.practitioner_role_deps import resolve_practitioner_role
-from app.auth.dependencies import require_permission
+from app.deps.practitioner_role_deps import resolve_practitioner_role
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.practitioner_role import get_practitioner_role_service
@@ -26,10 +25,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "PractitionerRole not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -68,7 +63,6 @@ _BOOKING_LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("practitioner_role", "create"))],
     operation_id="create_practitioner_role",
     summary="Create a new PractitionerRole resource",
     description=(
@@ -79,14 +73,14 @@ _BOOKING_LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created PractitionerRole resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_practitioner_role(
     payload: PractitionerRoleCreateSchema,
     request: Request,
     pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     pr = await pr_service.create_practitioner_role(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -97,53 +91,12 @@ async def create_practitioner_role(
     )
 
 
-# ── Get own PractitionerRoles (/me) ───────────────────────────────────────────
 # Declared before /{practitioner_role_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("practitioner_role", "read"))],
-    operation_id="get_my_practitioner_roles",
-    summary="List PractitionerRole resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of PractitionerRole records belonging to the authenticated user "
-        "(identified by `sub` and `activeOrganizationId`). "
-        "Filter by `active` or `practitioner_id`. "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated PractitionerRole resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_practitioner_roles(
-    request: Request,
-    active: Optional[bool] = Query(None, description="Filter by active status."),
-    practitioner_id: Optional[int] = Query(None, description="Filter by public practitioner_id."),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    items, total = await pr_service.get_me(
-        user_id, org_id,
-        active=active, practitioner_id=practitioner_id,
-        limit=limit, offset=offset,
-    )
-    return format_paginated_response(
-        [pr_service._to_fhir(p) for p in items],
-        [pr_service._to_plain(p) for p in items],
-        total, limit, offset, request,
-    )
-
-
-# ── Booking directory ─────────────────────────────────────────────────────────
-# Must be declared before /{practitioner_role_id} to avoid routing conflicts.
 
 
 @router.get(
     "/booking",
-    dependencies=[Depends(require_permission("practitioner_role", "read"))],
     operation_id="list_practitioner_roles_for_booking",
     summary="List practitioners available for appointment booking",
     description=(
@@ -156,7 +109,7 @@ async def get_my_practitioner_roles(
         "FHIR response embeds the Practitioner as a `contained` resource referenced by `#pr`. "
         + _CONTENT_NEG
     ),
-    responses={**_BOOKING_LIST_200, **_ERR_AUTH},
+    responses={**_BOOKING_LIST_200},
 )
 async def list_practitioner_roles_for_booking(
     request: Request,
@@ -173,7 +126,6 @@ async def list_practitioner_roles_for_booking(
     offset: int = Query(0, ge=0),
     pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
 ):
-    org_id: str = request.state.user.get("activeOrganizationId")
     items, total = await pr_service.list_for_booking(
         org_id=org_id,
         active=active,
@@ -192,7 +144,6 @@ async def list_practitioner_roles_for_booking(
 
 @router.get(
     "/{practitioner_role_id}",
-    dependencies=[Depends(require_permission("practitioner_role", "read"))],
     operation_id="get_practitioner_role_by_id",
     summary="Retrieve a PractitionerRole resource by public practitioner_role_id",
     description=(
@@ -200,7 +151,7 @@ async def list_practitioner_roles_for_booking(
         + _CONTENT_NEG
     ),
     response_description="The requested PractitionerRole resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_practitioner_role(
     request: Request,
@@ -219,7 +170,6 @@ async def get_practitioner_role(
 
 @router.patch(
     "/{practitioner_role_id}",
-    dependencies=[Depends(require_permission("practitioner_role", "update"))],
     operation_id="patch_practitioner_role",
     summary="Partially update a PractitionerRole resource",
     description=(
@@ -230,7 +180,7 @@ async def get_practitioner_role(
         + _CONTENT_NEG
     ),
     response_description="The updated PractitionerRole resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_practitioner_role(
     payload: PractitionerRolePatchSchema,
@@ -238,7 +188,7 @@ async def patch_practitioner_role(
     pr: PractitionerRoleModel = Depends(resolve_practitioner_role),
     pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await pr_service.patch_practitioner_role(
         pr.practitioner_role_id, payload, updated_by
     )
@@ -256,7 +206,6 @@ async def patch_practitioner_role(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("practitioner_role", "read"))],
     operation_id="list_practitioner_roles",
     summary="List all PractitionerRole resources",
     description=(
@@ -266,7 +215,7 @@ async def patch_practitioner_role(
         + _CONTENT_NEG
     ),
     response_description="Paginated PractitionerRole resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_practitioner_roles(
     request: Request,
@@ -296,14 +245,13 @@ async def list_practitioner_roles(
 @router.delete(
     "/{practitioner_role_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("practitioner_role", "delete"))],
     operation_id="delete_practitioner_role",
     summary="Delete a PractitionerRole resource",
     description=(
         "Permanently deletes the PractitionerRole and all its associated child records. "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_practitioner_role(
     pr: PractitionerRoleModel = Depends(resolve_practitioner_role),

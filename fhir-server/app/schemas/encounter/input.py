@@ -278,6 +278,7 @@ class EncounterCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     # status (1..1)
     status: str = Field(..., description="R5 status: planned|in-progress|on-hold|discharged|completed|cancelled|discontinued|entered-in-error|unknown")
@@ -357,3 +358,4 @@ class EncounterPatchSchema(BaseModel):
     subject_status_display: Optional[str] = None
     subject_status_text: Optional[str] = None
     planned_end_date: Optional[datetime] = None
+    updated_by: Optional[str] = None

@@ -171,6 +171,7 @@ class ServiceRequestCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     # Required fields
     status: str = Field(..., description="draft|active|on-hold|revoked|completed|entered-in-error|unknown")
@@ -339,3 +340,4 @@ class ServiceRequestPatchSchema(BaseModel):
     instantiates_canonical: Optional[str] = None
     instantiates_uri: Optional[str] = None
     patient_instruction: Optional[str] = None
+    updated_by: Optional[str] = None

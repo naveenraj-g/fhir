@@ -91,6 +91,7 @@ class ScheduleCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
     org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+    created_by: Optional[str] = None
 
     active: Optional[bool] = Field(None, description="Whether this schedule is active.")
     comment: Optional[str] = Field(None, description="Comments on availability of slots.")
@@ -117,3 +118,4 @@ class SchedulePatchSchema(BaseModel):
     comment: Optional[str] = None
     planning_horizon_start: Optional[datetime] = None
     planning_horizon_end: Optional[datetime] = None
+    updated_by: Optional[str] = None

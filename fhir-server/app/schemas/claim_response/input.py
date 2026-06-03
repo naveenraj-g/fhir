@@ -405,6 +405,7 @@ class ClaimResponseCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
     org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+    created_by: Optional[str] = None
 
     # Required scalars
     status: str = Field(..., description="active | cancelled | draft | entered-in-error")
@@ -585,3 +586,4 @@ class ClaimResponsePatchSchema(BaseModel):
     form_hash: Optional[str] = None
     form_title: Optional[str] = None
     form_creation: Optional[datetime] = None
+    updated_by: Optional[str] = None

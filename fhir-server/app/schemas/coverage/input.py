@@ -107,6 +107,7 @@ class CoverageCreateSchema(BaseModel):
 
     user_id: str
     org_id: str
+    created_by: Optional[str] = None
 
     status: str = Field(..., description="active | cancelled | draft | entered-in-error")
 
@@ -186,3 +187,4 @@ class CoveragePatchSchema(BaseModel):
     order: Optional[int] = Field(None, ge=1)
     network: Optional[str] = None
     subrogation: Optional[bool] = None
+    updated_by: Optional[str] = None

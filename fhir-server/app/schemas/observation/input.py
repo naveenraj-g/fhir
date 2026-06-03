@@ -238,6 +238,7 @@ class ObservationCreateSchema(_ValueXFields):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     # Required
     status: str = Field(
@@ -388,3 +389,4 @@ class ObservationPatchSchema(BaseModel):
     method_text: Optional[str] = None
     specimen_display: Optional[str] = None
     device_display: Optional[str] = None
+    updated_by: Optional[str] = None

@@ -2,8 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, Request, status
 
-from app.auth.episode_of_care_deps import resolve_episode_of_care
-from app.auth.dependencies import require_permission
+from app.deps.episode_of_care_deps import resolve_episode_of_care
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.episode_of_care import get_episode_of_care_service
@@ -25,10 +24,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "EpisodeOfCare not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error"}}
 
@@ -58,7 +53,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("episode_of_care", "create"))],
     operation_id="create_episode_of_care",
     summary="Create a new EpisodeOfCare resource",
     description=(
@@ -66,14 +60,14 @@ _LIST_200 = {
         "around a specific care issue. " + _CONTENT_NEG
     ),
     response_description="The newly created EpisodeOfCare resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_episode_of_care(
     payload: EpisodeOfCareCreateSchema,
     request: Request,
     service: EpisodeOfCareService = Depends(get_episode_of_care_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     eoc = await service.create_episode_of_care(payload, created_by)
     return format_response(
         service._to_fhir(eoc),
@@ -82,55 +76,15 @@ async def create_episode_of_care(
     )
 
 
-# ── Get /me ───────────────────────────────────────────────────────────────────
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("episode_of_care", "read"))],
-    operation_id="list_my_episode_of_cares",
-    summary="List EpisodeOfCare resources for the authenticated user",
-    description=(
-        "Returns a paginated list of EpisodeOfCare resources owned by the authenticated user "
-        "within their active organisation. " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_me_episode_of_cares(
-    request: Request,
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    episode_status: Optional[EpisodeOfCareStatus] = Query(None, alias="status"),
-    patient_id: Optional[int] = Query(None),
-    service: EpisodeOfCareService = Depends(get_episode_of_care_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    total, rows = await service.list_episode_of_cares(
-        user_id=user_id,
-        org_id=org_id,
-        episode_status=episode_status,
-        patient_id=patient_id,
-        limit=limit,
-        offset=offset,
-    )
-    return format_paginated_response(
-        [service._to_fhir(e) for e in rows],
-        [service._to_plain(e) for e in rows],
-        total, limit, offset, request,
-    )
-
-
-# ── Get by ID ─────────────────────────────────────────────────────────────────
 
 
 @router.get(
     "/{episode_of_care_id}",
-    dependencies=[Depends(require_permission("episode_of_care", "read"))],
     operation_id="get_episode_of_care",
     summary="Retrieve an EpisodeOfCare by public identifier",
     description="Fetches a single EpisodeOfCare resource by its public `episode_of_care_id`. " + _CONTENT_NEG,
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_episode_of_care(
     request: Request,
@@ -149,7 +103,6 @@ async def get_episode_of_care(
 
 @router.patch(
     "/{episode_of_care_id}",
-    dependencies=[Depends(require_permission("episode_of_care", "update"))],
     operation_id="patch_episode_of_care",
     summary="Partially update an EpisodeOfCare",
     description=(
@@ -157,7 +110,7 @@ async def get_episode_of_care(
         "Child arrays (diagnoses, identifiers, etc.) replace the existing list when included. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_episode_of_care(
     payload: EpisodeOfCarePatchSchema,
@@ -165,7 +118,7 @@ async def patch_episode_of_care(
     eoc: EpisodeOfCareModel = Depends(resolve_episode_of_care),
     service: EpisodeOfCareService = Depends(get_episode_of_care_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await service.patch_episode_of_care(eoc, payload, updated_by)
     return format_response(
         service._to_fhir(updated),
@@ -179,14 +132,13 @@ async def patch_episode_of_care(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("episode_of_care", "read"))],
     operation_id="list_episode_of_cares",
     summary="List all EpisodeOfCare resources",
     description=(
         "Returns a paginated list of all EpisodeOfCare resources accessible to the caller. "
         + _CONTENT_NEG
     ),
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_episode_of_cares(
     request: Request,
@@ -217,11 +169,10 @@ async def list_episode_of_cares(
 @router.delete(
     "/{episode_of_care_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("episode_of_care", "delete"))],
     operation_id="delete_episode_of_care",
     summary="Delete an EpisodeOfCare resource",
     description="Permanently deletes an EpisodeOfCare and all its related child records.",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_episode_of_care(
     eoc: EpisodeOfCareModel = Depends(resolve_episode_of_care),

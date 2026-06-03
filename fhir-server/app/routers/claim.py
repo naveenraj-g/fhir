@@ -2,8 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.claim_deps import resolve_claim
-from app.auth.dependencies import require_permission
+from app.deps.claim_deps import resolve_claim
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.claim import get_claim_service
@@ -24,10 +23,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Claim not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -57,7 +52,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("claim", "create"))],
     operation_id="create_claim",
     summary="Create a new Claim resource",
     description=(
@@ -67,14 +61,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created Claim resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_claim(
     payload: ClaimCreateSchema,
     request: Request,
     claim_service: ClaimService = Depends(get_claim_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     claim = await claim_service.create_claim(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -85,54 +79,12 @@ async def create_claim(
     )
 
 
-# ── Get own Claims (/me) ───────────────────────────────────────────────────────
 # Declared before /{claim_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("claim", "read"))],
-    operation_id="get_my_claims",
-    summary="List Claim resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of Claim records belonging to the authenticated user "
-        "(identified by `sub` and `activeOrganizationId`). "
-        "Filter by `status` or `use`. "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated Claim resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_claims(
-    request: Request,
-    claim_status: Optional[str] = Query(None, alias="status", description="Filter by status e.g. 'active'."),
-    use: Optional[str] = Query(None, description="Filter by use e.g. 'claim'."),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    claim_service: ClaimService = Depends(get_claim_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    claims, total = await claim_service.get_me(
-        user_id, org_id,
-        claim_status=claim_status,
-        use=use,
-        limit=limit,
-        offset=offset,
-    )
-    return format_paginated_response(
-        [claim_service._to_fhir(c) for c in claims],
-        [claim_service._to_plain(c) for c in claims],
-        total, limit, offset, request,
-    )
-
-
-# ── Get Claim by public claim_id ───────────────────────────────────────────────
 
 
 @router.get(
     "/{claim_id}",
-    dependencies=[Depends(require_permission("claim", "read"))],
     operation_id="get_claim_by_id",
     summary="Retrieve a Claim resource by public claim_id",
     description=(
@@ -140,7 +92,7 @@ async def get_my_claims(
         + _CONTENT_NEG
     ),
     response_description="The requested Claim resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_claim(
     request: Request,
@@ -159,7 +111,6 @@ async def get_claim(
 
 @router.patch(
     "/{claim_id}",
-    dependencies=[Depends(require_permission("claim", "update"))],
     operation_id="patch_claim",
     summary="Partially update a Claim resource",
     description=(
@@ -170,7 +121,7 @@ async def get_claim(
         + _CONTENT_NEG
     ),
     response_description="The updated Claim resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_claim(
     payload: ClaimPatchSchema,
@@ -178,7 +129,7 @@ async def patch_claim(
     claim: ClaimModel = Depends(resolve_claim),
     claim_service: ClaimService = Depends(get_claim_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await claim_service.patch_claim(claim.claim_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Claim not found")
@@ -194,7 +145,6 @@ async def patch_claim(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("claim", "read"))],
     operation_id="list_claims",
     summary="List all Claim resources",
     description=(
@@ -204,7 +154,7 @@ async def patch_claim(
         + _CONTENT_NEG
     ),
     response_description="Paginated Claim resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_claims(
     request: Request,
@@ -237,7 +187,6 @@ async def list_claims(
 @router.delete(
     "/{claim_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("claim", "delete"))],
     operation_id="delete_claim",
     summary="Delete a Claim resource",
     description=(
@@ -246,7 +195,7 @@ async def list_claims(
         "insurance, items, and all nested details). "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_claim(
     claim: ClaimModel = Depends(resolve_claim),

@@ -283,6 +283,7 @@ class AppointmentCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     status: AppointmentStatus
 
@@ -372,3 +373,4 @@ class AppointmentPatchSchema(BaseModel):
     description: Optional[str] = None
     recurrence_id: Optional[int] = Field(None, ge=1)
     occurrence_changed: Optional[bool] = None
+    updated_by: Optional[str] = None

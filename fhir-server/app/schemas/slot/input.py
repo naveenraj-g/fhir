@@ -81,6 +81,7 @@ class SlotCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
     org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+    created_by: Optional[str] = None
 
     schedule: str = Field(
         ..., description="Reference to the Schedule this slot belongs to, e.g. 'Schedule/200001'."
@@ -116,3 +117,4 @@ class SlotPatchSchema(BaseModel):
     appointment_type_code: Optional[str] = None
     appointment_type_display: Optional[str] = None
     appointment_type_text: Optional[str] = None
+    updated_by: Optional[str] = None

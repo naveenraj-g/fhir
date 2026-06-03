@@ -2,8 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.claim_response_deps import resolve_claim_response
-from app.auth.dependencies import require_permission
+from app.deps.claim_response_deps import resolve_claim_response
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.claim_response import get_claim_response_service
@@ -27,10 +26,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "ClaimResponse not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -68,7 +63,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("claim_response", "create"))],
     operation_id="create_claim_response",
     summary="Create a new ClaimResponse resource",
     description=(
@@ -78,14 +72,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created ClaimResponse resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_claim_response(
     payload: ClaimResponseCreateSchema,
     request: Request,
     cr_service: ClaimResponseService = Depends(get_claim_response_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     claim_response = await cr_service.create_claim_response(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -96,56 +90,12 @@ async def create_claim_response(
     )
 
 
-# ── Get own ClaimResponses (/me) ───────────────────────────────────────────────
 # Declared before /{claim_response_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("claim_response", "read"))],
-    operation_id="get_my_claim_responses",
-    summary="List ClaimResponse resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of ClaimResponse records belonging to the authenticated user "
-        "(identified by `sub` and `activeOrganizationId`). "
-        "Filter by `status`, `use`, or `outcome`. "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated ClaimResponse resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_claim_responses(
-    request: Request,
-    cr_status: Optional[str] = Query(None, alias="status", description="Filter by status e.g. 'active'."),
-    use: Optional[str] = Query(None, description="Filter by use e.g. 'claim'."),
-    outcome: Optional[str] = Query(None, description="Filter by outcome e.g. 'complete'."),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    cr_service: ClaimResponseService = Depends(get_claim_response_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    items, total = await cr_service.get_me(
-        user_id, org_id,
-        cr_status=cr_status,
-        use=use,
-        outcome=outcome,
-        limit=limit,
-        offset=offset,
-    )
-    return format_paginated_response(
-        [cr_service._to_fhir(cr) for cr in items],
-        [cr_service._to_plain(cr) for cr in items],
-        total, limit, offset, request,
-    )
-
-
-# ── Get ClaimResponse by public claim_response_id ─────────────────────────────
 
 
 @router.get(
     "/{claim_response_id}",
-    dependencies=[Depends(require_permission("claim_response", "read"))],
     operation_id="get_claim_response_by_id",
     summary="Retrieve a ClaimResponse resource by public claim_response_id",
     description=(
@@ -153,7 +103,7 @@ async def get_my_claim_responses(
         + _CONTENT_NEG
     ),
     response_description="The requested ClaimResponse resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_claim_response(
     request: Request,
@@ -172,7 +122,6 @@ async def get_claim_response(
 
 @router.patch(
     "/{claim_response_id}",
-    dependencies=[Depends(require_permission("claim_response", "update"))],
     operation_id="patch_claim_response",
     summary="Partially update a ClaimResponse resource",
     description=(
@@ -184,7 +133,7 @@ async def get_claim_response(
         + _CONTENT_NEG
     ),
     response_description="The updated ClaimResponse resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_claim_response(
     payload: ClaimResponsePatchSchema,
@@ -192,7 +141,7 @@ async def patch_claim_response(
     claim_response: ClaimResponseModel = Depends(resolve_claim_response),
     cr_service: ClaimResponseService = Depends(get_claim_response_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await cr_service.patch_claim_response(
         claim_response.claim_response_id, payload, updated_by
     )
@@ -210,7 +159,6 @@ async def patch_claim_response(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("claim_response", "read"))],
     operation_id="list_claim_responses",
     summary="List all ClaimResponse resources",
     description=(
@@ -220,7 +168,7 @@ async def patch_claim_response(
         + _CONTENT_NEG
     ),
     response_description="Paginated ClaimResponse resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_claim_responses(
     request: Request,
@@ -255,7 +203,6 @@ async def list_claim_responses(
 @router.delete(
     "/{claim_response_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("claim_response", "delete"))],
     operation_id="delete_claim_response",
     summary="Delete a ClaimResponse resource",
     description=(
@@ -264,7 +211,7 @@ async def list_claim_responses(
         "communicationRequests, insurances, errors, and all nested records). "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_claim_response(
     claim_response: ClaimResponseModel = Depends(resolve_claim_response),

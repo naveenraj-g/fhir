@@ -139,6 +139,7 @@ class PractitionerCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
     active: Optional[bool] = True
     gender: Optional[AdministrativeGender] = None
     birth_date: Optional[date] = None
@@ -154,3 +155,4 @@ class PractitionerPatchSchema(BaseModel):
     birth_date: Optional[date] = None
     deceased_boolean: Optional[bool] = None
     deceased_datetime: Optional[datetime] = None
+    updated_by: Optional[str] = None

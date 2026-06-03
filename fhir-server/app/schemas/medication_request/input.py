@@ -215,6 +215,7 @@ class MedicationRequestCreateSchema(BaseModel):
 
     user_id: Optional[str] = None
     org_id: Optional[str] = None
+    created_by: Optional[str] = None
 
     # Required
     status: str = Field(..., description="active|on-hold|cancelled|completed|entered-in-error|stopped|draft|unknown")
@@ -402,3 +403,4 @@ class MedicationRequestPatchSchema(BaseModel):
 
     instantiates_canonical: Optional[str] = None
     instantiates_uri: Optional[str] = None
+    updated_by: Optional[str] = None

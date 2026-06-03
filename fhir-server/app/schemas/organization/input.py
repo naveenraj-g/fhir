@@ -124,6 +124,7 @@ class OrganizationCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
     org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+    created_by: Optional[str] = None
 
     active: Optional[bool] = Field(None, description="Whether this organization record is active.")
     name: Optional[str] = Field(None, description="Name used for the organization.")
@@ -193,3 +194,4 @@ class OrganizationPatchSchema(BaseModel):
     active: Optional[bool] = None
     name: Optional[str] = None
     partof_display: Optional[str] = None
+    updated_by: Optional[str] = None

@@ -3,8 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.condition_deps import resolve_condition
-from app.auth.dependencies import require_permission
+from app.deps.condition_deps import resolve_condition
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.condition import get_condition_service
@@ -25,10 +24,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Condition not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -58,7 +53,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("condition", "create"))],
     operation_id="create_condition",
     summary="Create a new Condition resource",
     description=(
@@ -69,14 +63,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created Condition resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_condition(
     payload: ConditionCreateSchema,
     request: Request,
     condition_service: ConditionService = Depends(get_condition_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     condition = await condition_service.create_condition(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -87,58 +81,12 @@ async def create_condition(
     )
 
 
-# ── Get own Conditions (/me) ───────────────────────────────────────────────────
 # Declared before /{condition_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("condition", "read"))],
-    operation_id="get_my_conditions",
-    summary="List Condition resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of Condition records belonging to the authenticated user "
-        "(identified by `sub` and `activeOrganizationId`). "
-        "Filter by `clinical_status`, `patient_id`, `recorded_from`, or `recorded_to`. "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated Condition resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_conditions(
-    request: Request,
-    clinical_status: Optional[str] = Query(None, description="Filter by clinicalStatus code e.g. 'active'."),
-    patient_id: Optional[int] = Query(None, description="Filter by patient subject_id."),
-    recorded_from: Optional[datetime] = Query(None),
-    recorded_to: Optional[datetime] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    condition_service: ConditionService = Depends(get_condition_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    conditions, total = await condition_service.get_me(
-        user_id, org_id,
-        clinical_status=clinical_status,
-        patient_id=patient_id,
-        recorded_from=recorded_from,
-        recorded_to=recorded_to,
-        limit=limit,
-        offset=offset,
-    )
-    return format_paginated_response(
-        [condition_service._to_fhir(c) for c in conditions],
-        [condition_service._to_plain(c) for c in conditions],
-        total, limit, offset, request,
-    )
-
-
-# ── Get Condition by public condition_id ───────────────────────────────────────
 
 
 @router.get(
     "/{condition_id}",
-    dependencies=[Depends(require_permission("condition", "read"))],
     operation_id="get_condition_by_id",
     summary="Retrieve a Condition resource by public condition_id",
     description=(
@@ -146,7 +94,7 @@ async def get_my_conditions(
         + _CONTENT_NEG
     ),
     response_description="The requested Condition resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_condition(
     request: Request,
@@ -165,7 +113,6 @@ async def get_condition(
 
 @router.patch(
     "/{condition_id}",
-    dependencies=[Depends(require_permission("condition", "update"))],
     operation_id="patch_condition",
     summary="Partially update a Condition resource",
     description=(
@@ -176,7 +123,7 @@ async def get_condition(
         + _CONTENT_NEG
     ),
     response_description="The updated Condition resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_condition(
     payload: ConditionPatchSchema,
@@ -184,7 +131,7 @@ async def patch_condition(
     condition: ConditionModel = Depends(resolve_condition),
     condition_service: ConditionService = Depends(get_condition_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await condition_service.patch_condition(
         condition.condition_id, payload, updated_by
     )
@@ -202,7 +149,6 @@ async def patch_condition(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("condition", "read"))],
     operation_id="list_conditions",
     summary="List all Condition resources",
     description=(
@@ -212,7 +158,7 @@ async def patch_condition(
         + _CONTENT_NEG
     ),
     response_description="Paginated Condition resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_conditions(
     request: Request,
@@ -249,7 +195,6 @@ async def list_conditions(
 @router.delete(
     "/{condition_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("condition", "delete"))],
     operation_id="delete_condition",
     summary="Delete a Condition resource",
     description=(
@@ -257,7 +202,7 @@ async def list_conditions(
         "(identifier, category, bodySite, stage, evidence, note). "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_condition(
     condition: ConditionModel = Depends(resolve_condition),

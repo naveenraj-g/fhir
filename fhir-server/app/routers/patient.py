@@ -3,8 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.dependencies import require_permission
-from app.auth.patient_deps import resolve_patient
+from app.deps.patient_deps import resolve_patient
 from app.core.content_negotiation import format_response, format_paginated_response, wants_fhir
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.patient import get_patient_service
@@ -65,10 +64,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Patient not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -135,7 +130,6 @@ _SUBRES_LINKS_200 = {200: {"description": "List of patient link entries", "conte
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("patient", "create"))],
     operation_id="create_patient",
     summary="Create a new Patient resource",
     description=(
@@ -145,54 +139,26 @@ _SUBRES_LINKS_200 = {200: {"description": "List of patient link entries", "conte
         "general practitioners, and links must be added via the dedicated sub-resource endpoints. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_patient(
     payload: PatientCreateSchema,
     request: Request,
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     patient = await patient_service.create_patient(payload, payload.user_id, payload.org_id, created_by)
     return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
 
 
-# ── Get own profile (/me) ──────────────────────────────────────────────────────
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("patient", "read"))],
-    operation_id="get_my_patient_profile",
-    summary="Get the Patient profile for the currently authenticated user",
-    description=(
-        "Looks up the Patient record bound to the authenticated user's `sub` claim and "
-        "`activeOrganizationId`. Returns 404 if no Patient exists for this user in the current org. "
-        + _CONTENT_NEG
-    ),
-    responses={**_SINGLE_200, **_ERR_AUTH, 404: {"description": "No Patient profile found for current user"}},
-)
-async def get_my_patient_profile(
-    request: Request,
-    patient_service: PatientService = Depends(get_patient_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    patient = await patient_service.get_me(user_id, org_id)
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient profile not found")
-    return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
-
-
-# ── Get by ID ──────────────────────────────────────────────────────────────────
 
 
 @router.get(
     "/{patient_id}",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="get_patient_by_id",
     summary="Retrieve a Patient resource by public patient_id",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_patient(
     request: Request,
@@ -207,7 +173,6 @@ async def get_patient(
 
 @router.patch(
     "/{patient_id}",
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="patch_patient",
     summary="Partially update a Patient resource",
     description=(
@@ -217,7 +182,7 @@ async def get_patient(
         "To modify sub-resources (names, identifiers, etc.) use the dedicated endpoints. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_patient(
     payload: PatientPatchSchema,
@@ -225,7 +190,7 @@ async def patch_patient(
     patient: PatientModel = Depends(resolve_patient),
     patient_service: PatientService = Depends(get_patient_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await patient_service.patch_patient(patient.patient_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -237,7 +202,6 @@ async def patch_patient(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patients",
     summary="List all Patient resources",
     description=(
@@ -246,7 +210,7 @@ async def patch_patient(
         "`gender`, `active`, `user_id`, or `org_id`. "
         + _CONTENT_NEG
     ),
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_patients(
     request: Request,
@@ -278,11 +242,10 @@ async def list_patients(
 @router.delete(
     "/{patient_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("patient", "delete"))],
     operation_id="delete_patient",
     summary="Delete a Patient resource",
     description="Permanently deletes the Patient and all associated sub-resources. Returns 204 on success.",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_patient(
     patient: PatientModel = Depends(resolve_patient),
@@ -298,7 +261,6 @@ async def delete_patient(
 @router.post(
     "/{patient_id}/names",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_name",
     summary="Add a name to a Patient",
     description=(
@@ -307,7 +269,7 @@ async def delete_patient(
         "`given`, `prefix`, `suffix` accept lists of strings. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_name(
     payload: NameCreate,
@@ -327,7 +289,6 @@ async def add_name(
 @router.post(
     "/{patient_id}/identifiers",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_identifier",
     summary="Add an identifier to a Patient",
     description=(
@@ -335,7 +296,7 @@ async def add_name(
         "`system` is a URI namespace; `value` is the identifier string within that namespace. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_identifier(
     payload: IdentifierCreate,
@@ -355,7 +316,6 @@ async def add_identifier(
 @router.post(
     "/{patient_id}/telecom",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_telecom",
     summary="Add a contact point (telecom) to a Patient",
     description=(
@@ -363,7 +323,7 @@ async def add_identifier(
         "`use`: home|work|temp|old|mobile. `rank`: preferred order (1 = highest). "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_telecom(
     payload: TelecomCreate,
@@ -383,7 +343,6 @@ async def add_telecom(
 @router.post(
     "/{patient_id}/addresses",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_address",
     summary="Add an address to a Patient",
     description=(
@@ -391,7 +350,7 @@ async def add_telecom(
         "`line` accepts a list of address lines. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_address(
     payload: AddressCreate,
@@ -411,7 +370,6 @@ async def add_address(
 @router.post(
     "/{patient_id}/photos",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_photo",
     summary="Add a photo (Attachment) to a Patient",
     description=(
@@ -419,7 +377,7 @@ async def add_address(
         "`data` (base64-encoded binary). `content_type` is a MIME type (e.g. image/png). "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_photo(
     payload: PhotoCreate,
@@ -439,7 +397,6 @@ async def add_photo(
 @router.post(
     "/{patient_id}/contacts",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_contact",
     summary="Add a contact (next-of-kin / guardian) to a Patient",
     description=(
@@ -447,7 +404,7 @@ async def add_photo(
         "plus nested `relationship[]` and `telecom[]` arrays. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_contact(
     payload: ContactCreate,
@@ -467,7 +424,6 @@ async def add_contact(
 @router.post(
     "/{patient_id}/communications",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_communication",
     summary="Add a communication language to a Patient",
     description=(
@@ -475,7 +431,7 @@ async def add_contact(
         "Set `preferred: true` to mark this as the patient's primary language. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_communication(
     payload: CommunicationCreate,
@@ -495,7 +451,6 @@ async def add_communication(
 @router.post(
     "/{patient_id}/general-practitioners",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_general_practitioner",
     summary="Add a general practitioner reference to a Patient",
     description=(
@@ -503,7 +458,7 @@ async def add_communication(
         "`reference_type`: Organization|Practitioner|PractitionerRole. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_general_practitioner(
     payload: GeneralPractitionerCreate,
@@ -523,7 +478,6 @@ async def add_general_practitioner(
 @router.post(
     "/{patient_id}/links",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="add_patient_link",
     summary="Add a link to a related Patient or RelatedPerson",
     description=(
@@ -531,7 +485,7 @@ async def add_general_practitioner(
         "`type`: replaced-by|replaces|refer|seealso. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def add_link(
     payload: LinkCreate,
@@ -550,7 +504,6 @@ async def add_link(
 
 @router.get(
     "/{patient_id}/names",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patient_names",
     summary="List all names for a Patient",
     description=(
@@ -558,7 +511,7 @@ async def add_link(
         "Each item includes `id` — use it to remove a specific name via "
         "`DELETE /{patient_id}/names/{name_id}`."
     ),
-    responses={**_SUBRES_NAMES_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_NAMES_200, **_ERR_NOT_FOUND},
 )
 async def list_names(
     request: Request,
@@ -576,7 +529,6 @@ async def list_names(
 @router.delete(
     "/{patient_id}/names/{name_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="delete_patient_name",
     summary="Remove a name entry from a Patient",
     description=(
@@ -584,7 +536,7 @@ async def list_names(
         "The `name_id` is the `id` returned by `GET /{patient_id}/names`. "
         "Returns 404 if the name does not exist or belongs to a different Patient."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_name(
     name_id: int,
@@ -602,7 +554,6 @@ async def delete_name(
 
 @router.get(
     "/{patient_id}/identifiers",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patient_identifiers",
     summary="List all business identifiers for a Patient",
     description=(
@@ -610,7 +561,7 @@ async def delete_name(
         "Each item includes `id` — use it to remove a specific identifier via "
         "`DELETE /{patient_id}/identifiers/{identifier_id}`."
     ),
-    responses={**_SUBRES_IDENTIFIERS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_IDENTIFIERS_200, **_ERR_NOT_FOUND},
 )
 async def list_identifiers(
     request: Request,
@@ -628,7 +579,6 @@ async def list_identifiers(
 @router.delete(
     "/{patient_id}/identifiers/{identifier_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="delete_patient_identifier",
     summary="Remove a business identifier from a Patient",
     description=(
@@ -636,7 +586,7 @@ async def list_identifiers(
         "The `identifier_id` is the `id` returned by `GET /{patient_id}/identifiers`. "
         "Returns 404 if the identifier does not exist or belongs to a different Patient."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_identifier(
     identifier_id: int,
@@ -654,7 +604,6 @@ async def delete_identifier(
 
 @router.get(
     "/{patient_id}/telecom",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patient_telecom",
     summary="List all contact points (telecom) for a Patient",
     description=(
@@ -662,7 +611,7 @@ async def delete_identifier(
         "Each item includes `id` — use it to remove a specific contact point via "
         "`DELETE /{patient_id}/telecom/{telecom_id}`."
     ),
-    responses={**_SUBRES_TELECOM_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_TELECOM_200, **_ERR_NOT_FOUND},
 )
 async def list_telecom(
     request: Request,
@@ -680,7 +629,6 @@ async def list_telecom(
 @router.delete(
     "/{patient_id}/telecom/{telecom_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="delete_patient_telecom",
     summary="Remove a contact point from a Patient",
     description=(
@@ -688,7 +636,7 @@ async def list_telecom(
         "The `telecom_id` is the `id` returned by `GET /{patient_id}/telecom`. "
         "Returns 404 if the contact point does not exist or belongs to a different Patient."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_telecom(
     telecom_id: int,
@@ -706,7 +654,6 @@ async def delete_telecom(
 
 @router.get(
     "/{patient_id}/addresses",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patient_addresses",
     summary="List all addresses for a Patient",
     description=(
@@ -714,7 +661,7 @@ async def delete_telecom(
         "Each item includes `id` — use it to remove a specific address via "
         "`DELETE /{patient_id}/addresses/{address_id}`."
     ),
-    responses={**_SUBRES_ADDRESSES_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_ADDRESSES_200, **_ERR_NOT_FOUND},
 )
 async def list_addresses(
     request: Request,
@@ -732,7 +679,6 @@ async def list_addresses(
 @router.delete(
     "/{patient_id}/addresses/{address_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="delete_patient_address",
     summary="Remove an address from a Patient",
     description=(
@@ -740,7 +686,7 @@ async def list_addresses(
         "The `address_id` is the `id` returned by `GET /{patient_id}/addresses`. "
         "Returns 404 if the address does not exist or belongs to a different Patient."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_address(
     address_id: int,
@@ -758,7 +704,6 @@ async def delete_address(
 
 @router.get(
     "/{patient_id}/photos",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patient_photos",
     summary="List all photos (Attachments) for a Patient",
     description=(
@@ -766,7 +711,7 @@ async def delete_address(
         "Each item includes `id` — use it to remove a specific photo via "
         "`DELETE /{patient_id}/photos/{photo_id}`."
     ),
-    responses={**_SUBRES_PHOTOS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_PHOTOS_200, **_ERR_NOT_FOUND},
 )
 async def list_photos(
     request: Request,
@@ -784,7 +729,6 @@ async def list_photos(
 @router.delete(
     "/{patient_id}/photos/{photo_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="delete_patient_photo",
     summary="Remove a photo from a Patient",
     description=(
@@ -792,7 +736,7 @@ async def list_photos(
         "The `photo_id` is the `id` returned by `GET /{patient_id}/photos`. "
         "Returns 404 if the photo does not exist or belongs to a different Patient."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_photo(
     photo_id: int,
@@ -810,7 +754,6 @@ async def delete_photo(
 
 @router.get(
     "/{patient_id}/contacts",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patient_contacts",
     summary="List all contacts (next-of-kin / guardian) for a Patient",
     description=(
@@ -818,7 +761,7 @@ async def delete_photo(
         "Each item includes `id` — use it to remove a specific contact via "
         "`DELETE /{patient_id}/contacts/{contact_id}`."
     ),
-    responses={**_SUBRES_CONTACTS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_CONTACTS_200, **_ERR_NOT_FOUND},
 )
 async def list_contacts(
     request: Request,
@@ -836,7 +779,6 @@ async def list_contacts(
 @router.delete(
     "/{patient_id}/contacts/{contact_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="delete_patient_contact",
     summary="Remove a contact entry from a Patient",
     description=(
@@ -845,7 +787,7 @@ async def list_contacts(
         "Cascades to all nested relationship, telecom, additional name, and additional address rows. "
         "Returns 404 if the contact does not exist or belongs to a different Patient."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_contact(
     contact_id: int,
@@ -863,7 +805,6 @@ async def delete_contact(
 
 @router.get(
     "/{patient_id}/communications",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patient_communications",
     summary="List all communication languages for a Patient",
     description=(
@@ -871,7 +812,7 @@ async def delete_contact(
         "Each item includes `id` — use it to remove a specific language via "
         "`DELETE /{patient_id}/communications/{comm_id}`."
     ),
-    responses={**_SUBRES_COMMUNICATIONS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_COMMUNICATIONS_200, **_ERR_NOT_FOUND},
 )
 async def list_communications(
     request: Request,
@@ -889,7 +830,6 @@ async def list_communications(
 @router.delete(
     "/{patient_id}/communications/{comm_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="delete_patient_communication",
     summary="Remove a communication language from a Patient",
     description=(
@@ -897,7 +837,7 @@ async def list_communications(
         "The `comm_id` is the `id` returned by `GET /{patient_id}/communications`. "
         "Returns 404 if the entry does not exist or belongs to a different Patient."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_communication(
     comm_id: int,
@@ -915,7 +855,6 @@ async def delete_communication(
 
 @router.get(
     "/{patient_id}/general-practitioners",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patient_general_practitioners",
     summary="List all general practitioner references for a Patient",
     description=(
@@ -924,7 +863,7 @@ async def delete_communication(
         "Each item includes `id` — use it to remove a specific reference via "
         "`DELETE /{patient_id}/general-practitioners/{gp_id}`."
     ),
-    responses={**_SUBRES_GPS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_GPS_200, **_ERR_NOT_FOUND},
 )
 async def list_general_practitioners(
     request: Request,
@@ -942,7 +881,6 @@ async def list_general_practitioners(
 @router.delete(
     "/{patient_id}/general-practitioners/{gp_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="delete_patient_general_practitioner",
     summary="Remove a general practitioner reference from a Patient",
     description=(
@@ -950,7 +888,7 @@ async def list_general_practitioners(
         "The `gp_id` is the `id` returned by `GET /{patient_id}/general-practitioners`. "
         "Returns 404 if the reference does not exist or belongs to a different Patient."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_general_practitioner(
     gp_id: int,
@@ -968,7 +906,6 @@ async def delete_general_practitioner(
 
 @router.get(
     "/{patient_id}/links",
-    dependencies=[Depends(require_permission("patient", "read"))],
     operation_id="list_patient_links",
     summary="List all patient links for a Patient",
     description=(
@@ -977,7 +914,7 @@ async def delete_general_practitioner(
         "Each item includes `id` — use it to remove a specific link via "
         "`DELETE /{patient_id}/links/{link_id}`."
     ),
-    responses={**_SUBRES_LINKS_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SUBRES_LINKS_200, **_ERR_NOT_FOUND},
 )
 async def list_links(
     request: Request,
@@ -995,7 +932,6 @@ async def list_links(
 @router.delete(
     "/{patient_id}/links/{link_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("patient", "update"))],
     operation_id="delete_patient_link",
     summary="Remove a link from a Patient",
     description=(
@@ -1003,7 +939,7 @@ async def list_links(
         "The `link_id` is the `id` returned by `GET /{patient_id}/links`. "
         "Returns 404 if the link does not exist or belongs to a different Patient."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_link(
     link_id: int,

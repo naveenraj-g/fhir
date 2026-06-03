@@ -1,11 +1,10 @@
 from contextlib import asynccontextmanager
 from typing import Any, cast
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
 
-from app.auth.dependencies import get_current_user
 from app.routers.vitals import router as vitals_router
 from app.core.database import Database
 from app.core.logging import get_logger, setup_logging
@@ -82,14 +81,13 @@ app.add_middleware(RateLimitMiddleware)
 app.middleware("http")(request_context_middleware)
 
 app.include_router(
-    api_router, prefix="/api/fhir/v1", dependencies=[Depends(get_current_user)]
+    api_router, prefix="/api/fhir/v1"
 )
 
 app.include_router(
     vitals_router,
     prefix="/api/v1/vitals",
     tags=["Vitals"],
-    dependencies=[Depends(get_current_user)],
 )
 
 

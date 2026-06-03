@@ -3,8 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.auth.observation_deps import resolve_observation
-from app.auth.dependencies import require_permission
+from app.deps.observation_deps import resolve_observation
 from app.core.content_negotiation import format_response, format_paginated_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.observation import get_observation_service
@@ -25,10 +24,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Observation not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -58,7 +53,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("observation", "create"))],
     operation_id="create_observation",
     summary="Create a new Observation resource",
     description=(
@@ -72,14 +66,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created Observation resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_observation(
     payload: ObservationCreateSchema,
     request: Request,
     obs_service: ObservationService = Depends(get_observation_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     obs = await obs_service.create_observation(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -90,58 +84,12 @@ async def create_observation(
     )
 
 
-# ── Get own Observations (/me) ─────────────────────────────────────────────────
 # Declared before /{observation_id} to avoid routing conflicts.
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("observation", "read"))],
-    operation_id="get_my_observations",
-    summary="List Observation resources for the currently authenticated user",
-    description=(
-        "Returns a paginated list of Observation records belonging to the authenticated user "
-        "(identified by `sub` and `activeOrganizationId`). "
-        "Filter by `status`, `patient_id`, `effective_from`, or `effective_to`. "
-        + _CONTENT_NEG
-    ),
-    response_description="Paginated Observation resources for the current user",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_observations(
-    request: Request,
-    obs_status: Optional[str] = Query(None, alias="status", description="Filter by status e.g. 'final'."),
-    patient_id: Optional[int] = Query(None, description="Filter by patient subject_id."),
-    effective_from: Optional[datetime] = Query(None, description="Filter by effectiveDateTime >= this value."),
-    effective_to: Optional[datetime] = Query(None, description="Filter by effectiveDateTime <= this value."),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    obs_service: ObservationService = Depends(get_observation_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    items, total = await obs_service.get_me(
-        user_id, org_id,
-        obs_status=obs_status,
-        patient_id=patient_id,
-        effective_from=effective_from,
-        effective_to=effective_to,
-        limit=limit,
-        offset=offset,
-    )
-    return format_paginated_response(
-        [obs_service._to_fhir(obs) for obs in items],
-        [obs_service._to_plain(obs) for obs in items],
-        total, limit, offset, request,
-    )
-
-
-# ── Get Observation by public observation_id ───────────────────────────────────
 
 
 @router.get(
     "/{observation_id}",
-    dependencies=[Depends(require_permission("observation", "read"))],
     operation_id="get_observation_by_id",
     summary="Retrieve an Observation resource by public observation_id",
     description=(
@@ -149,7 +97,7 @@ async def get_my_observations(
         + _CONTENT_NEG
     ),
     response_description="The requested Observation resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_observation(
     request: Request,
@@ -168,7 +116,6 @@ async def get_observation(
 
 @router.patch(
     "/{observation_id}",
-    dependencies=[Depends(require_permission("observation", "update"))],
     operation_id="patch_observation",
     summary="Partially update an Observation resource",
     description=(
@@ -183,7 +130,7 @@ async def get_observation(
         + _CONTENT_NEG
     ),
     response_description="The updated Observation resource",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_observation(
     payload: ObservationPatchSchema,
@@ -191,7 +138,7 @@ async def patch_observation(
     obs: ObservationModel = Depends(resolve_observation),
     obs_service: ObservationService = Depends(get_observation_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await obs_service.patch_observation(
         obs.observation_id, payload, updated_by
     )
@@ -209,7 +156,6 @@ async def patch_observation(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("observation", "read"))],
     operation_id="list_observations",
     summary="List all Observation resources",
     description=(
@@ -219,7 +165,7 @@ async def patch_observation(
         + _CONTENT_NEG
     ),
     response_description="Paginated Observation resources",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_observations(
     request: Request,
@@ -256,7 +202,6 @@ async def list_observations(
 @router.delete(
     "/{observation_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("observation", "delete"))],
     operation_id="delete_observation",
     summary="Delete an Observation resource",
     description=(
@@ -265,7 +210,7 @@ async def list_observations(
         "referenceRange, hasMember, derivedFrom, component and their nested children). "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_observation(
     obs: ObservationModel = Depends(resolve_observation),

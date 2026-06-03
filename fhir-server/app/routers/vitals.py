@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
-from app.auth.vitals_deps import resolve_vitals
+from app.deps.vitals_deps import resolve_vitals
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.vitals import get_vitals_service
 from app.models.vitals.vitals import VitalsModel
@@ -20,10 +20,6 @@ from app.services.vitals_service import VitalsService
 
 router = APIRouter()
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Vitals entry not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
 
@@ -108,60 +104,20 @@ def _serialize(vitals: VitalsModel) -> dict:
         "The linked patient is resolved from the user's `sub` claim if `patient_id` is not provided."
     ),
     response_description="The newly created vitals entry",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_vitals(
     payload: VitalsCreateSchema,
     request: Request,
     vitals_service: VitalsService = Depends(get_vitals_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     vitals = await vitals_service.create_vitals(payload, payload.user_id, payload.org_id, created_by)
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,
         content=jsonable_encoder(_serialize(vitals)),
     )
 
-
-@router.get(
-    "/me",
-    operation_id="get_my_vitals",
-    summary="List vitals entries for the currently authenticated user",
-    description=(
-        "Returns a paginated list of vitals entries for the authenticated user "
-        "(identified by `sub` and `activeOrganizationId`). "
-        "Optionally filter by exact `date` (YYYY-MM-DD) or a `recorded_at` datetime range. "
-        "Results are ordered by `recorded_at` descending (newest first)."
-    ),
-    response_description="Paginated vitals entries",
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_vitals(
-    request: Request,
-    date: Optional[date_type] = Query(None, description="Exact match on the date field (YYYY-MM-DD)."),
-    recorded_at_from: Optional[datetime] = Query(None, description="recorded_at >= this datetime (ISO 8601)."),
-    recorded_at_to: Optional[datetime] = Query(None, description="recorded_at <= this datetime (ISO 8601)."),
-    limit: int = Query(50, ge=1, le=200, description="Max records to return (1–200)."),
-    offset: int = Query(0, ge=0, description="Number of records to skip for pagination."),
-    vitals_service: VitalsService = Depends(get_vitals_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    records, total = await vitals_service.get_me(
-        user_id=user_id,
-        org_id=org_id,
-        date_filter=date,
-        recorded_at_from=recorded_at_from,
-        recorded_at_to=recorded_at_to,
-        limit=limit,
-        offset=offset,
-    )
-    return JSONResponse(content=jsonable_encoder({
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "data": [_serialize(v) for v in records],
-    }))
 
 
 @router.get(
@@ -175,7 +131,6 @@ async def get_my_vitals(
     response_description="The requested vitals entry",
     responses={
         **_SINGLE_200,
-        **_ERR_AUTH,
         403: {"description": "Forbidden — caller lacks permission or the entry belongs to a different organization"},
         **_ERR_NOT_FOUND,
     },
@@ -199,7 +154,7 @@ async def get_vitals(
         "The caller's `sub` JWT claim is recorded as `updated_by`."
     ),
     response_description="The updated vitals entry",
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_vitals(
     payload: VitalsPatchSchema,
@@ -207,7 +162,7 @@ async def patch_vitals(
     vitals: VitalsModel = Depends(resolve_vitals),
     vitals_service: VitalsService = Depends(get_vitals_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await vitals_service.patch_vitals(vitals.vitals_id, payload, updated_by=updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Vitals not found")
@@ -225,7 +180,7 @@ async def patch_vitals(
         "Results are ordered by `recorded_at` descending (newest first)."
     ),
     response_description="Paginated vitals entries",
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_vitals(
     request: Request,
@@ -266,7 +221,7 @@ async def list_vitals(
         "Permanently deletes the vitals record. "
         "This operation is irreversible. Returns 204 No Content on success."
     ),
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_vitals(
     vitals: VitalsModel = Depends(resolve_vitals),

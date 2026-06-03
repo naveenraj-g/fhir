@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.auth.provenance_deps import resolve_provenance
-from app.auth.dependencies import require_permission
+from app.deps.provenance_deps import resolve_provenance
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.provenance import get_provenance_service
@@ -26,10 +25,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "Provenance not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error"}}
 
@@ -59,7 +54,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("provenance", "create"))],
     operation_id="create_provenance",
     summary="Create a new Provenance resource",
     description=(
@@ -69,14 +63,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created Provenance resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_provenance(
     payload: ProvenanceCreateSchema,
     request: Request,
     provenance_service: ProvenanceService = Depends(get_provenance_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     prov = await provenance_service.create_provenance(
         payload, payload.user_id, payload.org_id, created_by
     )
@@ -90,43 +84,13 @@ async def create_provenance(
 # ── Get my provenances ──────────────────────────────────────────────────────────
 
 
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("provenance", "read"))],
-    operation_id="list_my_provenances",
-    summary="List Provenance records for the authenticated user",
-    description=(
-        "Returns Provenance records scoped to the authenticated user's `sub` and `activeOrganizationId`. "
-        + _CONTENT_NEG
-    ),
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_my_provenances(
-    request: Request,
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    provenance_service: ProvenanceService = Depends(get_provenance_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    rows, total = await provenance_service.get_me(user_id, org_id, limit=limit, offset=offset)
-    return format_paginated_response(
-        [provenance_service._to_fhir(r) for r in rows],
-        [provenance_service._to_plain(r) for r in rows],
-        total, limit, offset, request,
-    )
-
-
-# ── Get by ID ───────────────────────────────────────────────────────────────────
-
 
 @router.get(
     "/{provenance_id}",
-    dependencies=[Depends(require_permission("provenance", "read"))],
     operation_id="get_provenance",
     summary="Retrieve a single Provenance by public ID",
     description="Fetches a single Provenance resource by its public provenance_id. " + _CONTENT_NEG,
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_provenance(
     request: Request,
@@ -145,7 +109,6 @@ async def get_provenance(
 
 @router.patch(
     "/{provenance_id}",
-    dependencies=[Depends(require_permission("provenance", "update"))],
     operation_id="patch_provenance",
     summary="Partially update a Provenance resource",
     description=(
@@ -153,7 +116,7 @@ async def get_provenance(
         "Child arrays (targets, policies, reasons, agents, entities, signatures) are fully replaced when supplied. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def patch_provenance(
     request: Request,
@@ -161,7 +124,7 @@ async def patch_provenance(
     prov: ProvenanceModel = Depends(resolve_provenance),
     provenance_service: ProvenanceService = Depends(get_provenance_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await provenance_service.patch_provenance(prov.provenance_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provenance not found")
@@ -177,11 +140,10 @@ async def patch_provenance(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("provenance", "read"))],
     operation_id="list_provenances",
     summary="List Provenance resources",
     description="Returns a paginated list of Provenance resources. " + _CONTENT_NEG,
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_provenances(
     request: Request,
@@ -203,11 +165,10 @@ async def list_provenances(
 @router.delete(
     "/{provenance_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("provenance", "delete"))],
     operation_id="delete_provenance",
     summary="Delete a Provenance resource",
     description="Permanently deletes a Provenance and all its child resources.",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND, 204: {"description": "Provenance deleted"}},
+    responses={**_ERR_NOT_FOUND, 204: {"description": "Provenance deleted"}},
 )
 async def delete_provenance(
     prov: ProvenanceModel = Depends(resolve_provenance),

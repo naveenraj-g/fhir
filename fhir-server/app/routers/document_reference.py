@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Request, status
 
-from app.auth.document_reference_deps import resolve_document_reference
-from app.auth.dependencies import require_permission
+from app.deps.document_reference_deps import resolve_document_reference
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.document_reference import get_document_reference_service
@@ -22,10 +21,6 @@ _CONTENT_NEG = (
     "omit or use `Accept: application/json` for the simplified plain-JSON form."
 )
 
-_ERR_AUTH = {
-    401: {"description": "Not authenticated — Bearer token missing or expired"},
-    403: {"description": "Forbidden — caller lacks the required permission"},
-}
 _ERR_NOT_FOUND = {404: {"description": "DocumentReference not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error"}}
 
@@ -55,7 +50,6 @@ _LIST_200 = {
 @router.post(
     "/",
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission("document_reference", "create"))],
     operation_id="create_document_reference",
     summary="Create a new DocumentReference resource",
     description=(
@@ -64,14 +58,14 @@ _LIST_200 = {
         + _CONTENT_NEG
     ),
     response_description="The newly created DocumentReference resource",
-    responses={**_SINGLE_201, **_ERR_AUTH, **_ERR_VALIDATION},
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
 )
 async def create_document_reference(
     payload: DocumentReferenceCreateSchema,
     request: Request,
     service: DocumentReferenceService = Depends(get_document_reference_service),
 ):
-    created_by: str = request.state.user.get("sub")
+    created_by = payload.created_by
     dr = await service.create_document_reference(payload, payload.user_id, payload.org_id, created_by)
     return format_response(
         service._to_fhir(dr),
@@ -80,46 +74,15 @@ async def create_document_reference(
     )
 
 
-# ── Get /me ───────────────────────────────────────────────────────────────────
 
-
-@router.get(
-    "/me",
-    dependencies=[Depends(require_permission("document_reference", "read"))],
-    operation_id="list_my_document_references",
-    summary="List DocumentReferences for the authenticated user",
-    description=(
-        "Returns a paginated list of DocumentReference resources owned by the authenticated user "
-        "within their active organisation. " + _CONTENT_NEG
-    ),
-    responses={**_LIST_200, **_ERR_AUTH},
-)
-async def get_me_document_references(
-    request: Request,
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
-    service: DocumentReferenceService = Depends(get_document_reference_service),
-):
-    user_id: str = request.state.user.get("sub")
-    org_id: str = request.state.user.get("activeOrganizationId")
-    rows, total = await service.get_me(user_id, org_id, limit, offset)
-    return format_paginated_response(
-        [service._to_fhir(dr) for dr in rows],
-        [service._to_plain(dr) for dr in rows],
-        total, limit, offset, request,
-    )
-
-
-# ── Get by ID ─────────────────────────────────────────────────────────────────
 
 
 @router.get(
     "/{document_reference_id}",
-    dependencies=[Depends(require_permission("document_reference", "read"))],
     operation_id="get_document_reference",
     summary="Retrieve a DocumentReference by public identifier",
     description="Fetches a single DocumentReference resource by its public `document_reference_id`. " + _CONTENT_NEG,
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_document_reference(
     request: Request,
@@ -138,7 +101,6 @@ async def get_document_reference(
 
 @router.patch(
     "/{document_reference_id}",
-    dependencies=[Depends(require_permission("document_reference", "update"))],
     operation_id="patch_document_reference",
     summary="Partially update a DocumentReference",
     description=(
@@ -146,7 +108,7 @@ async def get_document_reference(
         "Child arrays (content, authors, security labels, etc.) replace the existing list when included. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_200, **_ERR_AUTH, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_document_reference(
     payload: DocumentReferencePatchSchema,
@@ -154,7 +116,7 @@ async def patch_document_reference(
     dr: DocumentReferenceModel = Depends(resolve_document_reference),
     service: DocumentReferenceService = Depends(get_document_reference_service),
 ):
-    updated_by: str = request.state.user.get("sub")
+    updated_by = payload.updated_by
     updated = await service.patch_document_reference(dr.document_reference_id, payload, updated_by)
     return format_response(
         service._to_fhir(updated),
@@ -168,14 +130,13 @@ async def patch_document_reference(
 
 @router.get(
     "/",
-    dependencies=[Depends(require_permission("document_reference", "read"))],
     operation_id="list_document_references",
     summary="List all DocumentReference resources",
     description=(
         "Returns a paginated list of all DocumentReference resources accessible to the caller. "
         + _CONTENT_NEG
     ),
-    responses={**_LIST_200, **_ERR_AUTH},
+    responses={**_LIST_200},
 )
 async def list_document_references(
     request: Request,
@@ -197,11 +158,10 @@ async def list_document_references(
 @router.delete(
     "/{document_reference_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_permission("document_reference", "delete"))],
     operation_id="delete_document_reference",
     summary="Delete a DocumentReference resource",
     description="Permanently deletes a DocumentReference and all its related child records.",
-    responses={**_ERR_AUTH, **_ERR_NOT_FOUND},
+    responses={**_ERR_NOT_FOUND},
 )
 async def delete_document_reference(
     dr: DocumentReferenceModel = Depends(resolve_document_reference),

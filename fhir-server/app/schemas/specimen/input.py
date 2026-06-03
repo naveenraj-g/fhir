@@ -198,6 +198,7 @@ class SpecimenCreateSchema(BaseModel):
 
     user_id: Optional[str] = Field(None, description="JWT sub (tenant user).")
     org_id: Optional[str] = Field(None, description="JWT activeOrganizationId (tenant org).")
+    created_by: Optional[str] = None
     status: Optional[SpecimenStatus] = None
     type_system: Optional[str] = None
     type_code: Optional[str] = None
@@ -255,3 +256,4 @@ class SpecimenPatchSchema(BaseModel):
     container: Optional[List[SpecimenContainerInput]] = None
     conditions: Optional[List[SpecimenConditionInput]] = None
     notes: Optional[List[SpecimenNoteInput]] = None
+    updated_by: Optional[str] = None
