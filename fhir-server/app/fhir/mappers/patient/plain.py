@@ -13,19 +13,26 @@ if TYPE_CHECKING:
 
 def plain_contact(c: "PatientContact") -> dict:
     return {
-        "relationship": [{"coding_system": r.coding_system, "coding_code": r.coding_code,
-                           "coding_display": r.coding_display, "text": r.text}
-                          for r in c.relationships] if c.relationships else None,
+        "id": c.id,
+        "org_id": c.org_id,
+        "relationship": [
+            {"id": r.id, "org_id": r.org_id, "coding_system": r.coding_system,
+             "coding_code": r.coding_code, "coding_display": r.coding_display, "text": r.text}
+            for r in c.relationships
+        ] if c.relationships else None,
         "name_use": fhir_enum(c.name_use),
         "name_text": c.name_text,
         "name_family": c.name_family,
         "name_given": fhir_split(c.name_given),
         "name_prefix": fhir_split(c.name_prefix),
         "name_suffix": fhir_split(c.name_suffix),
-        "telecom": [{"system": fhir_enum(t.system), "value": t.value, "use": fhir_enum(t.use), "rank": t.rank,
-                      "period_start": t.period_start.isoformat() if t.period_start else None,
-                      "period_end": t.period_end.isoformat() if t.period_end else None}
-                     for t in c.telecoms] if c.telecoms else None,
+        "telecom": [
+            {"id": t.id, "org_id": t.org_id, "system": fhir_enum(t.system), "value": t.value,
+             "use": fhir_enum(t.use), "rank": t.rank,
+             "period_start": t.period_start.isoformat() if t.period_start else None,
+             "period_end": t.period_end.isoformat() if t.period_end else None}
+            for t in c.telecoms
+        ] if c.telecoms else None,
         "address_use": fhir_enum(c.address_use),
         "address_type": fhir_enum(c.address_type),
         "address_text": c.address_text,
@@ -48,6 +55,8 @@ def plain_contact(c: "PatientContact") -> dict:
 
 def plain_general_practitioner(gp: "PatientGeneralPractitioner") -> dict:
     return {
+        "id": gp.id,
+        "org_id": gp.org_id,
         "reference_type": fhir_enum(gp.reference_type),
         "reference_id": gp.reference_id,
         "reference_display": gp.reference_display,
@@ -56,6 +65,8 @@ def plain_general_practitioner(gp: "PatientGeneralPractitioner") -> dict:
 
 def plain_link(lk: "PatientLink") -> dict:
     return {
+        "id": lk.id,
+        "org_id": lk.org_id,
         "other_type": fhir_enum(lk.other_type),
         "other_id": lk.other_id,
         "other_display": lk.other_display,

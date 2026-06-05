@@ -162,6 +162,124 @@ class LinkCreate(BaseModel):
     type: PatientLinkType = Field(..., description="replaced-by|replaces|refer|seealso")
 
 
+# ── Sub-resource patch schemas ────────────────────────────────────────────────
+
+
+class NamePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[HumanNameUse] = None
+    text: Optional[str] = None
+    family: Optional[str] = None
+    given: Optional[List[str]] = None
+    prefix: Optional[List[str]] = None
+    suffix: Optional[List[str]] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class IdentifierPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[IdentifierUse] = None
+    type_system: Optional[str] = None
+    type_code: Optional[str] = None
+    type_display: Optional[str] = None
+    type_text: Optional[str] = None
+    system: Optional[str] = None
+    value: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    assigner: Optional[str] = None
+
+
+class TelecomPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    system: Optional[ContactPointSystem] = None
+    value: Optional[str] = None
+    use: Optional[ContactPointUse] = None
+    rank: Optional[int] = Field(None, ge=1)
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class AddressPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[AddressUse] = None
+    type: Optional[AddressType] = None
+    text: Optional[str] = None
+    line: Optional[List[str]] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class PhotoPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content_type: Optional[str] = None
+    language: Optional[str] = None
+    data: Optional[str] = None
+    url: Optional[str] = None
+    size: Optional[int] = None
+    hash: Optional[str] = None
+    title: Optional[str] = None
+    creation: Optional[datetime] = None
+
+
+class ContactPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    relationship: Optional[List[ContactRelationshipCreate]] = None
+    name_use: Optional[HumanNameUse] = None
+    name_text: Optional[str] = None
+    name_family: Optional[str] = None
+    name_given: Optional[List[str]] = None
+    name_prefix: Optional[List[str]] = None
+    name_suffix: Optional[List[str]] = None
+    telecom: Optional[List[ContactTelecomCreate]] = None
+    address_use: Optional[AddressUse] = None
+    address_type: Optional[AddressType] = None
+    address_text: Optional[str] = None
+    address_line: Optional[List[str]] = None
+    address_city: Optional[str] = None
+    address_district: Optional[str] = None
+    address_state: Optional[str] = None
+    address_postal_code: Optional[str] = None
+    address_country: Optional[str] = None
+    address_period_start: Optional[datetime] = None
+    address_period_end: Optional[datetime] = None
+    gender: Optional[PatientGender] = None
+    organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")
+    organization_display: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class CommunicationPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    language_system: Optional[str] = None
+    language_code: Optional[str] = None
+    language_display: Optional[str] = None
+    language_text: Optional[str] = None
+    preferred: Optional[bool] = None
+
+
+class GeneralPractitionerPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reference_type: Optional[PatientGeneralPractitionerType] = None
+    reference_id: Optional[int] = None
+    reference_display: Optional[str] = None
+
+
+class LinkPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    other_type: Optional[PatientLinkOtherType] = None
+    other_id: Optional[int] = None
+    other_display: Optional[str] = None
+    type: Optional[PatientLinkType] = None
+
+
 # ── Patient create / patch ─────────────────────────────────────────────────────
 
 

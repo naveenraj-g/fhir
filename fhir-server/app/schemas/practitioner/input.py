@@ -120,6 +120,112 @@ class PractitionerCommunicationCreate(BaseModel):
     preferred: Optional[bool] = Field(None, description="True if this is the practitioner's preferred language.")
 
 
+# ── Sub-resource patch schemas ────────────────────────────────────────────────
+
+
+class PractitionerNamePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[HumanNameUse] = None
+    text: Optional[str] = None
+    family: Optional[str] = None
+    given: Optional[List[str]] = None
+    prefix: Optional[List[str]] = None
+    suffix: Optional[List[str]] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class PractitionerIdentifierPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[IdentifierUse] = None
+    type_system: Optional[str] = None
+    type_code: Optional[str] = None
+    type_display: Optional[str] = None
+    type_text: Optional[str] = None
+    system: Optional[str] = None
+    value: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    assigner: Optional[str] = None
+
+
+class PractitionerTelecomPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    system: Optional[ContactPointSystem] = None
+    value: Optional[str] = None
+    use: Optional[ContactPointUse] = None
+    rank: Optional[int] = Field(None, ge=1)
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class PractitionerAddressPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[AddressUse] = None
+    type: Optional[AddressType] = None
+    text: Optional[str] = None
+    line: Optional[List[str]] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class PractitionerPhotoPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content_type: Optional[str] = None
+    language: Optional[str] = None
+    data: Optional[str] = None
+    url: Optional[str] = None
+    size: Optional[int] = None
+    hash: Optional[str] = None
+    title: Optional[str] = None
+    creation: Optional[datetime] = None
+
+
+class QualificationIdentifierPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    use: Optional[IdentifierUse] = None
+    type_system: Optional[str] = None
+    type_code: Optional[str] = None
+    type_display: Optional[str] = None
+    type_text: Optional[str] = None
+    system: Optional[str] = None
+    value: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    assigner: Optional[str] = None
+
+
+class PractitionerQualificationPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    identifier: Optional[List[QualificationIdentifierPatch]] = None
+    code_system: Optional[str] = None
+    code_code: Optional[str] = None
+    code_display: Optional[str] = None
+    code_text: Optional[str] = None
+    status_system: Optional[str] = None
+    status_code: Optional[str] = None
+    status_display: Optional[str] = None
+    status_text: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    issuer: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")
+    issuer_display: Optional[str] = None
+
+
+class PractitionerCommunicationPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    language_system: Optional[str] = None
+    language_code: Optional[str] = None
+    language_display: Optional[str] = None
+    language_text: Optional[str] = None
+    preferred: Optional[bool] = None
+
+
 # ── Practitioner create / patch ────────────────────────────────────────────────
 
 

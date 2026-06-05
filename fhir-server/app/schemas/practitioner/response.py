@@ -69,6 +69,8 @@ class FHIRPractitionerBundle(FHIRBundle):
 
 
 class PlainPractitionerName(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     use: Optional[str] = Field(None, description="usual | official | temp | nickname | anonymous | old | maiden")
     text: Optional[str] = Field(None, description="Full display name.")
     family: Optional[str] = Field(None, description="Family (last) name.")
@@ -80,6 +82,8 @@ class PlainPractitionerName(BaseModel):
 
 
 class PlainPractitionerIdentifier(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     use: Optional[str] = Field(None, description="usual | official | temp | secondary | old")
     type_system: Optional[str] = Field(None, description="Coding system URI for identifier type.")
     type_code: Optional[str] = Field(None, description="Identifier type code (e.g. NPI, DEA).")
@@ -93,6 +97,8 @@ class PlainPractitionerIdentifier(BaseModel):
 
 
 class PlainPractitionerTelecom(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     system: Optional[str] = Field(None, description="phone | fax | email | pager | url | sms | other")
     value: Optional[str] = None
     use: Optional[str] = Field(None, description="home | work | temp | old | mobile")
@@ -102,6 +108,8 @@ class PlainPractitionerTelecom(BaseModel):
 
 
 class PlainPractitionerAddress(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     use: Optional[str] = Field(None, description="home | work | temp | old | billing")
     type: Optional[str] = Field(None, description="postal | physical | both")
     text: Optional[str] = None
@@ -116,6 +124,8 @@ class PlainPractitionerAddress(BaseModel):
 
 
 class PlainPractitionerPhoto(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     content_type: Optional[str] = None
     language: Optional[str] = None
     data: Optional[str] = None
@@ -127,6 +137,8 @@ class PlainPractitionerPhoto(BaseModel):
 
 
 class PlainQualificationIdentifier(BaseModel):
+    id: int = Field(..., description="Internal row ID.")
+    org_id: Optional[str] = None
     use: Optional[str] = Field(None, description="usual | official | temp | secondary | old")
     type_system: Optional[str] = Field(None, description="Coding system URI for identifier type.")
     type_code: Optional[str] = Field(None, description="Identifier type code.")
@@ -140,6 +152,8 @@ class PlainQualificationIdentifier(BaseModel):
 
 
 class PlainQualification(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     identifier: Optional[List[PlainQualificationIdentifier]] = Field(
         None, description="Identifiers for this qualification (e.g. license numbers)."
     )
@@ -159,6 +173,8 @@ class PlainQualification(BaseModel):
 
 
 class PlainPractitionerCommunication(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     language_system: Optional[str] = Field(None, description="URI of the language code system.")
     language_code: Optional[str] = Field(None, description="ISO-639-1 language code (e.g. en, fr, de).")
     language_display: Optional[str] = None
@@ -204,66 +220,38 @@ class PaginatedPractitionerResponse(BaseModel):
 # ── Sub-resource list responses ───────────────────────────────────────────────
 
 
-class PractitionerNameListItem(PlainPractitionerName):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PractitionerNamesListResponse(BaseModel):
-    data: List[PractitionerNameListItem]
+    data: List[PlainPractitionerName]
     total: int = Field(..., description="Total count of name entries.")
 
 
-class PractitionerIdentifierListItem(PlainPractitionerIdentifier):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PractitionerIdentifiersListResponse(BaseModel):
-    data: List[PractitionerIdentifierListItem]
+    data: List[PlainPractitionerIdentifier]
     total: int = Field(..., description="Total count of identifier entries.")
 
 
-class PractitionerTelecomListItem(PlainPractitionerTelecom):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PractitionerTelecomListResponse(BaseModel):
-    data: List[PractitionerTelecomListItem]
+    data: List[PlainPractitionerTelecom]
     total: int = Field(..., description="Total count of contact point entries.")
 
 
-class PractitionerAddressListItem(PlainPractitionerAddress):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PractitionerAddressesListResponse(BaseModel):
-    data: List[PractitionerAddressListItem]
+    data: List[PlainPractitionerAddress]
     total: int = Field(..., description="Total count of address entries.")
 
 
-class PractitionerPhotoListItem(PlainPractitionerPhoto):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PractitionerPhotosListResponse(BaseModel):
-    data: List[PractitionerPhotoListItem]
+    data: List[PlainPractitionerPhoto]
     total: int = Field(..., description="Total count of photo entries.")
 
 
-class PractitionerQualificationListItem(PlainQualification):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PractitionerQualificationsListResponse(BaseModel):
-    data: List[PractitionerQualificationListItem]
+    data: List[PlainQualification]
     total: int = Field(..., description="Total count of qualification entries.")
 
 
-class PractitionerCommunicationListItem(PlainPractitionerCommunication):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PractitionerCommunicationsListResponse(BaseModel):
-    data: List[PractitionerCommunicationListItem]
+    data: List[PlainPractitionerCommunication]
     total: int = Field(..., description="Total count of communication entries.")
 
 

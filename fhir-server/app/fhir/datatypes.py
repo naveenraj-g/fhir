@@ -150,6 +150,8 @@ def fhir_communication(cm) -> dict:
 
 def plain_name(n) -> dict:
     return {
+        "id": n.id,
+        "org_id": n.org_id,
         "use": fhir_enum(n.use),
         "text": n.text,
         "family": n.family,
@@ -163,6 +165,8 @@ def plain_name(n) -> dict:
 
 def plain_identifier(i) -> dict:
     return {
+        "id": i.id,
+        "org_id": i.org_id,
         "use": fhir_enum(i.use),
         "type_system": i.type_system,
         "type_code": i.type_code,
@@ -178,6 +182,8 @@ def plain_identifier(i) -> dict:
 
 def plain_telecom(t) -> dict:
     return {
+        "id": t.id,
+        "org_id": t.org_id,
         "system": fhir_enum(t.system),
         "value": t.value,
         "use": fhir_enum(t.use),
@@ -189,6 +195,8 @@ def plain_telecom(t) -> dict:
 
 def plain_address(a) -> dict:
     return {
+        "id": a.id,
+        "org_id": a.org_id,
         "use": fhir_enum(a.use),
         "type": fhir_enum(a.type),
         "text": a.text,
@@ -205,6 +213,8 @@ def plain_address(a) -> dict:
 
 def plain_photo(p) -> dict:
     return {
+        "id": p.id,
+        "org_id": p.org_id,
         "content_type": p.content_type,
         "language": p.language,
         "data": p.data,
@@ -218,6 +228,8 @@ def plain_photo(p) -> dict:
 
 def plain_communication(cm) -> dict:
     return {
+        "id": cm.id,
+        "org_id": cm.org_id,
         "language_system": cm.language_system,
         "language_code": cm.language_code,
         "language_display": cm.language_display,

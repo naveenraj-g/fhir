@@ -22,16 +22,25 @@ from app.models.patient.patient import (
 from app.models.enums import OrganizationReferenceType
 from app.schemas.resources import (
     AddressCreate,
+    AddressPatch,
     CommunicationCreate,
+    CommunicationPatch,
     ContactCreate,
+    ContactPatch,
     GeneralPractitionerCreate,
+    GeneralPractitionerPatch,
     IdentifierCreate,
+    IdentifierPatch,
     LinkCreate,
+    LinkPatch,
     NameCreate,
+    NamePatch,
     PatientCreateSchema,
     PatientPatchSchema,
     PhotoCreate,
+    PhotoPatch,
     TelecomCreate,
+    TelecomPatch,
 )
 
 
@@ -753,3 +762,225 @@ class PatientRepository:
             if not patient:
                 return False
             return await self._delete_child(session, PatientLink, link_id, patient.id)
+
+    # ── Sub-resource patch ─────────────────────────────────────────────────────
+
+    async def _fetch_child(self, session, model_class, child_id: int, parent_internal_id: int):
+        """Fetch child by id, verify parent ownership, return row or None."""
+        result = await session.execute(
+            select(model_class).where(
+                model_class.id == child_id,
+                model_class.patient_id == parent_internal_id,
+            )
+        )
+        return result.scalars().first()
+
+    async def patch_name(self, patient_id: int, name_id: int, payload: NamePatch) -> Optional[PatientModel]:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return None
+            row = await self._fetch_child(session, PatientName, name_id, patient.id)
+            if not row:
+                return None
+            data = payload.model_dump(exclude_unset=True)
+            for field in ("given", "prefix", "suffix"):
+                if field in data:
+                    data[field] = ", ".join(data[field]) if data[field] else None
+            for field, value in data.items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_patient_id(patient_id)
+
+    async def patch_identifier(self, patient_id: int, identifier_id: int, payload: IdentifierPatch) -> Optional[PatientModel]:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return None
+            row = await self._fetch_child(session, PatientIdentifier, identifier_id, patient.id)
+            if not row:
+                return None
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_patient_id(patient_id)
+
+    async def patch_telecom(self, patient_id: int, telecom_id: int, payload: TelecomPatch) -> Optional[PatientModel]:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return None
+            row = await self._fetch_child(session, PatientTelecom, telecom_id, patient.id)
+            if not row:
+                return None
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_patient_id(patient_id)
+
+    async def patch_address(self, patient_id: int, address_id: int, payload: AddressPatch) -> Optional[PatientModel]:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return None
+            row = await self._fetch_child(session, PatientAddress, address_id, patient.id)
+            if not row:
+                return None
+            data = payload.model_dump(exclude_unset=True)
+            if "line" in data:
+                data["line"] = ", ".join(data["line"]) if data["line"] else None
+            for field, value in data.items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_patient_id(patient_id)
+
+    async def patch_photo(self, patient_id: int, photo_id: int, payload: PhotoPatch) -> Optional[PatientModel]:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return None
+            row = await self._fetch_child(session, PatientPhoto, photo_id, patient.id)
+            if not row:
+                return None
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_patient_id(patient_id)
+
+    async def patch_contact(self, patient_id: int, contact_id: int, payload: ContactPatch) -> Optional[PatientModel]:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return None
+            stmt = (
+                select(PatientContact)
+                .where(PatientContact.id == contact_id, PatientContact.patient_id == patient.id)
+                .options(
+                    selectinload(PatientContact.relationships),
+                    selectinload(PatientContact.telecoms),
+                )
+            )
+            contact = (await session.execute(stmt)).scalars().first()
+            if not contact:
+                return None
+
+            data = payload.model_dump(exclude_unset=True)
+
+            if "relationship" in data:
+                for r in contact.relationships:
+                    await session.delete(r)
+                for r in (data.pop("relationship") or []):
+                    session.add(PatientContactRelationship(
+                        contact_id=contact.id,
+                        org_id=patient.org_id,
+                        **r,
+                    ))
+            else:
+                data.pop("relationship", None)
+
+            if "telecom" in data:
+                for t in contact.telecoms:
+                    await session.delete(t)
+                for t in (data.pop("telecom") or []):
+                    session.add(PatientContactTelecom(
+                        contact_id=contact.id,
+                        org_id=patient.org_id,
+                        **t,
+                    ))
+            else:
+                data.pop("telecom", None)
+
+            if "organization" in data:
+                org = data.pop("organization")
+                if org:
+                    contact.organization_type, contact.organization_id = _parse_org_ref(org)
+                else:
+                    contact.organization_type = None
+                    contact.organization_id = None
+
+            for field in ("name_given", "name_prefix", "name_suffix"):
+                if field in data:
+                    data[field] = ", ".join(data[field]) if data[field] else None
+            if "address_line" in data:
+                data["address_line"] = ", ".join(data["address_line"]) if data["address_line"] else None
+
+            for field, value in data.items():
+                setattr(contact, field, value)
+
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_patient_id(patient_id)
+
+    async def patch_communication(self, patient_id: int, comm_id: int, payload: CommunicationPatch) -> Optional[PatientModel]:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return None
+            row = await self._fetch_child(session, PatientCommunication, comm_id, patient.id)
+            if not row:
+                return None
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_patient_id(patient_id)
+
+    async def patch_general_practitioner(self, patient_id: int, gp_id: int, payload: GeneralPractitionerPatch) -> Optional[PatientModel]:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return None
+            row = await self._fetch_child(session, PatientGeneralPractitioner, gp_id, patient.id)
+            if not row:
+                return None
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_patient_id(patient_id)
+
+    async def patch_link(self, patient_id: int, link_id: int, payload: LinkPatch) -> Optional[PatientModel]:
+        async with self.session_factory() as session:
+            patient = await self._get_internal(session, patient_id)
+            if not patient:
+                return None
+            row = await self._fetch_child(session, PatientLink, link_id, patient.id)
+            if not row:
+                return None
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_patient_id(patient_id)

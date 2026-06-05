@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
 def plain_qualification(q: "PractitionerQualification") -> dict:
     return {
+        "id": q.id,
+        "org_id": q.org_id,
         "code_system": q.code_system,
         "code_code": q.code_code,
         "code_display": q.code_display,

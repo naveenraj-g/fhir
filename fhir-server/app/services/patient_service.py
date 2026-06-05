@@ -4,16 +4,25 @@ from app.models.patient.patient import PatientModel
 from app.repository.patient_repository import PatientRepository
 from app.schemas.resources import (
     AddressCreate,
+    AddressPatch,
     CommunicationCreate,
+    CommunicationPatch,
     ContactCreate,
+    ContactPatch,
     GeneralPractitionerCreate,
+    GeneralPractitionerPatch,
     IdentifierCreate,
+    IdentifierPatch,
     LinkCreate,
+    LinkPatch,
     NameCreate,
+    NamePatch,
     PatientCreateSchema,
     PatientPatchSchema,
     PhotoCreate,
+    PhotoPatch,
     TelecomCreate,
+    TelecomPatch,
 )
 from app.fhir.mappers.patient import to_fhir_patient, to_plain_patient
 
@@ -175,3 +184,32 @@ class PatientService:
 
     async def delete_link(self, patient_id: int, link_id: int) -> bool:
         return await self.repository.delete_link(patient_id, link_id)
+
+    # ── Sub-resource patch ────────────────────────────────────────────────────
+
+    async def patch_name(self, patient_id: int, name_id: int, payload: NamePatch) -> Optional[PatientModel]:
+        return await self.repository.patch_name(patient_id, name_id, payload)
+
+    async def patch_identifier(self, patient_id: int, identifier_id: int, payload: IdentifierPatch) -> Optional[PatientModel]:
+        return await self.repository.patch_identifier(patient_id, identifier_id, payload)
+
+    async def patch_telecom(self, patient_id: int, telecom_id: int, payload: TelecomPatch) -> Optional[PatientModel]:
+        return await self.repository.patch_telecom(patient_id, telecom_id, payload)
+
+    async def patch_address(self, patient_id: int, address_id: int, payload: AddressPatch) -> Optional[PatientModel]:
+        return await self.repository.patch_address(patient_id, address_id, payload)
+
+    async def patch_photo(self, patient_id: int, photo_id: int, payload: PhotoPatch) -> Optional[PatientModel]:
+        return await self.repository.patch_photo(patient_id, photo_id, payload)
+
+    async def patch_contact(self, patient_id: int, contact_id: int, payload: ContactPatch) -> Optional[PatientModel]:
+        return await self.repository.patch_contact(patient_id, contact_id, payload)
+
+    async def patch_communication(self, patient_id: int, comm_id: int, payload: CommunicationPatch) -> Optional[PatientModel]:
+        return await self.repository.patch_communication(patient_id, comm_id, payload)
+
+    async def patch_general_practitioner(self, patient_id: int, gp_id: int, payload: GeneralPractitionerPatch) -> Optional[PatientModel]:
+        return await self.repository.patch_general_practitioner(patient_id, gp_id, payload)
+
+    async def patch_link(self, patient_id: int, link_id: int, payload: LinkPatch) -> Optional[PatientModel]:
+        return await self.repository.patch_link(patient_id, link_id, payload)

@@ -6,12 +6,19 @@ from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
     PractitionerNameCreate,
+    PractitionerNamePatch,
     PractitionerIdentifierCreate,
+    PractitionerIdentifierPatch,
     PractitionerTelecomCreate,
+    PractitionerTelecomPatch,
     PractitionerAddressCreate,
+    PractitionerAddressPatch,
     PractitionerPhotoCreate,
+    PractitionerPhotoPatch,
     PractitionerQualificationCreate,
+    PractitionerQualificationPatch,
     PractitionerCommunicationCreate,
+    PractitionerCommunicationPatch,
 )
 from app.fhir.mappers.practitioner import to_fhir_practitioner, to_plain_practitioner
 
@@ -162,3 +169,26 @@ class PractitionerService:
 
     async def delete_communication(self, practitioner_id: int, comm_id: int) -> bool:
         return await self.repository.delete_communication(practitioner_id, comm_id)
+
+    # ── Sub-resource patch ────────────────────────────────────────────────────
+
+    async def patch_name(self, practitioner_id: int, name_id: int, payload: PractitionerNamePatch) -> Optional[PractitionerModel]:
+        return await self.repository.patch_name(practitioner_id, name_id, payload)
+
+    async def patch_identifier(self, practitioner_id: int, identifier_id: int, payload: PractitionerIdentifierPatch) -> Optional[PractitionerModel]:
+        return await self.repository.patch_identifier(practitioner_id, identifier_id, payload)
+
+    async def patch_telecom(self, practitioner_id: int, telecom_id: int, payload: PractitionerTelecomPatch) -> Optional[PractitionerModel]:
+        return await self.repository.patch_telecom(practitioner_id, telecom_id, payload)
+
+    async def patch_address(self, practitioner_id: int, address_id: int, payload: PractitionerAddressPatch) -> Optional[PractitionerModel]:
+        return await self.repository.patch_address(practitioner_id, address_id, payload)
+
+    async def patch_photo(self, practitioner_id: int, photo_id: int, payload: PractitionerPhotoPatch) -> Optional[PractitionerModel]:
+        return await self.repository.patch_photo(practitioner_id, photo_id, payload)
+
+    async def patch_qualification(self, practitioner_id: int, qualification_id: int, payload: PractitionerQualificationPatch) -> Optional[PractitionerModel]:
+        return await self.repository.patch_qualification(practitioner_id, qualification_id, payload)
+
+    async def patch_communication(self, practitioner_id: int, comm_id: int, payload: PractitionerCommunicationPatch) -> Optional[PractitionerModel]:
+        return await self.repository.patch_communication(practitioner_id, comm_id, payload)

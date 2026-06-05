@@ -95,6 +95,8 @@ class FHIRPatientBundle(FHIRBundle):
 
 
 class PlainPatientName(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     use: Optional[str] = None
     text: Optional[str] = None
     family: Optional[str] = None
@@ -106,6 +108,8 @@ class PlainPatientName(BaseModel):
 
 
 class PlainPatientIdentifier(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     use: Optional[str] = None
     type_system: Optional[str] = None
     type_code: Optional[str] = None
@@ -119,6 +123,8 @@ class PlainPatientIdentifier(BaseModel):
 
 
 class PlainPatientTelecom(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     system: Optional[str] = Field(None, description="phone|fax|email|pager|url|sms|other")
     value: Optional[str] = None
     use: Optional[str] = Field(None, description="home|work|temp|old|mobile")
@@ -128,6 +134,8 @@ class PlainPatientTelecom(BaseModel):
 
 
 class PlainPatientAddress(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     use: Optional[str] = None
     type: Optional[str] = None
     text: Optional[str] = None
@@ -142,6 +150,8 @@ class PlainPatientAddress(BaseModel):
 
 
 class PlainPatientPhoto(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     content_type: Optional[str] = None
     language: Optional[str] = None
     data: Optional[str] = None
@@ -153,6 +163,8 @@ class PlainPatientPhoto(BaseModel):
 
 
 class PlainContactRelationship(BaseModel):
+    id: int = Field(..., description="Internal row ID.")
+    org_id: Optional[str] = None
     coding_system: Optional[str] = None
     coding_code: Optional[str] = None
     coding_display: Optional[str] = None
@@ -160,6 +172,8 @@ class PlainContactRelationship(BaseModel):
 
 
 class PlainContactTelecom(BaseModel):
+    id: int = Field(..., description="Internal row ID.")
+    org_id: Optional[str] = None
     system: Optional[str] = None
     value: Optional[str] = None
     use: Optional[str] = None
@@ -169,6 +183,8 @@ class PlainContactTelecom(BaseModel):
 
 
 class PlainPatientContact(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     relationship: Optional[List[PlainContactRelationship]] = None
     name_use: Optional[str] = None
     name_text: Optional[str] = None
@@ -197,6 +213,8 @@ class PlainPatientContact(BaseModel):
 
 
 class PlainPatientCommunication(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     language_system: Optional[str] = None
     language_code: Optional[str] = None
     language_display: Optional[str] = None
@@ -205,12 +223,16 @@ class PlainPatientCommunication(BaseModel):
 
 
 class PlainPatientGeneralPractitioner(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     reference_type: Optional[str] = None
     reference_id: Optional[int] = None
     reference_display: Optional[str] = None
 
 
 class PlainPatientLink(BaseModel):
+    id: int = Field(..., description="Internal row ID — use for PATCH/DELETE calls.")
+    org_id: Optional[str] = None
     other_type: Optional[str] = None
     other_id: Optional[int] = None
     other_display: Optional[str] = None
@@ -264,84 +286,48 @@ class PaginatedPatientResponse(BaseModel):
 # ── Sub-resource list responses ────────────────────────────────────────────────
 
 
-class PatientNameListItem(PlainPatientName):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PatientNamesListResponse(BaseModel):
-    data: List[PatientNameListItem]
+    data: List[PlainPatientName]
     total: int = Field(..., description="Total count of name entries.")
 
 
-class PatientIdentifierListItem(PlainPatientIdentifier):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PatientIdentifiersListResponse(BaseModel):
-    data: List[PatientIdentifierListItem]
+    data: List[PlainPatientIdentifier]
     total: int = Field(..., description="Total count of identifier entries.")
 
 
-class PatientTelecomListItem(PlainPatientTelecom):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PatientTelecomListResponse(BaseModel):
-    data: List[PatientTelecomListItem]
+    data: List[PlainPatientTelecom]
     total: int = Field(..., description="Total count of contact point entries.")
 
 
-class PatientAddressListItem(PlainPatientAddress):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PatientAddressesListResponse(BaseModel):
-    data: List[PatientAddressListItem]
+    data: List[PlainPatientAddress]
     total: int = Field(..., description="Total count of address entries.")
 
 
-class PatientPhotoListItem(PlainPatientPhoto):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PatientPhotosListResponse(BaseModel):
-    data: List[PatientPhotoListItem]
+    data: List[PlainPatientPhoto]
     total: int = Field(..., description="Total count of photo entries.")
 
 
-class PatientContactListItem(PlainPatientContact):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PatientContactsListResponse(BaseModel):
-    data: List[PatientContactListItem]
+    data: List[PlainPatientContact]
     total: int = Field(..., description="Total count of contact entries.")
 
 
-class PatientCommunicationListItem(PlainPatientCommunication):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PatientCommunicationsListResponse(BaseModel):
-    data: List[PatientCommunicationListItem]
+    data: List[PlainPatientCommunication]
     total: int = Field(..., description="Total count of communication entries.")
 
 
-class PatientGeneralPractitionerListItem(PlainPatientGeneralPractitioner):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PatientGeneralPractitionersListResponse(BaseModel):
-    data: List[PatientGeneralPractitionerListItem]
+    data: List[PlainPatientGeneralPractitioner]
     total: int = Field(..., description="Total count of general practitioner references.")
 
 
-class PatientLinkListItem(PlainPatientLink):
-    id: int = Field(..., description="Internal row ID — use for DELETE calls.")
-
-
 class PatientLinksListResponse(BaseModel):
-    data: List[PatientLinkListItem]
+    data: List[PlainPatientLink]
     total: int = Field(..., description="Total count of patient link entries.")
 
 

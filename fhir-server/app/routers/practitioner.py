@@ -32,12 +32,19 @@ from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
     PractitionerNameCreate,
+    PractitionerNamePatch,
     PractitionerIdentifierCreate,
+    PractitionerIdentifierPatch,
     PractitionerTelecomCreate,
+    PractitionerTelecomPatch,
     PractitionerAddressCreate,
+    PractitionerAddressPatch,
     PractitionerPhotoCreate,
+    PractitionerPhotoPatch,
     PractitionerQualificationCreate,
+    PractitionerQualificationPatch,
     PractitionerCommunicationCreate,
+    PractitionerCommunicationPatch,
 )
 from app.fhir.datatypes import (
     fhir_human_name, fhir_identifier, fhir_telecom, fhir_address,
@@ -525,7 +532,7 @@ async def list_names(
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_names(practitioner.practitioner_id)
-    plain = [{"id": n.id, **plain_name(n)} for n in items]
+    plain = [plain_name(n) for n in items]
     if wants_fhir(request):
         fhir = [{"id": n.id, **fhir_human_name(n)} for n in items]
         return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
@@ -549,7 +556,7 @@ async def list_identifiers(
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_identifiers(practitioner.practitioner_id)
-    plain = [{"id": i.id, **plain_identifier(i)} for i in items]
+    plain = [plain_identifier(i) for i in items]
     if wants_fhir(request):
         fhir = [{"id": i.id, **fhir_identifier(i)} for i in items]
         return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
@@ -573,7 +580,7 @@ async def list_telecom(
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_telecoms(practitioner.practitioner_id)
-    plain = [{"id": t.id, **plain_telecom(t)} for t in items]
+    plain = [plain_telecom(t) for t in items]
     if wants_fhir(request):
         fhir = [{"id": t.id, **fhir_telecom(t)} for t in items]
         return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
@@ -597,7 +604,7 @@ async def list_addresses(
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_addresses(practitioner.practitioner_id)
-    plain = [{"id": a.id, **plain_address(a)} for a in items]
+    plain = [plain_address(a) for a in items]
     if wants_fhir(request):
         fhir = [{"id": a.id, **fhir_address(a)} for a in items]
         return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
@@ -621,7 +628,7 @@ async def list_photos(
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_photos(practitioner.practitioner_id)
-    plain = [{"id": p.id, **plain_photo(p)} for p in items]
+    plain = [plain_photo(p) for p in items]
     if wants_fhir(request):
         fhir = [{"id": p.id, **fhir_photo(p)} for p in items]
         return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
@@ -647,7 +654,7 @@ async def list_qualifications(
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_qualifications(practitioner.practitioner_id)
-    plain = [{"id": q.id, **plain_qualification(q)} for q in items]
+    plain = [plain_qualification(q) for q in items]
     if wants_fhir(request):
         fhir = [{"id": q.id, **fhir_qualification(q)} for q in items]
         return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
@@ -671,7 +678,7 @@ async def list_communications(
     practitioner_service: PractitionerService = Depends(get_practitioner_service),
 ):
     items = await practitioner_service.get_communications(practitioner.practitioner_id)
-    plain = [{"id": c.id, **plain_communication(c)} for c in items]
+    plain = [plain_communication(c) for c in items]
     if wants_fhir(request):
         fhir = [{"id": c.id, **fhir_communication(c)} for c in items]
         return JSONResponse({"data": fhir, "total": len(fhir)}, media_type="application/fhir+json")
@@ -840,3 +847,175 @@ async def delete_communication(
     if not deleted:
         raise HTTPException(status_code=404, detail="Communication not found")
     return None
+
+
+# ── Sub-resource PATCH routes ──────────────────────────────────────────────────
+
+
+@router.patch(
+    "/{practitioner_id}/names/{name_id}",
+    operation_id="patch_practitioner_name",
+    summary="Update a name entry on a Practitioner",
+    description=(
+        "Partially updates a single HumanName entry. Only supplied fields are written; omitted fields are left unchanged. "
+        "The `name_id` is the `id` returned by `GET /{practitioner_id}/names`. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def patch_name(
+    name_id: int,
+    payload: PractitionerNamePatch,
+    request: Request,
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.patch_name(practitioner.practitioner_id, name_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Name not found on this Practitioner")
+    return format_response(practitioner_service._to_fhir(updated), practitioner_service._to_plain(updated), request)
+
+
+@router.patch(
+    "/{practitioner_id}/identifiers/{identifier_id}",
+    operation_id="patch_practitioner_identifier",
+    summary="Update a business identifier on a Practitioner",
+    description=(
+        "Partially updates a single business identifier. Only supplied fields are written. "
+        "The `identifier_id` is the `id` returned by `GET /{practitioner_id}/identifiers`. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def patch_identifier(
+    identifier_id: int,
+    payload: PractitionerIdentifierPatch,
+    request: Request,
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.patch_identifier(practitioner.practitioner_id, identifier_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Identifier not found on this Practitioner")
+    return format_response(practitioner_service._to_fhir(updated), practitioner_service._to_plain(updated), request)
+
+
+@router.patch(
+    "/{practitioner_id}/telecom/{telecom_id}",
+    operation_id="patch_practitioner_telecom",
+    summary="Update a contact point on a Practitioner",
+    description=(
+        "Partially updates a single contact point (phone, email, etc.). Only supplied fields are written. "
+        "The `telecom_id` is the `id` returned by `GET /{practitioner_id}/telecom`. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def patch_telecom(
+    telecom_id: int,
+    payload: PractitionerTelecomPatch,
+    request: Request,
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.patch_telecom(practitioner.practitioner_id, telecom_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Telecom not found on this Practitioner")
+    return format_response(practitioner_service._to_fhir(updated), practitioner_service._to_plain(updated), request)
+
+
+@router.patch(
+    "/{practitioner_id}/addresses/{address_id}",
+    operation_id="patch_practitioner_address",
+    summary="Update an address on a Practitioner",
+    description=(
+        "Partially updates a single address entry. Only supplied fields are written. "
+        "The `address_id` is the `id` returned by `GET /{practitioner_id}/addresses`. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def patch_address(
+    address_id: int,
+    payload: PractitionerAddressPatch,
+    request: Request,
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.patch_address(practitioner.practitioner_id, address_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Address not found on this Practitioner")
+    return format_response(practitioner_service._to_fhir(updated), practitioner_service._to_plain(updated), request)
+
+
+@router.patch(
+    "/{practitioner_id}/photos/{photo_id}",
+    operation_id="patch_practitioner_photo",
+    summary="Update a photo attachment on a Practitioner",
+    description=(
+        "Partially updates a single photo attachment. Only supplied fields are written. "
+        "The `photo_id` is the `id` returned by `GET /{practitioner_id}/photos`. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def patch_photo(
+    photo_id: int,
+    payload: PractitionerPhotoPatch,
+    request: Request,
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.patch_photo(practitioner.practitioner_id, photo_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Photo not found on this Practitioner")
+    return format_response(practitioner_service._to_fhir(updated), practitioner_service._to_plain(updated), request)
+
+
+@router.patch(
+    "/{practitioner_id}/qualifications/{qualification_id}",
+    operation_id="patch_practitioner_qualification",
+    summary="Update a qualification on a Practitioner",
+    description=(
+        "Partially updates a single qualification. Only supplied fields are written. "
+        "If `identifier` is supplied, all existing qualification identifiers are replaced. "
+        "The `qualification_id` is the `id` returned by `GET /{practitioner_id}/qualifications`. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def patch_qualification(
+    qualification_id: int,
+    payload: PractitionerQualificationPatch,
+    request: Request,
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.patch_qualification(practitioner.practitioner_id, qualification_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Qualification not found on this Practitioner")
+    return format_response(practitioner_service._to_fhir(updated), practitioner_service._to_plain(updated), request)
+
+
+@router.patch(
+    "/{practitioner_id}/communications/{comm_id}",
+    operation_id="patch_practitioner_communication",
+    summary="Update a communication language on a Practitioner",
+    description=(
+        "Partially updates a single communication language entry. Only supplied fields are written. "
+        "The `comm_id` is the `id` returned by `GET /{practitioner_id}/communications`. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def patch_communication(
+    comm_id: int,
+    payload: PractitionerCommunicationPatch,
+    request: Request,
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.patch_communication(practitioner.practitioner_id, comm_id, payload)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Communication not found on this Practitioner")
+    return format_response(practitioner_service._to_fhir(updated), practitioner_service._to_plain(updated), request)

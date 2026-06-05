@@ -20,13 +20,21 @@ from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
     PractitionerNameCreate,
+    PractitionerNamePatch,
     PractitionerIdentifierCreate,
+    PractitionerIdentifierPatch,
     PractitionerTelecomCreate,
+    PractitionerTelecomPatch,
     PractitionerAddressCreate,
+    PractitionerAddressPatch,
     PractitionerPhotoCreate,
+    PractitionerPhotoPatch,
     QualificationIdentifierCreate,
+    QualificationIdentifierPatch,
     PractitionerQualificationCreate,
+    PractitionerQualificationPatch,
     PractitionerCommunicationCreate,
+    PractitionerCommunicationPatch,
 )
 
 
@@ -568,3 +576,172 @@ class PractitionerRepository:
             if not practitioner:
                 return False
             return await self._delete_child(session, PractitionerCommunication, comm_id, practitioner.id)
+
+    # ── Sub-resource patch ─────────────────────────────────────────────────────
+
+    async def _fetch_child(self, session, model_class, child_id: int, parent_internal_id: int):
+        """Fetch child by id, verify parent ownership, return row or None."""
+        row = (await session.execute(
+            select(model_class).where(model_class.id == child_id)
+        )).scalars().first()
+        if not row or row.practitioner_id != parent_internal_id:
+            return None
+        return row
+
+    async def patch_name(self, practitioner_id: int, name_id: int, payload: PractitionerNamePatch) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return None
+            row = await self._fetch_child(session, PractitionerName, name_id, practitioner.id)
+            if not row:
+                return None
+            data = payload.model_dump(exclude_unset=True)
+            for field in ("given", "prefix", "suffix"):
+                if field in data:
+                    data[field] = ",".join(data[field]) if data[field] else None
+            for field, value in data.items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_practitioner_id(practitioner_id)
+
+    async def patch_identifier(self, practitioner_id: int, identifier_id: int, payload: PractitionerIdentifierPatch) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return None
+            row = await self._fetch_child(session, PractitionerIdentifier, identifier_id, practitioner.id)
+            if not row:
+                return None
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_practitioner_id(practitioner_id)
+
+    async def patch_telecom(self, practitioner_id: int, telecom_id: int, payload: PractitionerTelecomPatch) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return None
+            row = await self._fetch_child(session, PractitionerTelecom, telecom_id, practitioner.id)
+            if not row:
+                return None
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_practitioner_id(practitioner_id)
+
+    async def patch_address(self, practitioner_id: int, address_id: int, payload: PractitionerAddressPatch) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return None
+            row = await self._fetch_child(session, PractitionerAddress, address_id, practitioner.id)
+            if not row:
+                return None
+            data = payload.model_dump(exclude_unset=True)
+            if "line" in data:
+                data["line"] = ",".join(data["line"]) if data["line"] else None
+            for field, value in data.items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_practitioner_id(practitioner_id)
+
+    async def patch_photo(self, practitioner_id: int, photo_id: int, payload: PractitionerPhotoPatch) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return None
+            row = await self._fetch_child(session, PractitionerPhoto, photo_id, practitioner.id)
+            if not row:
+                return None
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_practitioner_id(practitioner_id)
+
+    async def patch_qualification(self, practitioner_id: int, qualification_id: int, payload: PractitionerQualificationPatch) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return None
+            stmt = (
+                select(PractitionerQualification)
+                .where(
+                    PractitionerQualification.id == qualification_id,
+                    PractitionerQualification.practitioner_id == practitioner.id,
+                )
+                .options(selectinload(PractitionerQualification.identifiers))
+            )
+            qualification = (await session.execute(stmt)).scalars().first()
+            if not qualification:
+                return None
+
+            data = payload.model_dump(exclude_unset=True)
+
+            if "identifier" in data:
+                for qi in qualification.identifiers:
+                    await session.delete(qi)
+                for qi in (data.pop("identifier") or []):
+                    session.add(PractitionerQualificationIdentifier(
+                        qualification_id=qualification.id,
+                        org_id=practitioner.org_id,
+                        **qi,
+                    ))
+            else:
+                data.pop("identifier", None)
+
+            if "issuer" in data:
+                issuer = data.pop("issuer")
+                if issuer:
+                    qualification.issuer_type, qualification.issuer_id = _parse_org_ref(issuer)
+                else:
+                    qualification.issuer_type = None
+                    qualification.issuer_id = None
+
+            for field, value in data.items():
+                setattr(qualification, field, value)
+
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_practitioner_id(practitioner_id)
+
+    async def patch_communication(self, practitioner_id: int, comm_id: int, payload: PractitionerCommunicationPatch) -> Optional[PractitionerModel]:
+        async with self.session_factory() as session:
+            practitioner = await self._get_internal(session, practitioner_id)
+            if not practitioner:
+                return None
+            row = await self._fetch_child(session, PractitionerCommunication, comm_id, practitioner.id)
+            if not row:
+                return None
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                setattr(row, field, value)
+            try:
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+        return await self.get_by_practitioner_id(practitioner_id)
