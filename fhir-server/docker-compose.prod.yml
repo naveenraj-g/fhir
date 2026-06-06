@@ -78,6 +78,34 @@ services:
     networks:
       - fhir-net
 
+  # ── One-time terminology seeder ───────────────────────────────────────────────
+  # Run once after first deploy (or after a db-reset) to load all terminology data.
+  #
+  # Usage (on the VPS):
+  #   docker compose -f docker-compose.prod.yml run --rm fhir-seeder
+  #   -- or --
+  #   just vps-seed
+  #
+  # Requires terminology_data/ files present on the VPS host at ./terminology_data/
+  # All imports are idempotent — safe to re-run.
+
+  fhir-seeder:
+    image: ghcr.io/naveenraj-g/fhir-server-v1:latest
+    pull_policy: always
+    container_name: fhir-seeder
+    env_file: .env
+    volumes:
+      - ./terminology_data:/terminology_data:ro
+    command: ["/app/seed-all.sh"]
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - seed
+    networks:
+      - fhir-net
+
 volumes:
   postgres_data:
   redis_data:

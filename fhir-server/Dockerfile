@@ -33,7 +33,8 @@ COPY --chown=appuser:appgroup migrations ./migrations
 
 # Entrypoint runs migrations then hands off to uvicorn
 COPY --chown=appuser:appgroup entrypoint.sh ./
-RUN chmod +x ./entrypoint.sh
+COPY --chown=appuser:appgroup seed-all.sh ./
+RUN chmod +x ./entrypoint.sh ./seed-all.sh
 
 USER appuser
 

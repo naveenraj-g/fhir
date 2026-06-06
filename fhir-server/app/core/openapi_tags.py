@@ -244,6 +244,15 @@ OPENAPI_TAGS: list[dict] = [
             "Coding, date, etc.)."
         ),
     },
+    # ── Terminology ───────────────────────────────────────────────────────────
+    {
+        "name": "Terminology",
+        "description": (
+            "Medical terminology lookup and validation — ICD-10-CM, LOINC, RxNorm, SNOMED CT, "
+            "and FHIR R4 built-in code systems. Supports concept search, value set expansion, "
+            "field binding validation, code translation, and org-specific custom concepts."
+        ),
+    },
     # ── Infrastructure ────────────────────────────────────────────────────────
     {
         "name": "Vitals",
