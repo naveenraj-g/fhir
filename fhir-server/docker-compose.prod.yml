@@ -96,7 +96,7 @@ services:
     env_file: .env
     volumes:
       - ./terminology_data:/terminology_data:ro
-    command: ["/app/seed-all.sh"]
+    entrypoint: ["/app/seed-all.sh"]
     depends_on:
       api:
         condition: service_healthy
