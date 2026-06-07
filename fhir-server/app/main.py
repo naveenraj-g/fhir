@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse, Response
 from sqlalchemy import text
 
 from app.routers.vitals import router as vitals_router
+from app.routers.terminology import router as terminology_router
 from app.core.database import Database
 from app.core.logging import get_logger, setup_logging
 from app.core.openapi_tags import OPENAPI_TAGS
@@ -87,6 +88,12 @@ app.include_router(
     vitals_router,
     prefix="/api/v1/vitals",
     tags=["Vitals"],
+)
+
+app.include_router(
+    terminology_router,
+    prefix="/api/v1/terminology",
+    tags=["Terminology"],
 )
 
 
