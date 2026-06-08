@@ -12,7 +12,7 @@ The current FHIR server is a **well-architected, async Python FHIR data layer**.
 
 - A clean layered architecture (Router → Service → Repository → ORM)
 - Async FastAPI + SQLAlchemy 2.0 + asyncpg with full DI wiring
-- JWT-based multi-tenancy scoped by `user_id` + `org_id` (Keycloak-backed)
+- JWT-based multi-tenancy scoped by `user_id` + `org_id` (IAM-issued JWTs; auth enforced by the Pulse middle layer)
 - Redis-backed sliding-window rate limiting
 - A built-in terminology service (SNOMED CT US Edition, ICD-10-CM, LOINC, RxNorm)
 - Structured JSON logging with request IDs

@@ -31,20 +31,20 @@
 | Add `SecurityHeadersMiddleware` (HSTS, XCTO, X-Frame) | `app/middleware/security_headers.py` | 2 hours |
 | Remove PATCH/PUT/DELETE routes from `/audit-events` router | `app/routers/audit_event.py` | 1 hour |
 
-### Team B — Keycloak SMART Foundation
+### Team B — IAM SMART Foundation
 
 | Task | File(s) / Reference | Effort |
 |---|---|---|
-| Run `setup_keycloak_smart_scopes.py` — create all SMART v2 granular scopes in Keycloak | `doc 08 §1.2` | 1 day |
-| Add protocol mappers: `activeOrganizationId`, `fhirUser`, `launch_response.patient` | Keycloak Admin Console | 4 hours |
-| Configure Keycloak clients: `web-app` (PKCE), `pulse-orchestrator` (client_credentials), `fhir-server` (bearer-only) | Keycloak Admin Console | 4 hours |
+| Configure SMART v2 granular scopes in IAM (patient/user/system contexts, all 34 resource types) | `doc 08 §1.3` | 1 day |
+| Configure custom JWT claims: `activeOrganizationId`, `roles`, `fhirUser`, `launch_response.patient` | IAM admin / `doc 08 §1.2` | 4 hours |
+| Configure IAM clients: web app (PKCE), `pulse-orchestrator` (client_credentials + private_key_jwt), patient app (PKCE) | IAM admin / `doc 08 §1.4` | 4 hours |
 
 ### Infra
 
 | Task | Effort |
 |---|---|
 | Create `Dockerfile` (multi-stage, non-root user, distroless) | 1 day |
-| Create `docker-compose.yml` (fhir-server, postgres, redis, keycloak) | 1 day |
+| Create `docker-compose.yml` (fhir-server, postgres, redis, iam-service) | 1 day |
 | Move all secrets to `.env.example` with placeholders; add `.env` to `.gitignore` | 1 hour |
 | Enable PostgreSQL TDE (or use RDS encrypted instance) | 1 day |
 | Enable Redis encryption in transit and at rest | 4 hours |
@@ -56,7 +56,7 @@
 - [ ] HTTPS enforced — HTTP returns 301
 - [ ] `FHIR_DATABASE_URL` not committed to git
 - [ ] AuditEvent endpoint has no mutation routes
-- [ ] Keycloak has all SMART v2 scopes created and `launch_response.patient` claim working
+- [ ] IAM issues tokens with `activeOrganizationId`, `roles`, and SMART scopes in `scope` claim; `launch_response.patient` claim populated after EHR launch
 
 ---
 
@@ -98,7 +98,7 @@
 | Task | Effort |
 |---|---|
 | Set up AWS Secrets Manager for all credentials | 1 day |
-| Configure MFA in Keycloak for all non-patient roles | 4 hours |
+| Configure MFA in IAM for all non-patient roles | 4 hours |
 | PostgreSQL point-in-time recovery (PITR) configured and tested | 1 day |
 | Automated daily backup with restore test | 1 day |
 | BAA signed with AWS (RDS, ElastiCache, S3, SES, CloudWatch) | 1 week (legal) |
@@ -110,9 +110,9 @@
 - [ ] `GET /patients/{id}` returns 404 for deleted patient
 - [ ] `GET /metadata` returns valid CapabilityStatement with SMART extensions
 - [ ] `GET /.well-known/smart-configuration` returns valid JSON with `capabilities` array
-- [ ] MFA required for physician login in Keycloak
+- [ ] MFA required for physician login in IAM
 - [ ] Database backup taken and successfully restored in test
-- [ ] `POST /smart/launch` returns a `launch` token; Keycloak accepts it in auth request
+- [ ] `POST /smart/launch` returns a `launch` token; IAM validates it and injects patient context into resulting token
 - [ ] Pulse → FHIR server call uses `SMARTBackendAuth` (client_credentials + asymmetric JWT)
 - [ ] Patient-scoped token (`patient/Patient.r`) blocked from accessing a different patient's record
 
@@ -148,7 +148,7 @@
 | Standalone launch end-to-end test (patient app → Keycloak → FHIR server) | `doc 08 §3.2` | 1 day |
 | EHR launch end-to-end test (portal → launch API → Keycloak → SMART app) | `doc 08 §3.1` | 1 day |
 | Backend services flow test (Pulse → FHIR server with client_credentials JWT) | `doc 08 §3.3` | 4 hours |
-| Keycloak SPI for launch token validation (Java, or custom authenticator flow) | `doc 08 §3.1` | 3 days |
+| IAM launch token validation integration — implement the callback, shared Redis, or pre-auth pattern (see `doc 08 §3.1.1`) | `doc 08 §3.1.1` | 2–3 days |
 
 ### QA/Compliance
 
@@ -383,7 +383,7 @@
 
 | Milestone | Target Week | Key Deliverable |
 |---|---|---|
-| M0 — Security floor | Week 2 | JWT auth, TLS, secrets secured, audit log append-only, Keycloak SMART scopes created |
+| M0 — Security floor | Week 2 | Pulse JWT auth layer live, TLS enforced, FHIR server network-isolated, secrets secured, audit log append-only, IAM SMART scopes + claims configured |
 | M1 — HIPAA baseline + SMART auth | Week 8 | PHI audit every read/write, soft delete, versioning, backups, EHR launch API live, `PatientContextMiddleware` |
 | M2 — FHIR conformance + SMART certified | Week 16 | Inferno SMART App Launch group: all green; Single-Patient US Core: all green |
 | M3 — Workflow engine | Week 20 | Appointment/encounter/prescription state machines in Pulse; CDS Hooks discovery endpoint |
@@ -401,12 +401,12 @@
 | JWT middleware breaks existing integrations | Medium | High | Feature flag for gradual rollout; test against all consumers first |
 | Soft delete migration breaks existing queries | High | High | Add `is_deleted` column with default `false`; index it; test all repo filters |
 | Terminology FHIR namespace conflicts with existing `/terminology` | Low | Medium | Mount at `/api/fhir/v1/` separately from `/api/v1/terminology` |
-| Inferno fails due to Keycloak PKCE misconfiguration | Medium | High | Test PKCE flow manually (`doc 08 §10`) before Inferno run |
+| Inferno fails due to IAM PKCE misconfiguration | Medium | High | Test PKCE flow manually (`doc 08 §10`) before Inferno run; verify `code_challenge_method=S256` accepted and `code_verifier` validated |
 | Bulk export runs OOM on large datasets | Medium | High | Use server-side cursor + streaming write, never load all into memory |
 | Middle layer adds latency | Low | Medium | Async HTTP to FHIR server; mTLS handshake cached; connection pool |
 | HL7v2 parsing produces invalid FHIR | High | Medium | Use Microsoft FHIR-Converter as baseline; add custom mapping layer |
 | SOC 2 audit scope creep | Medium | Medium | Define scope early; use Vanta/Secureframe to track controls |
-| **Keycloak SMART launch token SPI requires Java** | Medium | Medium | Implement as Keycloak Authenticator SPI (Java); document in repo; OR use Keycloak REST event listener + Redis via HTTP |
+| **IAM does not support a launch token validation hook** | Medium | Medium | Use one of the three patterns in `doc 08 §3.1.1` (callback, shared Redis, pre-auth resolution); most IAMs support at least one |
 | **EHR launch token not consumed before expiry (race)** | Low | Medium | 60-second TTL is intentional; if expired, user re-initiates launch — common pattern |
 | **AI hallucinates clinical content** | Medium | High | Every AI clinical output requires human review before becoming an active FHIR resource; never auto-activate |
 | **Anthropic API unavailable blocks clinical workflow** | Low | High | Circuit breaker in AI gateway; all features degrade gracefully — clinicians fall back to manual documentation |
@@ -434,7 +434,7 @@
 | **AI / LLM** | Anthropic Claude API (`anthropic` Python SDK) | Ambient docs, CDS, scheduling, revenue cycle |
 | **MCP server** | FastMCP | Expose FHIR endpoints as AI tools (already planned per CLAUDE.md) |
 | **AI tracing** | LangSmith or custom OTel spans | Track AI inference cost, latency, acceptance rate |
-| **Keycloak SPI** | Java (Keycloak Authenticator SPI) | Launch token validation for EHR launch flow |
+| **IAM admin client** | Provider-specific SDK / REST client | SMART app registration, client management via `IamAdminClient` interface |
 | **PKCE helper** | `authlib` or `python-jose` | PKCE verifier/challenge generation for backend tests |
 | **Speech-to-text** (optional) | AWS Transcribe Medical (BAA-eligible) | Ambient audio → transcript for documentation pipeline |
 
@@ -472,23 +472,23 @@
 
 ---
 
-### ADR-004: Keycloak as Auth Server
+### ADR-004: IAM as a Separate Service, FHIR Server as Auth-Free Data Plane
 
-**Decision:** Use self-hosted Keycloak (rather than Auth0/Okta/Cognito) as the OAuth2 + SMART authorization server.
+**Decision:** Authentication and token issuance live in a dedicated IAM application. The FHIR server has no JWT auth middleware — it is a private data plane. JWT validation, SMART scope enforcement, RBAC, and ABAC all live in Pulse.
 
-**Rationale:** Full control over token customization (custom claims like `activeOrganizationId`), no per-MAU cost, existing `python-keycloak` dependency already in project, `SessionManager` already wired to Keycloak. Can be replaced later with a hosted IdP if scale demands it.
+**Rationale:** The FHIR server must remain a replaceable, pure data layer. Coupling auth to it would require every auth change to go through a FHIR server deployment. Pulse is the natural enforcement layer — it already sits between consumers and the FHIR server. The IAM contract (`doc 08 §1`) is stable regardless of which provider is used; swapping IAMs requires only config changes.
 
-**Consequence:** Team is responsible for Keycloak HA, upgrades, and configuration management. Run Keycloak in clustered mode with a dedicated PostgreSQL database.
+**Consequence:** The FHIR server must be network-isolated — not publicly reachable except through Pulse. Any OAuth2 + OIDC compliant IAM that issues tokens conforming to the claim contract satisfies the integration. Three-service architecture (IAM + Pulse + FHIR server).
 
 ---
 
-### ADR-005: SMART Launch Token in Redis (not Keycloak-native)
+### ADR-005: SMART EHR Launch Token Stored in Redis
 
-**Decision:** The EHR launch token (`POST /smart/launch`) is stored in Redis with a 60-second TTL, consumed by a Keycloak Authenticator SPI (or event listener) rather than using Keycloak's built-in `login_hint` mechanism.
+**Decision:** The EHR launch token (`POST /smart/launch`) is stored in Redis with a 60-second TTL. The IAM validates this token during the auth code flow and injects the patient context into the resulting access token claims.
 
-**Rationale:** SMART v2 EHR launch requires the EHR to encode patient/encounter context into a launch token that the auth server validates. Keycloak has no built-in concept of this. Redis allows the launch context to be set from the Pulse service (Python) and consumed by Keycloak (Java SPI) without a shared database.
+**Rationale:** SMART v2 EHR launch requires encoding patient/encounter context into a short-lived token that the auth server validates before issuing the authorization code. Redis is a natural choice for the handoff: Pulse writes the context; the IAM reads or queries it. The Pulse-side implementation is identical regardless of which IAM is used.
 
-**Consequence:** Requires one Java SPI component in the Keycloak deployment. The SPI must be packaged as a `.jar` and deployed to Keycloak's providers directory. It is small (< 100 lines) but introduces a Java build step. Alternative: use Keycloak's REST event listener SPI to call back to Pulse (Python) for validation — avoids Java but adds a synchronous HTTP call in the auth flow.
+**Consequence:** The IAM must implement one of the three validation patterns described in `doc 08 §3.1.1` (callback to Pulse, shared Redis read, or pre-auth resolution). Choose based on what extension points the IAM exposes. No specific programming language or framework is required on the IAM side.
 
 ---
 

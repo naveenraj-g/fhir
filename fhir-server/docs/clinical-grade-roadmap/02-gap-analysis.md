@@ -10,7 +10,7 @@ These gaps represent legal exposure or HIPAA violations. No patient data should 
 
 | # | Gap | Where | Priority | Effort | Risk |
 |---|---|---|---|---|---|
-| S-01 | **JWT validation middleware absent** — JWT claims (`sub`, `activeOrganizationId`) are read from `request.state.user` but nothing in `main.py` sets this state. Without a validation middleware, any request can forge these claims if the upstream proxy is misconfigured. | FHIR Server | **P0** | S | H |
+| S-01 | **FHIR server must be network-isolated** — The FHIR server has no JWT auth middleware by design; it is a private data plane called only by Pulse. JWT validation belongs in Pulse. If the FHIR server is ever reachable from outside Pulse (misconfigured reverse proxy, accidental public exposure), any caller can supply arbitrary `user_id` and `org_id` claims. The required control is network-level isolation, not application-level auth in the FHIR server. | Infrastructure | **P0** | S | H |
 | S-02 | **No SMART on FHIR scope enforcement** — SMART granular scopes (`patient/Observation.rs`, `user/*.cruds`, `system/*.rs`) are never extracted from the JWT or enforced at the resource level. Any authenticated user can perform any CRUD on any resource type. | Middle Layer | **P0** | L | H |
 | S-03 | **No FHIR AuditEvent auto-emission** — The `AuditEvent` resource exists as a CRUD endpoint but is never written automatically on PHI access. HIPAA requires an audit trail for every read/write of protected health information. | FHIR Server / Middle Layer | **P0** | M | H |
 | S-04 | **TLS 1.2+/1.3 not enforced at application level** — No HTTPS redirect, no HSTS header. Should be enforced at reverse proxy (nginx/Caddy) and declared in config. | Infrastructure | **P0** | S | H |
@@ -22,7 +22,7 @@ These gaps represent legal exposure or HIPAA violations. No patient data should 
 | S-10 | **CORS not configured** — No `CORSMiddleware` in `main.py`. Browser-based clients will be blocked or uncontrolled. | FHIR Server | **P0** | S | M |
 | S-11 | **Security response headers absent** — No `Strict-Transport-Security`, `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy` headers. | FHIR Server | **P1** | S | M |
 | S-12 | **No BAA tracking** — No list of PHI-touching vendors with signed BAAs. Cloud provider, DB host, Redis host, logging provider all need BAAs. | Process | **P0** | S | H |
-| S-13 | **No mTLS for service-to-service** — FHIR Server ↔ Middle Layer ↔ Keycloak calls use plain TLS without client certificate mutual auth. | Infrastructure | **P1** | M | M |
+| S-13 | **No mTLS for service-to-service** — FHIR Server ↔ Middle Layer ↔ IAM Service calls use plain TLS without client certificate mutual auth. | Infrastructure | **P1** | M | M |
 | S-14 | **Input sanitization gaps** — Free-text fields (notes, descriptions) not sanitized against XSS or injection. Pydantic `extra="forbid"` protects schema fields but not string content. | FHIR Server | **P1** | S | M |
 
 ---
@@ -92,7 +92,7 @@ These gaps are not about the data layer but about the rules that govern when and
 
 | # | Gap | Where | Priority | Effort | Risk |
 |---|---|---|---|---|---|
-| O-01 | **No OpenTelemetry tracing** — No distributed trace across FHIR Server + Middle Layer + Keycloak. Debugging production issues is guesswork. | FHIR Server + Middle Layer | **P1** | M | M |
+| O-01 | **No OpenTelemetry tracing** — No distributed trace across FHIR Server + Middle Layer + IAM Service. Debugging production issues is guesswork. | FHIR Server + Middle Layer | **P1** | M | M |
 | O-02 | **No Prometheus `/metrics` endpoint** — No RED metrics (request rate, error rate, duration). No alerting surface. | FHIR Server | **P1** | S | M |
 | O-03 | **No PHI-access anomaly detection** — AuditEvent stream not analyzed for unusual access patterns (off-hours bulk reads, VIP access, cross-org access). | Infrastructure | **P1** | L | H |
 | O-04 | **No SLA monitoring** — No uptime tracking, no p95/p99 latency tracking, no on-call runbook. | Infrastructure | **P1** | M | M |

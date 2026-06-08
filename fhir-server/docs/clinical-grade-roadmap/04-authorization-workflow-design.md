@@ -13,7 +13,7 @@ Request arrives
    │
    ├── Layer 1: Transport / Network         Is this request coming from an allowed network?
    │
-   ├── Layer 2: Authentication              Is the JWT valid, non-expired, from our Keycloak?
+   ├── Layer 2: Authentication              Is the JWT valid, non-expired, from our IAM?
    │
    ├── Layer 3: SMART Scope                 Does the JWT carry the required resource+action scope?
    │
@@ -30,63 +30,52 @@ Failing any layer returns 401/403 with an OperationOutcome. Layers are checked c
 
 ---
 
-## 2. Keycloak Setup
+## 2. IAM / Auth Server Contract
 
-### Realm Structure
+The authorization design is IAM-agnostic. Any OAuth2 + OIDC compliant IAM satisfies the contract as long as the tokens it issues contain the required claims. See `doc 08 §1` for the full IAM contract.
 
-```
-realm: healthcare-platform
-  clients:
-    - web-app          (public, PKCE, SMART App Launch)
-    - mobile-app       (public, PKCE)
-    - pulse-orchestrator  (confidential, client_credentials, system scopes)
-    - fhir-server      (confidential, bearer-only, resource server)
-  roles:
-    - physician
-    - nurse
-    - pharmacist
-    - lab_technician
-    - billing_clerk
-    - scheduler
-    - admin
-    - patient
-  scopes (mapped from SMART v2):
-    - patient/Patient.r
-    - patient/Patient.u
-    - patient/Observation.rs
-    - user/Patient.cruds
-    - user/MedicationRequest.cruds
-    - system/Patient.rs
-    - system/*.cruds
-    (full matrix — one scope per resource+action combination)
-```
-
-### JWT Claims (after Keycloak mapping)
+### Required JWT Claims
 
 ```json
 {
-  "sub": "user-uuid-here",
-  "iss": "https://auth.yourplatform.com/realms/healthcare-platform",
-  "aud": ["fhir-server", "pulse-orchestrator"],
+  "sub": "user-uuid",
+  "iss": "https://your-iam.example.com",
+  "aud": "fhir-server",
   "exp": 1800000000,
   "iat": 1799996400,
-  "azp": "web-app",
-  "scope": "openid profile patient/Patient.r patient/Observation.rs",
-  "realm_access": {
-    "roles": ["physician"]
-  },
-  "resource_access": {
-    "pulse-orchestrator": {
-      "roles": ["physician", "prescriber"]
-    }
-  },
-  "activeOrganizationId": "org-uuid-here",
+  "scope": "openid patient/Patient.r patient/Observation.rs",
+  "roles": ["physician"],
+  "activeOrganizationId": "org-uuid",
   "launch_response": {
     "patient": "10001"
   },
-  "fhir_user": "Practitioner/30001"
+  "fhirUser": "Practitioner/30001"
 }
 ```
+
+### Responsibility Split
+
+| Concern | IAM | Pulse | FHIR Server |
+|---|---|---|---|
+| User authentication (password, MFA, SSO, OAuth providers) | ✓ | — | — |
+| Token issuance + signing | ✓ | — | — |
+| PKCE validation | ✓ | — | — |
+| SMART scope registration | ✓ | — | — |
+| JWT signature verification | — | ✓ via JWKS | — |
+| SMART scope enforcement | — | ✓ | — |
+| RBAC (role → resource → action) | — | ✓ | — |
+| ABAC (care team, consent, sensitivity) | — | ✓ | — |
+| Row-level tenancy (user_id + org_id filter) | — | — | ✓ reads from claims |
+
+### Client Types Required
+
+| Client | Grant | Auth Method |
+|---|---|---|
+| Clinician web / mobile | `authorization_code` | PKCE (S256) |
+| Pulse orchestrator | `client_credentials` | `private_key_jwt` (RFC 7523) |
+| AI gateway agents | `client_credentials` | `private_key_jwt` (RFC 7523) |
+| Patient portal | `authorization_code` | PKCE (S256) |
+| Third-party SMART apps | `authorization_code` | PKCE (S256) |
 
 ---
 
@@ -346,73 +335,36 @@ async def check_sensitivity_gate(resource: FHIRResource, requester: AuthContext)
 
 ## 7. Data-Layer Row Security (FHIR Server Side)
 
-The FHIR server handles the final, innermost authorization layer: every row has `user_id` and `org_id`. Every query filters by these. This is the tenant isolation guarantee.
+The FHIR server is the innermost layer and handles tenant isolation only: every row has `user_id` and `org_id`, and every query filters by these. This is the row-level tenancy guarantee.
 
-### Additions Needed in FHIR Server
+The FHIR server has **no JWT auth middleware by design** — it is a private data plane reachable only from Pulse. JWT validation, scope enforcement, RBAC, and ABAC all live in Pulse. The FHIR server reads `user_id` (from `sub`) and `org_id` (from `activeOrganizationId`) out of the already-validated token claims that Pulse forwards.
 
-**1. JWT Validation Middleware** (fill the current gap):
-```python
-# app/middleware/auth.py
-class JWTAuthMiddleware(BaseHTTPMiddleware):
-    EXCLUDED = {"/health", "/health/ready", "/favicon.ico"}
+### Settings Additions Needed
 
-    def __init__(self, app, jwks_url: str, issuer: str, audience: str):
-        super().__init__(app)
-        self.jwks_client = PyJWKClient(jwks_url)
-        self.issuer = issuer
-        self.audience = audience
-
-    async def dispatch(self, request: Request, call_next):
-        if request.url.path in self.EXCLUDED:
-            return await call_next(request)
-
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
-            return self._unauthorized("Missing Bearer token")
-
-        token = auth_header[7:]
-        try:
-            signing_key = self.jwks_client.get_signing_key_from_jwt(token)
-            payload = jwt.decode(
-                token,
-                signing_key.key,
-                algorithms=["RS256"],
-                audience=self.audience,
-                issuer=self.issuer,
-            )
-            request.state.user = payload
-        except jwt.ExpiredSignatureError:
-            return self._unauthorized("Token expired")
-        except jwt.InvalidTokenError as e:
-            return self._unauthorized(str(e))
-
-        return await call_next(request)
-
-    def _unauthorized(self, msg: str):
-        return JSONResponse(
-            status_code=401,
-            content={"resourceType": "OperationOutcome", "issue": [
-                {"severity": "error", "code": "security", "diagnostics": msg}
-            ]},
-        )
-```
-
-**2. Extend Settings for Auth Config:**
 ```python
 class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     FHIR_DATABASE_URL: str
     REDIS_URL: str
+    # IAM endpoints — used for SMART discovery + CapabilityStatement only
     IAM_ISSUER: str
     IAM_JWKS_URL: str
     IAM_AUDIENCE: str = "fhir-server"
-    SESSION_TTL_SECONDS: int = 3600
+    IAM_AUTH_ENDPOINT: str
+    IAM_TOKEN_ENDPOINT: str
+    IAM_REVOKE_ENDPOINT: str
+    IAM_INTROSPECT_ENDPOINT: str
+    IAM_REGISTRATION_ENDPOINT: str
     # DB pool
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
     DB_POOL_RECYCLE: int = 1800
     DB_POOL_PRE_PING: bool = True
 ```
+
+### Network Isolation Requirement
+
+The FHIR server must only accept inbound connections from Pulse on an internal network. It must **not** be reachable from the public internet or from any service other than Pulse. Enforce this at the infrastructure level (firewall, security group, VPC routing).
 
 ---
 
@@ -488,37 +440,34 @@ These logs ship to the SIEM (not the FHIR AuditEvent table — they are security
 
 ## 10. `.well-known/smart-configuration`
 
-Add to FHIR server (or middle layer, depending on which is the public endpoint):
+Add to the FHIR server (see `doc 08 §2` for the full implementation). All endpoint URLs come from `Settings` — no hardcoded IAM paths. The FHIR server serves this endpoint but points consumers at the IAM for actual auth:
 
-```json
-{
-  "issuer": "https://auth.yourplatform.com/realms/healthcare-platform",
-  "jwks_uri": "https://auth.yourplatform.com/realms/healthcare-platform/protocol/openid-connect/certs",
-  "authorization_endpoint": "https://auth.yourplatform.com/realms/healthcare-platform/protocol/openid-connect/auth",
-  "token_endpoint": "https://auth.yourplatform.com/realms/healthcare-platform/protocol/openid-connect/token",
-  "token_endpoint_auth_methods_supported": ["private_key_jwt", "client_secret_basic"],
-  "grant_types_supported": ["authorization_code", "client_credentials"],
-  "registration_endpoint": "https://auth.yourplatform.com/realms/healthcare-platform/clients-registrations/openid-connect",
-  "scopes_supported": [
-    "openid", "profile", "launch", "launch/patient",
-    "patient/*.r", "patient/*.rs", "patient/*.cruds",
-    "user/*.r", "user/*.rs", "user/*.cruds",
-    "system/*.r", "system/*.rs", "system/*.cruds"
-  ],
-  "response_types_supported": ["code"],
-  "code_challenge_methods_supported": ["S256"],
-  "capabilities": [
-    "launch-ehr", "launch-standalone", "client-public", "client-confidential-symmetric",
-    "client-confidential-asymmetric", "context-banner", "context-style", "context-ehr-patient",
-    "context-ehr-encounter", "permission-patient", "permission-user", "permission-v2",
-    "authorize-post"
-  ]
-}
-```
-
-Add this endpoint to the FHIR server:
 ```python
-@app.get("/.well-known/smart-configuration", include_in_schema=False)
+# app/routers/smart_config.py
+@router.get("/.well-known/smart-configuration", include_in_schema=False)
 async def smart_configuration():
-    return JSONResponse(content=SMART_CONFIGURATION)
+    return JSONResponse(content={
+        "issuer": settings.IAM_ISSUER,
+        "jwks_uri": settings.IAM_JWKS_URL,
+        "authorization_endpoint": settings.IAM_AUTH_ENDPOINT,
+        "token_endpoint": settings.IAM_TOKEN_ENDPOINT,
+        "token_endpoint_auth_methods_supported": ["private_key_jwt", "client_secret_basic"],
+        "grant_types_supported": ["authorization_code", "client_credentials"],
+        "registration_endpoint": settings.IAM_REGISTRATION_ENDPOINT,
+        "scopes_supported": [
+            "openid", "profile", "launch", "launch/patient",
+            "patient/*.r", "patient/*.rs", "patient/*.cruds",
+            "user/*.r", "user/*.rs", "user/*.cruds",
+            "system/*.r", "system/*.rs", "system/*.cruds",
+        ],
+        "response_types_supported": ["code"],
+        "code_challenge_methods_supported": ["S256"],
+        "capabilities": [
+            "launch-ehr", "launch-standalone", "client-public",
+            "client-confidential-symmetric", "client-confidential-asymmetric",
+            "context-ehr-patient", "context-ehr-encounter",
+            "permission-patient", "permission-user", "permission-v2",
+            "authorize-post",
+        ],
+    })
 ```

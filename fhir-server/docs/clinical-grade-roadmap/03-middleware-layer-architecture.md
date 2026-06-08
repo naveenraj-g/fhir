@@ -41,11 +41,11 @@ The middle layer is a **separate service** (also FastAPI/Python to share the tea
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                   Keycloak / Auth Server                              │
+│              IAM / Auth Server  (OAuth2 + OIDC + SMART)              │
 │  • SMART App Launch v2  • PKCE  • Scope issuance                    │
 │  • JWKS endpoint  • Token introspection  • .well-known              │
 └────────────┬────────────────────────────────────────────────────────┘
-             │ JWKS (RS256 keys)
+             │ JWKS (public keys for JWT verification)
              ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     MIDDLE LAYER (Pulse Orchestrator)                │
@@ -117,7 +117,7 @@ Request
 class AuthContext:
     user_id: str          # JWT sub
     org_id: str           # activeOrganizationId
-    roles: list[str]      # keycloak resource_access roles
+    roles: list[str]      # roles extracted from JWT claims (claim name configurable)
     scopes: set[str]      # SMART v2 scopes (patient/*.cruds, user/*.rs, etc.)
     is_system: bool       # client_credentials grant (backend service)
     patient_id: str | None  # SMART launch/patient context
@@ -555,7 +555,7 @@ pulse/                           (middle layer service)
 ### Middle Layer → FHIR Server
 
 - Transport: Internal HTTPS with mutual TLS (mTLS)
-- Auth: Service account JWT (Keycloak client_credentials) with `system/*.cruds` scope
+- Auth: Service account JWT (`client_credentials` grant, RFC 7523 private_key_jwt) with `system/*.cruds` scope
 - Format: `application/fhir+json` for FHIR operations, `application/json` for plain operations
 - Audit: Middle layer is responsible for emitting AuditEvent — FHIR server just stores them
 
