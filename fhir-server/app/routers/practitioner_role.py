@@ -127,7 +127,6 @@ async def list_practitioner_roles_for_booking(
     pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
 ):
     items, total = await pr_service.list_for_booking(
-        org_id=org_id,
         active=active,
         specialty_code=specialty_code,
         day_of_week=day_of_week,
