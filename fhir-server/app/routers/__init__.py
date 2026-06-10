@@ -33,6 +33,7 @@ from .document_reference import router as document_reference_router
 from .immunization import router as immunization_router
 from .audit_event import router as audit_event_router
 from .episode_of_care import router as episode_of_care_router
+from .insurance_plan import router as insurance_plan_router
 api_router = APIRouter()
 
 api_router.include_router(patient_router, prefix="/patients", tags=["Patients"])
@@ -127,3 +128,4 @@ api_router.include_router(document_reference_router, prefix="/document-reference
 api_router.include_router(immunization_router, prefix="/immunizations", tags=["Immunizations"])
 api_router.include_router(audit_event_router, prefix="/audit-events", tags=["AuditEvents"])
 api_router.include_router(episode_of_care_router, prefix="/episode-of-cares", tags=["EpisodeOfCares"])
+api_router.include_router(insurance_plan_router, prefix="/insurance-plans", tags=["InsurancePlans"])
