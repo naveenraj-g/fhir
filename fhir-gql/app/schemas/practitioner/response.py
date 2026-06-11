@@ -214,3 +214,58 @@ class PaginatedPractitionerResponse(BaseModel):
     limit: int
     offset: int
     data: List[PractitionerResponse]
+
+
+# ── Sub-resource list response wrappers ───────────────────────────────────────
+# Each sub-resource list endpoint returns {data: [...], total: N} — NOT the full
+# paginated envelope (no limit/offset) because sub-resource collections are small
+# and returned in full.
+
+
+class PractitionerNameListResponse(BaseModel):
+    """Response shape for GET /practitioners/{id}/names."""
+
+    data: List[PlainPractitionerName]
+    total: int
+
+
+class PractitionerIdentifierListResponse(BaseModel):
+    """Response shape for GET /practitioners/{id}/identifiers."""
+
+    data: List[PlainPractitionerIdentifier]
+    total: int
+
+
+class PractitionerTelecomListResponse(BaseModel):
+    """Response shape for GET /practitioners/{id}/telecom."""
+
+    data: List[PlainPractitionerTelecom]
+    total: int
+
+
+class PractitionerAddressListResponse(BaseModel):
+    """Response shape for GET /practitioners/{id}/addresses."""
+
+    data: List[PlainPractitionerAddress]
+    total: int
+
+
+class PractitionerPhotoListResponse(BaseModel):
+    """Response shape for GET /practitioners/{id}/photos."""
+
+    data: List[PlainPractitionerPhoto]
+    total: int
+
+
+class PractitionerQualificationListResponse(BaseModel):
+    """Response shape for GET /practitioners/{id}/qualifications."""
+
+    data: List[PlainQualification]
+    total: int
+
+
+class PractitionerCommunicationListResponse(BaseModel):
+    """Response shape for GET /practitioners/{id}/communications."""
+
+    data: List[PlainPractitionerCommunication]
+    total: int

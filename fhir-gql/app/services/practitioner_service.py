@@ -14,7 +14,25 @@ from fastapi import HTTPException, status
 
 from app.auth.models import AuthUser
 from app.fhir_client.practitioner import PractitionerClient
-from app.schemas.practitioner.input import ListPractitionersSchema, PractitionerCreateSchema, PractitionerPatchSchema
+from app.schemas.practitioner.input import (
+    ListPractitionersSchema,
+    PractitionerAddressCreateSchema,
+    PractitionerAddressPatchSchema,
+    PractitionerCommunicationCreateSchema,
+    PractitionerCommunicationPatchSchema,
+    PractitionerCreateSchema,
+    PractitionerIdentifierCreateSchema,
+    PractitionerIdentifierPatchSchema,
+    PractitionerNameCreateSchema,
+    PractitionerNamePatchSchema,
+    PractitionerPatchSchema,
+    PractitionerPhotoCreateSchema,
+    PractitionerPhotoPatchSchema,
+    PractitionerQualificationCreateSchema,
+    PractitionerQualificationPatchSchema,
+    PractitionerTelecomCreateSchema,
+    PractitionerTelecomPatchSchema,
+)
 
 
 class PractitionerService:
@@ -165,3 +183,199 @@ class PractitionerService:
             actor:       Authenticated caller (kept for RBAC consistency).
         """
         await self._client.delete(resource_id)
+
+    async def get_me(self, actor: AuthUser, accept: str | None = None) -> dict:
+        """
+        Return the Practitioner record belonging to the authenticated user (Variant A — 1-to-1).
+
+        Lists with user_id=actor.sub, limit=1 (always plain JSON for the pre-check),
+        then re-fetches the found record by ID honouring `accept` for content negotiation.
+        Raises 404 if no Practitioner is linked to this user.
+
+        Args:
+            actor:  Authenticated caller — JWT subject used as the user_id filter.
+            accept: Content-type preference for the final re-fetch.
+
+        Returns:
+            The caller's Practitioner resource dict (plain JSON or FHIR R4).
+
+        Raises:
+            HTTPException(404): If no Practitioner is found for actor.sub.
+        """
+        # Internal pre-check: always plain JSON (omit accept) so we can inspect data[].
+        result = await self._client.list(user_id=actor.sub, limit=1, offset=0)
+        data = result.get("data", [])
+        if not data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No Practitioner record found for this user.",
+            )
+        # Re-fetch by ID so the correct Accept format is honoured in the response.
+        return await self._client.get_by_id(data[0]["id"], accept=accept)
+
+    def _require_patch_payload(self, payload: dict, sub_resource: str) -> None:
+        """
+        Reject empty PATCH bodies for sub-resources with a 422 error.
+
+        Called at the top of every sub-resource patch method before delegating to
+        the client. Prevents the fhir-server from receiving no-op update requests.
+
+        Args:
+            payload:      model_dump(exclude_none=True) result from the patch schema.
+            sub_resource: Human-readable name used in the error message (e.g. "name").
+
+        Raises:
+            HTTPException(422): If payload is empty.
+        """
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"At least one field must be provided to update a practitioner {sub_resource}.",
+            )
+
+    # ── Sub-resource: Names ───────────────────────────────────────────────────
+
+    async def add_name(self, practitioner_id: int, dto: PractitionerNameCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Add a HumanName sub-resource to a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        return await self._client.add_name(practitioner_id, payload, actor, accept=accept)
+
+    async def list_names(self, practitioner_id: int, accept: str | None = None) -> dict:
+        """List all HumanName sub-resources for a Practitioner. Returns {data, total}."""
+        return await self._client.list_names(practitioner_id, accept=accept)
+
+    async def patch_name(self, practitioner_id: int, name_id: int, dto: PractitionerNamePatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Update a specific HumanName on a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        self._require_patch_payload(payload, "name")
+        return await self._client.patch_name(practitioner_id, name_id, payload, actor, accept=accept)
+
+    async def delete_name(self, practitioner_id: int, name_id: int, actor: AuthUser) -> None:
+        """Remove a specific HumanName from a Practitioner."""
+        await self._client.delete_name(practitioner_id, name_id)
+
+    # ── Sub-resource: Identifiers ─────────────────────────────────────────────
+
+    async def add_identifier(self, practitioner_id: int, dto: PractitionerIdentifierCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Add an Identifier sub-resource to a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        return await self._client.add_identifier(practitioner_id, payload, actor, accept=accept)
+
+    async def list_identifiers(self, practitioner_id: int, accept: str | None = None) -> dict:
+        """List all Identifier sub-resources for a Practitioner. Returns {data, total}."""
+        return await self._client.list_identifiers(practitioner_id, accept=accept)
+
+    async def patch_identifier(self, practitioner_id: int, identifier_id: int, dto: PractitionerIdentifierPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Update a specific Identifier on a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        self._require_patch_payload(payload, "identifier")
+        return await self._client.patch_identifier(practitioner_id, identifier_id, payload, actor, accept=accept)
+
+    async def delete_identifier(self, practitioner_id: int, identifier_id: int, actor: AuthUser) -> None:
+        """Remove a specific Identifier from a Practitioner."""
+        await self._client.delete_identifier(practitioner_id, identifier_id)
+
+    # ── Sub-resource: Telecom ─────────────────────────────────────────────────
+
+    async def add_telecom(self, practitioner_id: int, dto: PractitionerTelecomCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Add a ContactPoint sub-resource to a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        return await self._client.add_telecom(practitioner_id, payload, actor, accept=accept)
+
+    async def list_telecom(self, practitioner_id: int, accept: str | None = None) -> dict:
+        """List all ContactPoint sub-resources for a Practitioner. Returns {data, total}."""
+        return await self._client.list_telecom(practitioner_id, accept=accept)
+
+    async def patch_telecom(self, practitioner_id: int, telecom_id: int, dto: PractitionerTelecomPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Update a specific ContactPoint on a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        self._require_patch_payload(payload, "telecom")
+        return await self._client.patch_telecom(practitioner_id, telecom_id, payload, actor, accept=accept)
+
+    async def delete_telecom(self, practitioner_id: int, telecom_id: int, actor: AuthUser) -> None:
+        """Remove a specific ContactPoint from a Practitioner."""
+        await self._client.delete_telecom(practitioner_id, telecom_id)
+
+    # ── Sub-resource: Addresses ───────────────────────────────────────────────
+
+    async def add_address(self, practitioner_id: int, dto: PractitionerAddressCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Add an Address sub-resource to a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        return await self._client.add_address(practitioner_id, payload, actor, accept=accept)
+
+    async def list_addresses(self, practitioner_id: int, accept: str | None = None) -> dict:
+        """List all Address sub-resources for a Practitioner. Returns {data, total}."""
+        return await self._client.list_addresses(practitioner_id, accept=accept)
+
+    async def patch_address(self, practitioner_id: int, address_id: int, dto: PractitionerAddressPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Update a specific Address on a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        self._require_patch_payload(payload, "address")
+        return await self._client.patch_address(practitioner_id, address_id, payload, actor, accept=accept)
+
+    async def delete_address(self, practitioner_id: int, address_id: int, actor: AuthUser) -> None:
+        """Remove a specific Address from a Practitioner."""
+        await self._client.delete_address(practitioner_id, address_id)
+
+    # ── Sub-resource: Photos ──────────────────────────────────────────────────
+
+    async def add_photo(self, practitioner_id: int, dto: PractitionerPhotoCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Add a photo Attachment sub-resource to a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        return await self._client.add_photo(practitioner_id, payload, actor, accept=accept)
+
+    async def list_photos(self, practitioner_id: int, accept: str | None = None) -> dict:
+        """List all photo Attachment sub-resources for a Practitioner. Returns {data, total}."""
+        return await self._client.list_photos(practitioner_id, accept=accept)
+
+    async def patch_photo(self, practitioner_id: int, photo_id: int, dto: PractitionerPhotoPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Update a specific photo on a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        self._require_patch_payload(payload, "photo")
+        return await self._client.patch_photo(practitioner_id, photo_id, payload, actor, accept=accept)
+
+    async def delete_photo(self, practitioner_id: int, photo_id: int, actor: AuthUser) -> None:
+        """Remove a specific photo from a Practitioner."""
+        await self._client.delete_photo(practitioner_id, photo_id)
+
+    # ── Sub-resource: Qualifications ──────────────────────────────────────────
+
+    async def add_qualification(self, practitioner_id: int, dto: PractitionerQualificationCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Add a qualification sub-resource to a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        return await self._client.add_qualification(practitioner_id, payload, actor, accept=accept)
+
+    async def list_qualifications(self, practitioner_id: int, accept: str | None = None) -> dict:
+        """List all qualification sub-resources for a Practitioner. Returns {data, total}."""
+        return await self._client.list_qualifications(practitioner_id, accept=accept)
+
+    async def patch_qualification(self, practitioner_id: int, qualification_id: int, dto: PractitionerQualificationPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Update a specific qualification on a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        self._require_patch_payload(payload, "qualification")
+        return await self._client.patch_qualification(practitioner_id, qualification_id, payload, actor, accept=accept)
+
+    async def delete_qualification(self, practitioner_id: int, qualification_id: int, actor: AuthUser) -> None:
+        """Remove a specific qualification from a Practitioner."""
+        await self._client.delete_qualification(practitioner_id, qualification_id)
+
+    # ── Sub-resource: Communications ──────────────────────────────────────────
+
+    async def add_communication(self, practitioner_id: int, dto: PractitionerCommunicationCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Add a language/communication preference to a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        return await self._client.add_communication(practitioner_id, payload, actor, accept=accept)
+
+    async def list_communications(self, practitioner_id: int, accept: str | None = None) -> dict:
+        """List all language preferences for a Practitioner. Returns {data, total}."""
+        return await self._client.list_communications(practitioner_id, accept=accept)
+
+    async def patch_communication(self, practitioner_id: int, communication_id: int, dto: PractitionerCommunicationPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """Update a specific language preference on a Practitioner. Returns full Practitioner."""
+        payload = dto.model_dump(exclude_none=True)
+        self._require_patch_payload(payload, "communication")
+        return await self._client.patch_communication(practitioner_id, communication_id, payload, actor, accept=accept)
+
+    async def delete_communication(self, practitioner_id: int, communication_id: int, actor: AuthUser) -> None:
+        """Remove a specific language preference from a Practitioner."""
+        await self._client.delete_communication(practitioner_id, communication_id)

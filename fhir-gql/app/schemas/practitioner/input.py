@@ -16,11 +16,19 @@ Design notes:
 """
 
 from datetime import date, datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.enums import AdministrativeGender
+from app.schemas.enums import (
+    AddressType,
+    AddressUse,
+    AdministrativeGender,
+    ContactPointSystem,
+    ContactPointUse,
+    HumanNameUse,
+    IdentifierUse,
+)
 
 
 class PractitionerCreateSchema(BaseModel):
@@ -127,3 +135,283 @@ class ListPractitionersSchema(BaseModel):
     # Pagination
     limit: int = Field(default=20, ge=1, le=200, description="Maximum number of records to return per page")
     offset: int = Field(default=0, ge=0, description="Number of records to skip before returning results")
+
+
+# ── Sub-resource: Names ───────────────────────────────────────────────────────
+
+
+class PractitionerNameCreateSchema(BaseModel):
+    """Input for adding a HumanName to a Practitioner. All fields optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    use: Optional[HumanNameUse] = Field(None, description="usual | official | temp | nickname | anonymous | old | maiden")
+    text: Optional[str] = Field(None, description="Full name as a single string.")
+    family: Optional[str] = Field(None, description="Family (last) name.")
+    given: Optional[List[str]] = Field(None, description="Given (first/middle) names.")
+    prefix: Optional[List[str]] = Field(None, description="Name prefixes (e.g. Dr., Mr.).")
+    suffix: Optional[List[str]] = Field(None, description="Name suffixes (e.g. Jr., PhD).")
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class PractitionerNamePatchSchema(BaseModel):
+    """Patchable fields for a Practitioner HumanName. All fields optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    use: Optional[HumanNameUse] = None
+    text: Optional[str] = None
+    family: Optional[str] = None
+    given: Optional[List[str]] = None
+    prefix: Optional[List[str]] = None
+    suffix: Optional[List[str]] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+# ── Sub-resource: Identifiers ─────────────────────────────────────────────────
+
+
+class PractitionerIdentifierCreateSchema(BaseModel):
+    """Input for adding an Identifier to a Practitioner. `value` is required."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    use: Optional[IdentifierUse] = Field(None, description="usual | official | temp | secondary | old")
+    type_system: Optional[str] = None
+    type_code: Optional[str] = None
+    type_display: Optional[str] = None
+    type_text: Optional[str] = None
+    system: Optional[str] = Field(None, description="URI of the identifier namespace.")
+    value: str = Field(..., description="The identifier value within the namespace.")
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    assigner: Optional[str] = Field(None, description="Display name of the organisation that issued the identifier.")
+
+
+class PractitionerIdentifierPatchSchema(BaseModel):
+    """Patchable fields for a Practitioner Identifier. All fields optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    use: Optional[IdentifierUse] = None
+    type_system: Optional[str] = None
+    type_code: Optional[str] = None
+    type_display: Optional[str] = None
+    type_text: Optional[str] = None
+    system: Optional[str] = None
+    value: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    assigner: Optional[str] = None
+
+
+# ── Sub-resource: Telecom ─────────────────────────────────────────────────────
+
+
+class PractitionerTelecomCreateSchema(BaseModel):
+    """Input for adding a ContactPoint to a Practitioner. `system` and `value` required."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    system: ContactPointSystem = Field(..., description="phone | fax | email | pager | url | sms | other")
+    value: str = Field(..., description="The actual contact value.")
+    use: Optional[ContactPointUse] = Field(None, description="home | work | temp | old | mobile")
+    rank: Optional[int] = Field(None, ge=1, description="Preferred order (1 = most preferred).")
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class PractitionerTelecomPatchSchema(BaseModel):
+    """Patchable fields for a Practitioner ContactPoint. All fields optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    system: Optional[ContactPointSystem] = None
+    value: Optional[str] = None
+    use: Optional[ContactPointUse] = None
+    rank: Optional[int] = Field(None, ge=1)
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+# ── Sub-resource: Addresses ───────────────────────────────────────────────────
+
+
+class PractitionerAddressCreateSchema(BaseModel):
+    """Input for adding an Address to a Practitioner. All fields optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    use: Optional[AddressUse] = Field(None, description="home | work | temp | old | billing")
+    type: Optional[AddressType] = Field(None, description="postal | physical | both")
+    text: Optional[str] = None
+    line: Optional[List[str]] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+class PractitionerAddressPatchSchema(BaseModel):
+    """Patchable fields for a Practitioner Address. All fields optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    use: Optional[AddressUse] = None
+    type: Optional[AddressType] = None
+    text: Optional[str] = None
+    line: Optional[List[str]] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+
+# ── Sub-resource: Photos ──────────────────────────────────────────────────────
+
+
+class PractitionerPhotoCreateSchema(BaseModel):
+    """Input for adding an Attachment (photo) to a Practitioner. All fields optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    content_type: Optional[str] = Field(None, description="MIME type (e.g. image/jpeg).")
+    language: Optional[str] = Field(None, description="BCP-47 language code.")
+    data: Optional[str] = Field(None, description="Base64-encoded photo data.")
+    url: Optional[str] = Field(None, description="URL pointing to the photo.")
+    size: Optional[int] = Field(None, description="Size in bytes.")
+    hash: Optional[str] = Field(None, description="Base64-encoded SHA-1 hash.")
+    title: Optional[str] = None
+    creation: Optional[datetime] = None
+
+
+class PractitionerPhotoPatchSchema(BaseModel):
+    """Patchable fields for a Practitioner photo Attachment. All fields optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    content_type: Optional[str] = None
+    language: Optional[str] = None
+    data: Optional[str] = None
+    url: Optional[str] = None
+    size: Optional[int] = None
+    hash: Optional[str] = None
+    title: Optional[str] = None
+    creation: Optional[datetime] = None
+
+
+# ── Sub-resource: Qualifications ──────────────────────────────────────────────
+
+
+class QualificationIdentifierInput(BaseModel):
+    """
+    An identifier attached to a qualification record.
+
+    Qualifications may have their own identifiers (e.g. a medical license number
+    is an identifier on the qualification, not the practitioner itself).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    use: Optional[IdentifierUse] = None
+    type_system: Optional[str] = None
+    type_code: Optional[str] = None
+    type_display: Optional[str] = None
+    type_text: Optional[str] = None
+    system: Optional[str] = None
+    value: str = Field(..., description="The identifier value.")
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    assigner: Optional[str] = None
+
+
+class PractitionerQualificationCreateSchema(BaseModel):
+    """
+    Input for adding a qualification (certification, license, training) to a Practitioner.
+
+    `issuer` must be a FHIR reference string e.g. 'Organization/190001'.
+    `identifier` is an optional list of identifiers on the qualification itself
+    (e.g. license number issued by the certifying body).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    identifier: Optional[List[QualificationIdentifierInput]] = Field(
+        None, description="Identifiers for this qualification (e.g. license number)."
+    )
+    # code CodeableConcept — what qualification is this?
+    code_system: Optional[str] = Field(None, description="Coding system URI for the qualification code.")
+    code_code: Optional[str] = Field(None, description="Qualification code.")
+    code_display: Optional[str] = Field(None, description="Human-readable label for the qualification.")
+    code_text: Optional[str] = Field(None, description="Plain-text description of the qualification.")
+    # status CodeableConcept — current status of the qualification
+    status_system: Optional[str] = None
+    status_code: Optional[str] = None
+    status_display: Optional[str] = None
+    status_text: Optional[str] = None
+    # validity period
+    period_start: Optional[datetime] = Field(None, description="Date qualification was issued / became valid.")
+    period_end: Optional[datetime] = Field(None, description="Date qualification expires.")
+    # issuer — the organisation that issued this qualification
+    issuer: Optional[str] = Field(None, description="FHIR reference to the issuing organisation e.g. 'Organization/190001'.")
+    issuer_display: Optional[str] = Field(None, description="Display name of the issuing organisation.")
+
+
+class PractitionerQualificationPatchSchema(BaseModel):
+    """
+    Patchable fields for a Practitioner qualification. All fields optional.
+
+    When `identifier` is provided it replaces all existing qualification identifiers
+    entirely — this is a full replacement of the nested array, not a merge.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    identifier: Optional[List[QualificationIdentifierInput]] = None
+    code_system: Optional[str] = None
+    code_code: Optional[str] = None
+    code_display: Optional[str] = None
+    code_text: Optional[str] = None
+    status_system: Optional[str] = None
+    status_code: Optional[str] = None
+    status_display: Optional[str] = None
+    status_text: Optional[str] = None
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+    issuer: Optional[str] = None
+    issuer_display: Optional[str] = None
+
+
+# ── Sub-resource: Communications ──────────────────────────────────────────────
+
+
+class PractitionerCommunicationCreateSchema(BaseModel):
+    """Input for adding a language/communication preference to a Practitioner. `language_code` required."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    language_system: Optional[str] = Field(None, description="Coding system URI (e.g. urn:ietf:bcp:47).")
+    language_code: str = Field(..., description="ISO 639-1 language code (e.g. en, fr, de).")
+    language_display: Optional[str] = None
+    language_text: Optional[str] = None
+    preferred: Optional[bool] = Field(None, description="True if this is the practitioner's preferred language.")
+
+
+class PractitionerCommunicationPatchSchema(BaseModel):
+    """Patchable fields for a Practitioner communication entry. All fields optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    language_system: Optional[str] = None
+    language_code: Optional[str] = None
+    language_display: Optional[str] = None
+    language_text: Optional[str] = None
+    preferred: Optional[bool] = None
