@@ -37,7 +37,7 @@ from app.core.content_negotiation import (
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.organization import get_organization_service
 from app.schemas.organization.fhir_schemas import FhirBundleResponse, FhirOrgResponse
-from app.schemas.organization.input import ListOrgsSchema, PatchOrgSchema, RegisterOrgSchema
+from app.schemas.organization.input import ListOrgsSchema, MeOrgsSchema, PatchOrgSchema, RegisterOrgSchema
 from app.schemas.organization.response import OrgResponse, PaginatedOrgResponse
 from app.services.organization_service import OrganizationsService
 
@@ -119,6 +119,35 @@ async def register_organization(
     accept = get_accept_header(request)
     data = await service.register(dto, actor, accept=accept)
     return format_response(data, request)
+
+
+@router.get(
+    "/me",
+    operation_id="get_my_organizations",
+    summary="Get Organizations for the current user",
+    description=(
+        "Returns Organizations scoped to the calling user's JWT identity. "
+        "`user_id` and `org_id` are derived from the token — the caller cannot override them. "
+        "Supports `active` filter and `limit`/`offset` pagination. "
+        "Send `Accept: application/fhir+json` to receive results as a FHIR Bundle searchset."
+    ),
+    responses={**_LIST_200},
+    dependencies=[Depends(require_permission("org", "read"))],
+)
+async def get_my_organizations(
+    request: Request,
+    filters: MeOrgsSchema = Depends(),
+    actor: AuthUser = Depends(require_permission("org", "read")),
+    service: OrganizationsService = Depends(get_organization_service),
+) -> JSONResponse:
+    """
+    List Organizations owned by the current user. Scoping by user_id and org_id
+    is enforced server-side using JWT claims — no identity params are accepted from
+    the query string.
+    """
+    accept = get_accept_header(request)
+    data = await service.get_me(filters, actor, accept=accept)
+    return format_paginated_response(data, request)
 
 
 @router.get(

@@ -25,7 +25,7 @@ from fastapi import HTTPException, status
 
 from app.auth.models import AuthUser
 from app.fhir_client.organization import OrganizationClient
-from app.schemas.organization.input import ListOrgsSchema, PatchOrgSchema, RegisterOrgSchema
+from app.schemas.organization.input import ListOrgsSchema, MeOrgsSchema, PatchOrgSchema, RegisterOrgSchema
 
 
 class OrganizationsService:
@@ -134,6 +134,34 @@ class OrganizationsService:
         return await self._client.list(
             accept=accept,
             name=filters.name,
+            active=filters.active,
+            user_id=filters.user_id,
+            org_id=filters.org_id,
+            limit=filters.limit,
+            offset=filters.offset,
+        )
+
+    async def get_me(self, filters: MeOrgsSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """
+        Return Organizations that belong to the calling user's JWT identity.
+
+        Extracts user_id (actor.sub) and org_id (actor.org_id) from the authenticated
+        context and passes them as filters to the FHIR Server. The caller cannot supply
+        these values — they are always derived from the validated JWT so a user can only
+        retrieve their own organizations.
+
+        Args:
+            filters: Pagination and optional active-status filter from query params.
+            actor:   Authenticated user; provides user_id and org_id for scoping.
+            accept:  Optional Accept header forwarded from the client.
+
+        Returns:
+            Paginated plain JSON dict or FHIR Bundle depending on `accept`.
+        """
+        return await self._client.list(
+            accept=accept,
+            user_id=actor.sub,
+            org_id=actor.org_id,
             active=filters.active,
             limit=filters.limit,
             offset=filters.offset,

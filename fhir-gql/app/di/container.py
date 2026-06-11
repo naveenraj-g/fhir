@@ -25,7 +25,8 @@ Container hierarchy:
     ├── schedule           →  ScheduleContainer           (Schedule CRUD service + client)
     ├── slot               →  SlotContainer               (Slot CRUD service + client)
     ├── practitioner       →  PractitionerContainer       (Practitioner CRUD service + client)
-    └── practitioner_role  →  PractitionerRoleContainer   (PractitionerRole CRUD service + client)
+    ├── practitioner_role  →  PractitionerRoleContainer   (PractitionerRole CRUD service + client)
+    └── patient            →  PatientContainer            (Patient CRUD + 9 sub-resource clients)
 """
 
 from dependency_injector import containers, providers
@@ -35,6 +36,7 @@ from app.di.modules import (
     HealthcareServiceContainer,
     LocationContainer,
     OrganizationContainer,
+    PatientContainer,
     PractitionerContainer,
     PractitionerRoleContainer,
     ScheduleContainer,
@@ -114,5 +116,14 @@ class Container(containers.DeclarativeContainer):
     # A PractitionerRole describes the role a Practitioner plays at an Organisation.
     practitioner_role = providers.Container(
         PractitionerRoleContainer,
+        core=core,
+    )
+
+    # Domain container for Patient resources.
+    # A Patient is a person receiving care or other health-related services.
+    # Includes sub-resource clients for names, identifiers, telecom, addresses,
+    # photos, contacts, communications, general practitioners, and links.
+    patient = providers.Container(
+        PatientContainer,
         core=core,
     )

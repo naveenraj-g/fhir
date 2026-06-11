@@ -223,5 +223,20 @@ class ListOrgsSchema(BaseModel):
 
     name: Optional[str] = Field(None, description="Case-insensitive substring match on name.")
     active: Optional[bool] = Field(None, description="Filter by active status.")
+    user_id: Optional[str] = Field(None, description="Filter by owning user (JWT subject).")
+    org_id: Optional[str] = Field(None, description="Filter by tenant organization ID.")
+    limit: int = Field(50, ge=1, le=200, description="Max results to return.")
+    offset: int = Field(0, ge=0, description="Number of results to skip.")
+
+
+class MeOrgsSchema(BaseModel):
+    """
+    Pagination parameters for the /me endpoint.
+
+    Identity filters (user_id, org_id) are extracted from the JWT — the caller
+    cannot override which user's organizations are returned.
+    """
+
+    active: Optional[bool] = Field(None, description="Filter by active status.")
     limit: int = Field(50, ge=1, le=200, description="Max results to return.")
     offset: int = Field(0, ge=0, description="Number of results to skip.")
