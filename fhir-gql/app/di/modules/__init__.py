@@ -1,3 +1,4 @@
+from app.di.modules.appointment import AppointmentContainer
 from app.di.modules.healthcare_service import HealthcareServiceContainer
 from app.di.modules.location import LocationContainer
 from app.di.modules.organization import OrganizationContainer
@@ -16,4 +17,5 @@ __all__ = [
     "PractitionerContainer",
     "PractitionerRoleContainer",
     "PatientContainer",
+    "AppointmentContainer",
 ]

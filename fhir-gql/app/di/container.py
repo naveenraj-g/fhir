@@ -33,6 +33,7 @@ from dependency_injector import containers, providers
 
 from app.di.core import CoreContainer
 from app.di.modules import (
+    AppointmentContainer,
     HealthcareServiceContainer,
     LocationContainer,
     OrganizationContainer,
@@ -125,5 +126,14 @@ class Container(containers.DeclarativeContainer):
     # photos, contacts, communications, general practitioners, and links.
     patient = providers.Container(
         PatientContainer,
+        core=core,
+    )
+
+    # Domain container for Appointment resources.
+    # An Appointment is a booking of a healthcare event. All child arrays
+    # (participant, slot, reason, etc.) are created in the POST body — the
+    # fhir-server has no separate sub-resource routes for Appointment.
+    appointment = providers.Container(
+        AppointmentContainer,
         core=core,
     )

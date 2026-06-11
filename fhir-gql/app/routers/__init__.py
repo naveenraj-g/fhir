@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.routers.appointment import router as appointments_router
 from app.routers.healthcare_service import router as healthcare_services_router
 from app.routers.location import router as locations_router
 from app.routers.organization import router as organizations_router
@@ -20,4 +21,5 @@ api_router.include_router(slots_router)
 api_router.include_router(practitioners_router)
 api_router.include_router(practitioner_roles_router)
 api_router.include_router(patients_router)
+api_router.include_router(appointments_router)
 api_router.include_router(terminology_router)
