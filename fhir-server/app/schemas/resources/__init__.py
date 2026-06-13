@@ -1,6 +1,7 @@
 from app.schemas.patient.input import (
     PatientCreateSchema,
     PatientPatchSchema,
+    PatientFullCreateSchema,
     NameCreate,
     NamePatch,
     IdentifierCreate,
@@ -29,6 +30,7 @@ from app.schemas.patient.response import PlainPatientResponse as PatientResponse
 __all__ = [
     "PatientCreateSchema",
     "PatientPatchSchema",
+    "PatientFullCreateSchema",
     "PatientResponseSchema",
     "NameCreate", "NamePatch",
     "IdentifierCreate", "IdentifierPatch",

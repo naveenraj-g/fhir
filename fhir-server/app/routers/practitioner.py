@@ -30,6 +30,7 @@ from app.schemas.fhir import (
 )
 from app.schemas.practitioner import (
     PractitionerCreateSchema,
+    PractitionerFullCreateSchema,
     PractitionerPatchSchema,
     PractitionerNameCreate,
     PractitionerNamePatch,
@@ -139,6 +140,35 @@ async def create_practitioner(
 ):
     created_by = payload.created_by
     practitioner = await practitioner_service.create_practitioner(payload, payload.user_id, payload.org_id, created_by)
+    return format_response(
+        practitioner_service._to_fhir(practitioner),
+        practitioner_service._to_plain(practitioner),
+        request,
+    )
+
+
+@router.post(
+    "/full",
+    status_code=status.HTTP_201_CREATED,
+    operation_id="create_practitioner_full",
+    summary="Create a Practitioner resource with all sub-resources in one request",
+    description=(
+        "Creates a Practitioner and any combination of sub-resources (names, identifiers, telecom, "
+        "addresses, photos, qualifications, communications) atomically in a single DB transaction — "
+        "if any insert fails the entire request rolls back. "
+        "All sub-resource lists are optional; omit any to skip those sub-resources. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
+)
+async def create_practitioner_full(
+    payload: PractitionerFullCreateSchema,
+    request: Request,
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    practitioner = await practitioner_service.create_practitioner_full(
+        payload, payload.user_id, payload.org_id, payload.created_by
+    )
     return format_response(
         practitioner_service._to_fhir(practitioner),
         practitioner_service._to_plain(practitioner),

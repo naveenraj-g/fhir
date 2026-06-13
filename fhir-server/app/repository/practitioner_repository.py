@@ -19,6 +19,7 @@ from app.models.enums import OrganizationReferenceType
 from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
+    PractitionerFullCreateSchema,
     PractitionerNameCreate,
     PractitionerNamePatch,
     PractitionerIdentifierCreate,
@@ -183,6 +184,165 @@ class PractitionerRepository:
             except Exception:
                 await session.rollback()
                 raise
+        return await self.get_by_practitioner_id(practitioner.practitioner_id)
+
+    async def create_full(
+        self,
+        payload: PractitionerFullCreateSchema,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
+    ) -> PractitionerModel:
+        async with self.session_factory() as session:
+            practitioner = PractitionerModel(
+                user_id=user_id,
+                org_id=org_id,
+                active=payload.active,
+                gender=payload.gender,
+                birth_date=payload.birth_date,
+                deceased_boolean=payload.deceased_boolean,
+                deceased_datetime=payload.deceased_datetime,
+                created_by=created_by,
+            )
+            session.add(practitioner)
+            await session.flush()
+
+            if payload.names:
+                for n in payload.names:
+                    session.add(PractitionerName(
+                        practitioner_id=practitioner.id,
+                        org_id=org_id,
+                        use=n.use,
+                        text=n.text,
+                        family=n.family,
+                        given=",".join(n.given) if n.given else None,
+                        prefix=",".join(n.prefix) if n.prefix else None,
+                        suffix=",".join(n.suffix) if n.suffix else None,
+                        period_start=n.period_start,
+                        period_end=n.period_end,
+                    ))
+
+            if payload.identifiers:
+                for i in payload.identifiers:
+                    session.add(PractitionerIdentifier(
+                        practitioner_id=practitioner.id,
+                        org_id=org_id,
+                        use=i.use,
+                        type_system=i.type_system,
+                        type_code=i.type_code,
+                        type_display=i.type_display,
+                        type_text=i.type_text,
+                        system=i.system,
+                        value=i.value,
+                        period_start=i.period_start,
+                        period_end=i.period_end,
+                        assigner=i.assigner,
+                    ))
+
+            if payload.telecom:
+                for t in payload.telecom:
+                    session.add(PractitionerTelecom(
+                        practitioner_id=practitioner.id,
+                        org_id=org_id,
+                        system=t.system,
+                        value=t.value,
+                        use=t.use,
+                        rank=t.rank,
+                        period_start=t.period_start,
+                        period_end=t.period_end,
+                    ))
+
+            if payload.addresses:
+                for a in payload.addresses:
+                    session.add(PractitionerAddress(
+                        practitioner_id=practitioner.id,
+                        org_id=org_id,
+                        use=a.use,
+                        type=a.type,
+                        text=a.text,
+                        line=", ".join(a.line) if a.line else None,
+                        city=a.city,
+                        district=a.district,
+                        state=a.state,
+                        postal_code=a.postal_code,
+                        country=a.country,
+                        period_start=a.period_start,
+                        period_end=a.period_end,
+                    ))
+
+            if payload.photos:
+                for p in payload.photos:
+                    session.add(PractitionerPhoto(
+                        practitioner_id=practitioner.id,
+                        org_id=org_id,
+                        content_type=p.content_type,
+                        language=p.language,
+                        data=p.data,
+                        url=p.url,
+                        size=p.size,
+                        hash=p.hash,
+                        title=p.title,
+                        creation=p.creation,
+                    ))
+
+            if payload.qualifications:
+                for q in payload.qualifications:
+                    qualification = PractitionerQualification(
+                        practitioner_id=practitioner.id,
+                        org_id=org_id,
+                        code_system=q.code_system,
+                        code_code=q.code_code,
+                        code_display=q.code_display,
+                        code_text=q.code_text,
+                        status_system=q.status_system,
+                        status_code=q.status_code,
+                        status_display=q.status_display,
+                        status_text=q.status_text,
+                        period_start=q.period_start,
+                        period_end=q.period_end,
+                        issuer_type=(_parse_org_ref(q.issuer)[0] if q.issuer else None),
+                        issuer_id=(_parse_org_ref(q.issuer)[1] if q.issuer else None),
+                        issuer_display=q.issuer_display,
+                    )
+                    session.add(qualification)
+                    await session.flush()
+
+                    if q.identifier:
+                        for qi in q.identifier:
+                            session.add(PractitionerQualificationIdentifier(
+                                qualification_id=qualification.id,
+                                org_id=org_id,
+                                use=qi.use,
+                                type_system=qi.type_system,
+                                type_code=qi.type_code,
+                                type_display=qi.type_display,
+                                type_text=qi.type_text,
+                                system=qi.system,
+                                value=qi.value,
+                                period_start=qi.period_start,
+                                period_end=qi.period_end,
+                                assigner=qi.assigner,
+                            ))
+
+            if payload.communications:
+                for cm in payload.communications:
+                    session.add(PractitionerCommunication(
+                        practitioner_id=practitioner.id,
+                        org_id=org_id,
+                        language_system=cm.language_system,
+                        language_code=cm.language_code,
+                        language_display=cm.language_display,
+                        language_text=cm.language_text,
+                        preferred=cm.preferred,
+                    ))
+
+            try:
+                await session.commit()
+                await session.refresh(practitioner)
+            except Exception:
+                await session.rollback()
+                raise
+
         return await self.get_by_practitioner_id(practitioner.practitioner_id)
 
     async def patch(

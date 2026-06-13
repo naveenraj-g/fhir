@@ -1,6 +1,7 @@
 from app.schemas.practitioner.input import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
+    PractitionerFullCreateSchema,
     PractitionerNameCreate,
     PractitionerNamePatch,
     PractitionerIdentifierCreate,
@@ -55,6 +56,7 @@ __all__ = [
     # Input
     "PractitionerCreateSchema",
     "PractitionerPatchSchema",
+    "PractitionerFullCreateSchema",
     "PractitionerNameCreate", "PractitionerNamePatch",
     "PractitionerIdentifierCreate", "PractitionerIdentifierPatch",
     "PractitionerTelecomCreate", "PractitionerTelecomPatch",

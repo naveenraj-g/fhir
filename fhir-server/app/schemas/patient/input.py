@@ -336,3 +336,32 @@ class PatientPatchSchema(BaseModel):
     managing_organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")
     managing_organization_display: Optional[str] = None
     updated_by: Optional[str] = None
+
+
+class PatientFullCreateSchema(PatientCreateSchema):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "user_id": "user-uuid-123",
+                "org_id": "org-uuid-456",
+                "active": True,
+                "gender": "male",
+                "birth_date": "1985-04-12",
+                "names": [{"use": "official", "family": "Doe", "given": ["John"]}],
+                "identifiers": [{"value": "MRN-123456", "system": "http://hospital.com/mrn"}],
+                "telecom": [{"system": "phone", "value": "+1-555-123-4567", "use": "mobile"}],
+                "addresses": [{"use": "home", "city": "New York", "state": "NY", "country": "USA"}],
+                "communications": [{"language_code": "en", "preferred": True}],
+            }
+        },
+    )
+    names: Optional[List[NameCreate]] = None
+    identifiers: Optional[List[IdentifierCreate]] = None
+    telecom: Optional[List[TelecomCreate]] = None
+    addresses: Optional[List[AddressCreate]] = None
+    photos: Optional[List[PhotoCreate]] = None
+    contacts: Optional[List[ContactCreate]] = None
+    communications: Optional[List[CommunicationCreate]] = None
+    general_practitioners: Optional[List[GeneralPractitionerCreate]] = None
+    links: Optional[List[LinkCreate]] = None

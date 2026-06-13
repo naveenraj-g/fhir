@@ -18,6 +18,7 @@ from app.schemas.resources import (
     NameCreate,
     NamePatch,
     PatientCreateSchema,
+    PatientFullCreateSchema,
     PatientPatchSchema,
     PhotoCreate,
     PhotoPatch,
@@ -85,6 +86,15 @@ class PatientService:
         created_by: Optional[str] = None,
     ) -> PatientModel:
         return await self.repository.create(payload, user_id, org_id, created_by)
+
+    async def create_patient_full(
+        self,
+        payload: PatientFullCreateSchema,
+        user_id: Optional[str],
+        org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
+    ) -> PatientModel:
+        return await self.repository.create_full(payload, user_id, org_id, created_by)
 
     async def patch_patient(
         self, patient_id: int, payload: PatientPatchSchema, updated_by: Optional[str] = None

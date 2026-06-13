@@ -34,6 +34,7 @@ from app.schemas.fhir import (
 )
 from app.schemas.resources import (
     PatientCreateSchema,
+    PatientFullCreateSchema,
     PatientPatchSchema,
     NameCreate,
     NamePatch,
@@ -160,6 +161,29 @@ async def create_patient(
     return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
 
 
+@router.post(
+    "/full",
+    status_code=status.HTTP_201_CREATED,
+    operation_id="create_patient_full",
+    summary="Create a Patient resource with all sub-resources in one request",
+    description=(
+        "Creates a Patient and any combination of sub-resources (names, identifiers, telecom, "
+        "addresses, photos, contacts, communications, general practitioners, links) atomically "
+        "in a single DB transaction — if any insert fails the entire request rolls back. "
+        "All sub-resource lists are optional; omit any to skip those sub-resources. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
+)
+async def create_patient_full(
+    payload: PatientFullCreateSchema,
+    request: Request,
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    patient = await patient_service.create_patient_full(
+        payload, payload.user_id, payload.org_id, payload.created_by
+    )
+    return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
 
 
 

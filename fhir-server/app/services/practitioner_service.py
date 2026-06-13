@@ -5,6 +5,7 @@ from app.repository.practitioner_repository import PractitionerRepository
 from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
+    PractitionerFullCreateSchema,
     PractitionerNameCreate,
     PractitionerNamePatch,
     PractitionerIdentifierCreate,
@@ -75,6 +76,15 @@ class PractitionerService:
         created_by: Optional[str] = None,
     ) -> PractitionerModel:
         return await self.repository.create(payload, user_id, org_id, created_by)
+
+    async def create_practitioner_full(
+        self,
+        payload: PractitionerFullCreateSchema,
+        user_id: Optional[str] = None,
+        org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
+    ) -> PractitionerModel:
+        return await self.repository.create_full(payload, user_id, org_id, created_by)
 
     async def patch_practitioner(
         self,

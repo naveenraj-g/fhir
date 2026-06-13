@@ -36,6 +36,7 @@ from app.schemas.resources import (
     NameCreate,
     NamePatch,
     PatientCreateSchema,
+    PatientFullCreateSchema,
     PatientPatchSchema,
     PhotoCreate,
     PhotoPatch,
@@ -223,6 +224,224 @@ class PatientRepository:
             )
             try:
                 session.add(patient)
+                await session.commit()
+                await session.refresh(patient)
+            except Exception:
+                await session.rollback()
+                raise
+
+        return await self.get_by_patient_id(patient.patient_id)
+
+    async def create_full(
+        self,
+        payload: PatientFullCreateSchema,
+        user_id: Optional[str],
+        org_id: Optional[str] = None,
+        created_by: Optional[str] = None,
+    ) -> PatientModel:
+        async with self.session_factory() as session:
+            patient = PatientModel(
+                user_id=user_id,
+                org_id=org_id,
+                active=payload.active,
+                gender=payload.gender,
+                birth_date=payload.birth_date,
+                deceased_boolean=payload.deceased_boolean,
+                deceased_datetime=payload.deceased_datetime,
+                marital_status_system=payload.marital_status_system,
+                marital_status_code=payload.marital_status_code,
+                marital_status_display=payload.marital_status_display,
+                marital_status_text=payload.marital_status_text,
+                multiple_birth_boolean=payload.multiple_birth_boolean,
+                multiple_birth_integer=payload.multiple_birth_integer,
+                managing_organization_type=(
+                    _parse_org_ref(payload.managing_organization)[0]
+                    if payload.managing_organization else None
+                ),
+                managing_organization_id=(
+                    _parse_org_ref(payload.managing_organization)[1]
+                    if payload.managing_organization else None
+                ),
+                managing_organization_display=payload.managing_organization_display,
+                created_by=created_by,
+            )
+            session.add(patient)
+            await session.flush()
+
+            if payload.names:
+                for n in payload.names:
+                    session.add(PatientName(
+                        patient_id=patient.id,
+                        org_id=org_id,
+                        use=n.use,
+                        text=n.text,
+                        family=n.family,
+                        given=", ".join(n.given) if n.given else None,
+                        prefix=", ".join(n.prefix) if n.prefix else None,
+                        suffix=", ".join(n.suffix) if n.suffix else None,
+                        period_start=n.period_start,
+                        period_end=n.period_end,
+                    ))
+
+            if payload.identifiers:
+                for i in payload.identifiers:
+                    session.add(PatientIdentifier(
+                        patient_id=patient.id,
+                        org_id=org_id,
+                        use=i.use,
+                        type_system=i.type_system,
+                        type_code=i.type_code,
+                        type_display=i.type_display,
+                        type_text=i.type_text,
+                        system=i.system,
+                        value=i.value,
+                        period_start=i.period_start,
+                        period_end=i.period_end,
+                        assigner=i.assigner,
+                    ))
+
+            if payload.telecom:
+                for t in payload.telecom:
+                    session.add(PatientTelecom(
+                        patient_id=patient.id,
+                        org_id=org_id,
+                        system=t.system,
+                        value=t.value,
+                        use=t.use,
+                        rank=t.rank,
+                        period_start=t.period_start,
+                        period_end=t.period_end,
+                    ))
+
+            if payload.addresses:
+                for a in payload.addresses:
+                    session.add(PatientAddress(
+                        patient_id=patient.id,
+                        org_id=org_id,
+                        use=a.use,
+                        type=a.type,
+                        text=a.text,
+                        line=", ".join(a.line) if a.line else None,
+                        city=a.city,
+                        district=a.district,
+                        state=a.state,
+                        postal_code=a.postal_code,
+                        country=a.country,
+                        period_start=a.period_start,
+                        period_end=a.period_end,
+                    ))
+
+            if payload.photos:
+                for p in payload.photos:
+                    session.add(PatientPhoto(
+                        patient_id=patient.id,
+                        org_id=org_id,
+                        content_type=p.content_type,
+                        language=p.language,
+                        data=p.data,
+                        url=p.url,
+                        size=p.size,
+                        hash=p.hash,
+                        title=p.title,
+                        creation=p.creation,
+                    ))
+
+            if payload.contacts:
+                for c in payload.contacts:
+                    contact = PatientContact(
+                        patient_id=patient.id,
+                        org_id=org_id,
+                        name_use=c.name_use,
+                        name_text=c.name_text,
+                        name_family=c.name_family,
+                        name_given=", ".join(c.name_given) if c.name_given else None,
+                        name_prefix=", ".join(c.name_prefix) if c.name_prefix else None,
+                        name_suffix=", ".join(c.name_suffix) if c.name_suffix else None,
+                        address_use=c.address_use,
+                        address_type=c.address_type,
+                        address_text=c.address_text,
+                        address_line=", ".join(c.address_line) if c.address_line else None,
+                        address_city=c.address_city,
+                        address_district=c.address_district,
+                        address_state=c.address_state,
+                        address_postal_code=c.address_postal_code,
+                        address_country=c.address_country,
+                        address_period_start=c.address_period_start,
+                        address_period_end=c.address_period_end,
+                        gender=c.gender,
+                        organization_type=(
+                            _parse_org_ref(c.organization)[0]
+                            if c.organization else None
+                        ),
+                        organization_id=(
+                            _parse_org_ref(c.organization)[1]
+                            if c.organization else None
+                        ),
+                        organization_display=c.organization_display,
+                        period_start=c.period_start,
+                        period_end=c.period_end,
+                    )
+                    session.add(contact)
+                    await session.flush()
+
+                    if c.relationship:
+                        for r in c.relationship:
+                            session.add(PatientContactRelationship(
+                                contact_id=contact.id,
+                                org_id=org_id,
+                                coding_system=r.coding_system,
+                                coding_code=r.coding_code,
+                                coding_display=r.coding_display,
+                                text=r.text,
+                            ))
+
+                    if c.telecom:
+                        for t in c.telecom:
+                            session.add(PatientContactTelecom(
+                                contact_id=contact.id,
+                                org_id=org_id,
+                                system=t.system,
+                                value=t.value,
+                                use=t.use,
+                                rank=t.rank,
+                                period_start=t.period_start,
+                                period_end=t.period_end,
+                            ))
+
+            if payload.communications:
+                for cm in payload.communications:
+                    session.add(PatientCommunication(
+                        patient_id=patient.id,
+                        org_id=org_id,
+                        language_system=cm.language_system,
+                        language_code=cm.language_code,
+                        language_display=cm.language_display,
+                        language_text=cm.language_text,
+                        preferred=cm.preferred,
+                    ))
+
+            if payload.general_practitioners:
+                for gp in payload.general_practitioners:
+                    session.add(PatientGeneralPractitioner(
+                        patient_id=patient.id,
+                        org_id=org_id,
+                        reference_type=gp.reference_type,
+                        reference_id=gp.reference_id,
+                        reference_display=gp.reference_display,
+                    ))
+
+            if payload.links:
+                for lk in payload.links:
+                    session.add(PatientLink(
+                        patient_id=patient.id,
+                        org_id=org_id,
+                        other_type=lk.other_type,
+                        other_id=lk.other_id,
+                        other_display=lk.other_display,
+                        type=lk.type,
+                    ))
+
+            try:
                 await session.commit()
                 await session.refresh(patient)
             except Exception:
