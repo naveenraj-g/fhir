@@ -57,6 +57,24 @@ class PractitionerClient:
         """
         return await self._fhir.post(_PATH, data, actor, accept=accept)
 
+    async def create_full(self, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
+        """
+        POST /practitioners/full — create a Practitioner and all sub-resources atomically.
+
+        The fhir-server wraps every insert in a single DB transaction so the
+        Practitioner and all provided sub-resource rows are created together or not
+        at all. FhirClient.post() stamps `created_by: actor.sub` automatically.
+
+        Args:
+            data:   Serialised PractitionerFullCreateSchema (exclude_none=True applied upstream).
+            actor:  Authenticated caller — used by FhirClient to stamp created_by.
+            accept: Content-type preference forwarded to the fhir-server.
+
+        Returns:
+            The newly created Practitioner dict with all sub-resources populated.
+        """
+        return await self._fhir.post(f"{_PATH}/full", data, actor, accept=accept)
+
     async def get_by_id(self, resource_id: int, accept: str | None = None) -> dict:
         """
         GET /practitioners/{resource_id} — fetch a single Practitioner by integer ID.

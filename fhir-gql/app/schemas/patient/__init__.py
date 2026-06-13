@@ -29,6 +29,7 @@ from app.schemas.patient.input import (
     NameCreateSchema,
     NamePatchSchema,
     PatientCreateSchema,
+    PatientFullCreateSchema,
     PatientPatchSchema,
     PhotoCreateSchema,
     PhotoPatchSchema,
@@ -65,6 +66,7 @@ __all__ = [
     "PatientLinkType",
     # Input — top-level
     "PatientCreateSchema",
+    "PatientFullCreateSchema",
     "PatientPatchSchema",
     "ListPatientsSchema",
     # Input — sub-resources

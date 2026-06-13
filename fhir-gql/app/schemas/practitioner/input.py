@@ -415,3 +415,49 @@ class PractitionerCommunicationPatchSchema(BaseModel):
     language_display: Optional[str] = None
     language_text: Optional[str] = None
     preferred: Optional[bool] = None
+
+
+# ── Full atomic create ────────────────────────────────────────────────────────
+
+
+class PractitionerFullCreateSchema(PractitionerCreateSchema):
+    """
+    Input schema for creating a Practitioner and any combination of sub-resources
+    atomically in a single request.
+
+    Extends PractitionerCreateSchema with 7 optional sub-resource arrays. Each array
+    is forwarded to the fhir-server's POST /practitioners/full endpoint, which wraps
+    all inserts in one DB transaction — if any sub-resource insert fails, the entire
+    request rolls back and no records are created.
+
+    All arrays are optional; omit any to skip those sub-resources.
+    Practitioner has no contacts, general_practitioners, or links — only the 7
+    arrays below are supported (matching the FHIR R4 Practitioner resource model).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "user_id": "user-uuid-123",
+                "org_id": "org-uuid-456",
+                "active": True,
+                "gender": "female",
+                "birth_date": "1978-03-15",
+                "names": [{"use": "official", "family": "Smith", "given": ["Jane"]}],
+                "identifiers": [{"value": "1234567890", "system": "http://hl7.org/fhir/sid/us-npi"}],
+                "telecom": [{"system": "email", "value": "jane.smith@hospital.org", "use": "work"}],
+                "qualifications": [{"code_code": "MD", "code_display": "Doctor of Medicine"}],
+                "communications": [{"language_code": "en", "preferred": True}],
+            }
+        },
+    )
+
+    # Sub-resource arrays — all optional; any combination may be provided.
+    names: Optional[List[PractitionerNameCreateSchema]] = None
+    identifiers: Optional[List[PractitionerIdentifierCreateSchema]] = None
+    telecom: Optional[List[PractitionerTelecomCreateSchema]] = None
+    addresses: Optional[List[PractitionerAddressCreateSchema]] = None
+    photos: Optional[List[PractitionerPhotoCreateSchema]] = None
+    qualifications: Optional[List[PractitionerQualificationCreateSchema]] = None
+    communications: Optional[List[PractitionerCommunicationCreateSchema]] = None

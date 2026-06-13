@@ -13,6 +13,7 @@ from app.schemas.practitioner.input import (
     PractitionerCommunicationCreateSchema,
     PractitionerCommunicationPatchSchema,
     PractitionerCreateSchema,
+    PractitionerFullCreateSchema,
     PractitionerIdentifierCreateSchema,
     PractitionerIdentifierPatchSchema,
     PractitionerNameCreateSchema,
@@ -49,6 +50,7 @@ from app.schemas.practitioner.response import (
 __all__ = [
     # ── Input schemas (request body validation) ───────────────────────────────
     "PractitionerCreateSchema",
+    "PractitionerFullCreateSchema",
     "PractitionerPatchSchema",
     "ListPractitionersSchema",
     # Sub-resource create schemas

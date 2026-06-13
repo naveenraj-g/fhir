@@ -21,6 +21,7 @@ from app.schemas.practitioner.input import (
     PractitionerCommunicationCreateSchema,
     PractitionerCommunicationPatchSchema,
     PractitionerCreateSchema,
+    PractitionerFullCreateSchema,
     PractitionerIdentifierCreateSchema,
     PractitionerIdentifierPatchSchema,
     PractitionerNameCreateSchema,
@@ -80,6 +81,31 @@ class PractitionerService:
         """
         payload = dto.model_dump(exclude_none=True)
         return await self._client.create(payload, actor, accept=accept)
+
+    async def create_full(
+        self,
+        dto: PractitionerFullCreateSchema,
+        actor: AuthUser,
+        accept: str | None = None,
+    ) -> dict:
+        """
+        Create a Practitioner and all sub-resources atomically in a single fhir-server request.
+
+        Serialises the full DTO — Pydantic recurses into nested sub-resource lists
+        so names/identifiers/qualifications/etc. are serialised correctly.
+        exclude_none=True strips omitted optional arrays so the fhir-server doesn't see nulls.
+        FhirClient.post() stamps created_by from actor.sub automatically.
+
+        Args:
+            dto:    Validated PractitionerFullCreateSchema from the router.
+            actor:  Authenticated caller — used by FhirClient for created_by.
+            accept: Content-type preference forwarded to the fhir-server.
+
+        Returns:
+            The newly created Practitioner dict with all sub-resources populated.
+        """
+        payload = dto.model_dump(exclude_none=True, mode="json")
+        return await self._client.create_full(payload, actor, accept=accept)
 
     async def get_by_id(
         self,

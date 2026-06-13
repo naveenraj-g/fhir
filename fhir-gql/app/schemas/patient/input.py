@@ -538,3 +538,49 @@ class LinkPatchSchema(BaseModel):
     other_id: Optional[int] = None
     other_display: Optional[str] = None
     type: Optional[PatientLinkType] = None
+
+
+# ── Full atomic create ────────────────────────────────────────────────────────
+
+
+class PatientFullCreateSchema(PatientCreateSchema):
+    """
+    Input schema for creating a Patient and any combination of sub-resources
+    atomically in a single request.
+
+    Extends PatientCreateSchema with 9 optional sub-resource arrays. Each array
+    is forwarded to the fhir-server's POST /patients/full endpoint, which wraps
+    all inserts in one DB transaction — if any sub-resource insert fails, the
+    entire request rolls back and no records are created.
+
+    All arrays are optional; omit any to skip those sub-resources.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "user_id": "u-abc123",
+                "org_id": "org-xyz456",
+                "active": True,
+                "gender": "female",
+                "birth_date": "1990-06-15",
+                "names": [{"use": "official", "family": "Doe", "given": ["Jane"]}],
+                "identifiers": [{"value": "MRN-98765", "system": "http://hospital.com/mrn"}],
+                "telecom": [{"system": "email", "value": "jane@example.com", "use": "home"}],
+                "addresses": [{"use": "home", "city": "Boston", "state": "MA", "country": "USA"}],
+                "communications": [{"language_code": "en", "preferred": True}],
+            }
+        },
+    )
+
+    # Sub-resource arrays — all optional; any combination may be provided.
+    names: Optional[List[NameCreateSchema]] = None
+    identifiers: Optional[List[IdentifierCreateSchema]] = None
+    telecom: Optional[List[TelecomCreateSchema]] = None
+    addresses: Optional[List[AddressCreateSchema]] = None
+    photos: Optional[List[PhotoCreateSchema]] = None
+    contacts: Optional[List[ContactCreateSchema]] = None
+    communications: Optional[List[CommunicationCreateSchema]] = None
+    general_practitioners: Optional[List[GeneralPractitionerCreateSchema]] = None
+    links: Optional[List[LinkCreateSchema]] = None

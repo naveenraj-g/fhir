@@ -133,7 +133,7 @@ class FhirClient:
 
         Args:
             path:   FHIR Server endpoint path including the resource ID.
-            data:   Partial payload from the schema's model_dump(exclude_none=True).
+            data:   Partial payload from the schema's model_dump(exclude_none=True, mode="json").
             actor:  Authenticated user performing the operation.
             accept: Optional Accept header forwarded from the client request for
                     content negotiation — same semantics as in post().

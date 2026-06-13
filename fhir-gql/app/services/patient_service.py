@@ -35,6 +35,7 @@ from app.schemas.patient.input import (
     NameCreateSchema,
     NamePatchSchema,
     PatientCreateSchema,
+    PatientFullCreateSchema,
     PatientPatchSchema,
     PhotoCreateSchema,
     PhotoPatchSchema,
@@ -77,8 +78,28 @@ class PatientService:
         Returns:
             The newly created Patient dict (plain JSON or FHIR R4).
         """
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.create(payload, actor, accept=accept)
+
+    async def create_full(self, dto: PatientFullCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """
+        Create a Patient and all sub-resources atomically in a single fhir-server request.
+
+        Serialises the full DTO — Pydantic recurses into nested sub-resource lists
+        so names/identifiers/etc. are serialised correctly. exclude_none=True strips
+        any omitted optional arrays and fields so the fhir-server doesn't see nulls.
+        FhirClient.post() stamps created_by from actor.sub automatically.
+
+        Args:
+            dto:    Validated PatientFullCreateSchema from the router.
+            actor:  Authenticated caller — used by FhirClient for created_by.
+            accept: Content-type preference forwarded to the fhir-server.
+
+        Returns:
+            The newly created Patient dict with all sub-resources populated.
+        """
+        payload = dto.model_dump(exclude_none=True, mode="json")
+        return await self._client.create_full(payload, actor, accept=accept)
 
     async def get_by_id(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """
@@ -179,7 +200,7 @@ class PatientService:
         Raises:
             HTTPException(422): If the patch body is empty.
         """
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         if not payload:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -209,7 +230,7 @@ class PatientService:
         doesn't repeat the same error-raising logic.
 
         Args:
-            payload:      Result of dto.model_dump(exclude_none=True).
+            payload:      Result of dto.model_dump(exclude_none=True, mode="json").
             sub_resource: Human-readable name used in the error message.
 
         Raises:
@@ -225,7 +246,7 @@ class PatientService:
 
     async def add_name(self, patient_id: int, dto: NameCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a HumanName to a Patient. Returns the full updated Patient."""
-        return await self._client.add_name(patient_id, dto.model_dump(exclude_none=True), actor, accept=accept)
+        return await self._client.add_name(patient_id, dto.model_dump(exclude_none=True, mode="json"), actor, accept=accept)
 
     async def list_names(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """List all HumanName entries for a Patient. Returns {data: [...], total: N}."""
@@ -233,7 +254,7 @@ class PatientService:
 
     async def patch_name(self, patient_id: int, name_id: int, dto: NamePatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Partially update a Patient HumanName. Returns the full updated Patient."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "name")
         return await self._client.patch_name(patient_id, name_id, payload, actor, accept=accept)
 
@@ -245,7 +266,7 @@ class PatientService:
 
     async def add_identifier(self, patient_id: int, dto: IdentifierCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add an Identifier to a Patient. Returns the full updated Patient."""
-        return await self._client.add_identifier(patient_id, dto.model_dump(exclude_none=True), actor, accept=accept)
+        return await self._client.add_identifier(patient_id, dto.model_dump(exclude_none=True, mode="json"), actor, accept=accept)
 
     async def list_identifiers(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """List all Identifiers for a Patient. Returns {data: [...], total: N}."""
@@ -253,7 +274,7 @@ class PatientService:
 
     async def patch_identifier(self, patient_id: int, identifier_id: int, dto: IdentifierPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Partially update a Patient Identifier. Returns the full updated Patient."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "identifier")
         return await self._client.patch_identifier(patient_id, identifier_id, payload, actor, accept=accept)
 
@@ -265,7 +286,7 @@ class PatientService:
 
     async def add_telecom(self, patient_id: int, dto: TelecomCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a ContactPoint (telecom) to a Patient. Returns the full updated Patient."""
-        return await self._client.add_telecom(patient_id, dto.model_dump(exclude_none=True), actor, accept=accept)
+        return await self._client.add_telecom(patient_id, dto.model_dump(exclude_none=True, mode="json"), actor, accept=accept)
 
     async def list_telecom(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """List all telecom entries for a Patient. Returns {data: [...], total: N}."""
@@ -273,7 +294,7 @@ class PatientService:
 
     async def patch_telecom(self, patient_id: int, telecom_id: int, dto: TelecomPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Partially update a Patient ContactPoint. Returns the full updated Patient."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "telecom")
         return await self._client.patch_telecom(patient_id, telecom_id, payload, actor, accept=accept)
 
@@ -285,7 +306,7 @@ class PatientService:
 
     async def add_address(self, patient_id: int, dto: AddressCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add an Address to a Patient. Returns the full updated Patient."""
-        return await self._client.add_address(patient_id, dto.model_dump(exclude_none=True), actor, accept=accept)
+        return await self._client.add_address(patient_id, dto.model_dump(exclude_none=True, mode="json"), actor, accept=accept)
 
     async def list_addresses(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """List all Addresses for a Patient. Returns {data: [...], total: N}."""
@@ -293,7 +314,7 @@ class PatientService:
 
     async def patch_address(self, patient_id: int, address_id: int, dto: AddressPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Partially update a Patient Address. Returns the full updated Patient."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "address")
         return await self._client.patch_address(patient_id, address_id, payload, actor, accept=accept)
 
@@ -305,7 +326,7 @@ class PatientService:
 
     async def add_photo(self, patient_id: int, dto: PhotoCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add an Attachment (photo) to a Patient. Returns the full updated Patient."""
-        return await self._client.add_photo(patient_id, dto.model_dump(exclude_none=True), actor, accept=accept)
+        return await self._client.add_photo(patient_id, dto.model_dump(exclude_none=True, mode="json"), actor, accept=accept)
 
     async def list_photos(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """List all photos for a Patient. Returns {data: [...], total: N}."""
@@ -313,7 +334,7 @@ class PatientService:
 
     async def patch_photo(self, patient_id: int, photo_id: int, dto: PhotoPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Partially update a Patient photo Attachment. Returns the full updated Patient."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "photo")
         return await self._client.patch_photo(patient_id, photo_id, payload, actor, accept=accept)
 
@@ -325,7 +346,7 @@ class PatientService:
 
     async def add_contact(self, patient_id: int, dto: ContactCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a contact (next-of-kin/guardian) to a Patient. Returns the full updated Patient."""
-        return await self._client.add_contact(patient_id, dto.model_dump(exclude_none=True), actor, accept=accept)
+        return await self._client.add_contact(patient_id, dto.model_dump(exclude_none=True, mode="json"), actor, accept=accept)
 
     async def list_contacts(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """List all contacts for a Patient. Returns {data: [...], total: N}."""
@@ -333,7 +354,7 @@ class PatientService:
 
     async def patch_contact(self, patient_id: int, contact_id: int, dto: ContactPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Partially update a Patient contact. Returns the full updated Patient."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "contact")
         return await self._client.patch_contact(patient_id, contact_id, payload, actor, accept=accept)
 
@@ -345,7 +366,7 @@ class PatientService:
 
     async def add_communication(self, patient_id: int, dto: CommunicationCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a language/communication preference to a Patient. Returns the full updated Patient."""
-        return await self._client.add_communication(patient_id, dto.model_dump(exclude_none=True), actor, accept=accept)
+        return await self._client.add_communication(patient_id, dto.model_dump(exclude_none=True, mode="json"), actor, accept=accept)
 
     async def list_communications(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """List all communication preferences for a Patient. Returns {data: [...], total: N}."""
@@ -353,7 +374,7 @@ class PatientService:
 
     async def patch_communication(self, patient_id: int, comm_id: int, dto: CommunicationPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Partially update a Patient communication entry. Returns the full updated Patient."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "communication")
         return await self._client.patch_communication(patient_id, comm_id, payload, actor, accept=accept)
 
@@ -365,7 +386,7 @@ class PatientService:
 
     async def add_general_practitioner(self, patient_id: int, dto: GeneralPractitionerCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a generalPractitioner reference to a Patient. Returns the full updated Patient."""
-        return await self._client.add_general_practitioner(patient_id, dto.model_dump(exclude_none=True), actor, accept=accept)
+        return await self._client.add_general_practitioner(patient_id, dto.model_dump(exclude_none=True, mode="json"), actor, accept=accept)
 
     async def list_general_practitioners(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """List all generalPractitioner references for a Patient. Returns {data: [...], total: N}."""
@@ -373,7 +394,7 @@ class PatientService:
 
     async def patch_general_practitioner(self, patient_id: int, gp_id: int, dto: GeneralPractitionerPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Partially update a Patient generalPractitioner reference. Returns the full updated Patient."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "general practitioner")
         return await self._client.patch_general_practitioner(patient_id, gp_id, payload, actor, accept=accept)
 
@@ -385,7 +406,7 @@ class PatientService:
 
     async def add_link(self, patient_id: int, dto: LinkCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a link to a related Patient or RelatedPerson. Returns the full updated Patient."""
-        return await self._client.add_link(patient_id, dto.model_dump(exclude_none=True), actor, accept=accept)
+        return await self._client.add_link(patient_id, dto.model_dump(exclude_none=True, mode="json"), actor, accept=accept)
 
     async def list_links(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """List all links for a Patient. Returns {data: [...], total: N}."""
@@ -393,7 +414,7 @@ class PatientService:
 
     async def patch_link(self, patient_id: int, link_id: int, dto: LinkPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Partially update a Patient link. Returns the full updated Patient."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "link")
         return await self._client.patch_link(patient_id, link_id, payload, actor, accept=accept)
 

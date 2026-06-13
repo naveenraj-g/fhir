@@ -60,6 +60,7 @@ from app.schemas.patient.input import (
     NameCreateSchema,
     NamePatchSchema,
     PatientCreateSchema,
+    PatientFullCreateSchema,
     PatientPatchSchema,
     PhotoCreateSchema,
     PhotoPatchSchema,
@@ -212,6 +213,34 @@ async def create_patient(
 ) -> JSONResponse:
     """Create a new Patient. Forwards Accept header for content negotiation."""
     data = await service.create(dto, actor, accept=get_accept_header(request))
+    return format_response(data, request)
+
+
+@router.post(
+    "/full",
+    status_code=status.HTTP_201_CREATED,
+    operation_id="create_patient_full",
+    summary="Create a Patient with all sub-resources atomically",
+    description=(
+        "Creates a Patient and any combination of sub-resources (names, identifiers, telecom, "
+        "addresses, photos, contacts, communications, general_practitioners, links) in a single "
+        "atomic request. The fhir-server wraps all inserts in one DB transaction — if any "
+        "sub-resource insert fails the entire request rolls back and nothing is persisted. "
+        "All sub-resource arrays are optional; omit any to skip those sub-resources. "
+        "`created_by` is stamped automatically from the caller's JWT — do not supply it. "
+        "Send `Accept: application/fhir+json` to receive the result in FHIR R4 format."
+    ),
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "create"))],
+)
+async def create_patient_full(
+    dto: PatientFullCreateSchema,
+    request: Request,
+    actor: AuthUser = Depends(require_permission("patient", "create")),
+    service: PatientService = Depends(get_patient_service),
+) -> JSONResponse:
+    """Create a Patient and all provided sub-resources atomically in one fhir-server request."""
+    data = await service.create_full(dto, actor, accept=get_accept_header(request))
     return format_response(data, request)
 
 

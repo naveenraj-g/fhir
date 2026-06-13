@@ -42,6 +42,7 @@ from app.schemas.practitioner.input import (
     PractitionerCommunicationCreateSchema,
     PractitionerCommunicationPatchSchema,
     PractitionerCreateSchema,
+    PractitionerFullCreateSchema,
     PractitionerIdentifierCreateSchema,
     PractitionerIdentifierPatchSchema,
     PractitionerNameCreateSchema,
@@ -158,6 +159,34 @@ async def create_practitioner(
 ) -> JSONResponse:
     """Create a new Practitioner resource and return the persisted record."""
     data = await service.create(dto, actor, accept=get_accept_header(request))
+    return format_response(data, request)
+
+
+@router.post(
+    "/full",
+    status_code=status.HTTP_201_CREATED,
+    operation_id="create_practitioner_full",
+    summary="Create a Practitioner with all sub-resources atomically",
+    description=(
+        "Creates a Practitioner and any combination of sub-resources (names, identifiers, telecom, "
+        "addresses, photos, qualifications, communications) in a single atomic request. "
+        "The fhir-server wraps all inserts in one DB transaction — if any sub-resource insert "
+        "fails the entire request rolls back and nothing is persisted. "
+        "All sub-resource arrays are optional; omit any to skip those sub-resources. "
+        "`created_by` is stamped automatically from the caller's JWT — do not supply it. "
+        "Send `Accept: application/fhir+json` to receive the result in FHIR R4 format."
+    ),
+    responses={**_SINGLE_201, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("practitioner", "create"))],
+)
+async def create_practitioner_full(
+    dto: PractitionerFullCreateSchema,
+    request: Request,
+    actor: AuthUser = Depends(require_permission("practitioner", "create")),
+    service: PractitionerService = Depends(get_practitioner_service),
+) -> JSONResponse:
+    """Create a Practitioner and all provided sub-resources atomically in one fhir-server request."""
+    data = await service.create_full(dto, actor, accept=get_accept_header(request))
     return format_response(data, request)
 
 
