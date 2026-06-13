@@ -1,8 +1,9 @@
 """
 Input schemas for the Appointment resource endpoints.
 
-Four schemas cover the write/query surfaces:
-  - AppointmentCreateSchema  — POST /appointments body
+Five schemas cover the write/query surfaces:
+  - BookAppointmentInput     — POST /appointments/book simplified booking body
+  - AppointmentCreateSchema  — POST /appointments body (raw FHIR create)
   - AppointmentPatchSchema   — PATCH /appointments/{id} body
   - ListAppointmentsSchema   — GET /appointments query parameters
   - MeAppointmentsSchema     — GET /appointments/me query parameters (no user_id/org_id)
@@ -476,6 +477,43 @@ class AppointmentCreateSchema(BaseModel):
 
     requested_period: Optional[List[AppointmentRequestedPeriodInput]] = None
     recurrence_template: Optional[RecurrenceTemplateInput] = None
+
+
+class BookAppointmentInput(BaseModel):
+    """
+    Simplified input for POST /appointments/book.
+
+    The caller provides only the essential booking facts — practitioner, slot, and
+    patient. The service layer validates slot availability, constructs the full FHIR
+    participant array, creates the Appointment, and marks the Slot as busy.
+
+    This schema deliberately hides the raw FHIR complexity of AppointmentCreateSchema
+    so that booking UIs don't need to understand participant arrays or slot references.
+
+    Notes:
+      - `created_by` is NOT here — FhirClient injects it from actor.sub automatically.
+      - `slot_id` drives both the timing (start/end extracted from the Slot) and the
+        Appointment.slot reference.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # ── Tenant scoping ────────────────────────────────────────────────────────
+    user_id: Optional[str] = Field(None, description="User identifier for tenant scoping.")
+    org_id: Optional[str] = Field(None, description="Organisation identifier for tenant scoping.")
+
+    # ── Required booking identifiers ──────────────────────────────────────────
+    practitioner_id: int = Field(..., description="Integer ID of the Practitioner to book with.")
+    slot_id: int = Field(..., description="Integer ID of the free Slot to book. Must have status='free'.")
+    patient_id: int = Field(..., description="Integer ID of the Patient being booked. Get from GET /patients/me.")
+
+    # ── Optional context ──────────────────────────────────────────────────────
+    service_type_code: Optional[str] = Field(None, description="Service type code (e.g. SNOMED or local code).")
+    service_type_display: Optional[str] = Field(None, description="Human-readable label for the service type code.")
+    reason_code: Optional[str] = Field(None, description="Coded reason for the appointment (e.g. ICD-10 or SNOMED).")
+    reason_text: Optional[str] = Field(None, description="Free-text reason for the appointment.")
+    description: Optional[str] = Field(None, description="Subject line shown when viewing the appointment.")
+    comment: Optional[str] = Field(None, description="Internal comment stored as an Appointment note.")
 
 
 class AppointmentPatchSchema(BaseModel):

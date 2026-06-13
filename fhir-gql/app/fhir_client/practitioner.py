@@ -75,6 +75,28 @@ class PractitionerClient:
         """
         return await self._fhir.post(f"{_PATH}/full", data, actor, accept=accept)
 
+    async def patch_full(self, resource_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
+        """
+        PATCH /practitioners/{resource_id}/full — update scalar fields and/or rewrite sub-resources.
+
+        The fhir-server interprets the payload as follows:
+          - Key absent / null → sub-resource left completely untouched.
+          - Key present as [] → all records of that sub-resource type are deleted.
+          - Key present as [{...}] → all records replaced with the provided items.
+
+        FhirClient.patch() stamps `updated_by: actor.sub` automatically.
+
+        Args:
+            resource_id: The practitioner's integer primary key.
+            data:        Serialised PractitionerFullPatchSchema (exclude_none=True, mode="json" applied upstream).
+            actor:       Authenticated caller — used by FhirClient to stamp updated_by.
+            accept:      Content-type preference forwarded to the fhir-server.
+
+        Returns:
+            The updated Practitioner dict with all sub-resources populated.
+        """
+        return await self._fhir.patch(f"{_PATH}/{resource_id}/full", data, actor, accept=accept)
+
     async def get_by_id(self, resource_id: int, accept: str | None = None) -> dict:
         """
         GET /practitioners/{resource_id} — fetch a single Practitioner by integer ID.

@@ -69,7 +69,7 @@ class HealthcareServiceService:
         # exclude_none=True removes Optional fields the caller left blank so we don't
         # send null values to the fhir-server for fields that were not provided.
         # created_by is injected by FhirClient.post() from actor.sub automatically.
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.create(payload, actor, accept=accept)
 
     async def get_by_id(
@@ -153,7 +153,7 @@ class HealthcareServiceService:
         """
         # exclude_none=True strips unset Optional fields — what remains is the
         # explicit set of fields the caller wants to change.
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
 
         # Reject no-op updates explicitly to prevent meaningless audit trail entries.
         if not payload:

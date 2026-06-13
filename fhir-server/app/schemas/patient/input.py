@@ -365,3 +365,27 @@ class PatientFullCreateSchema(PatientCreateSchema):
     communications: Optional[List[CommunicationCreate]] = None
     general_practitioners: Optional[List[GeneralPractitionerCreate]] = None
     links: Optional[List[LinkCreate]] = None
+
+
+class PatientFullPatchSchema(PatientPatchSchema):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "active": True,
+                "gender": "male",
+                "names": [{"use": "official", "family": "Doe", "given": ["John"]}],
+                "telecom": [{"system": "phone", "value": "+1-555-999-0000", "use": "mobile"}],
+                "communications": [{"language_code": "en", "preferred": True}],
+            }
+        },
+    )
+    names: Optional[List[NameCreate]] = None
+    identifiers: Optional[List[IdentifierCreate]] = None
+    telecom: Optional[List[TelecomCreate]] = None
+    addresses: Optional[List[AddressCreate]] = None
+    photos: Optional[List[PhotoCreate]] = None
+    contacts: Optional[List[ContactCreate]] = None
+    communications: Optional[List[CommunicationCreate]] = None
+    general_practitioners: Optional[List[GeneralPractitionerCreate]] = None
+    links: Optional[List[LinkCreate]] = None

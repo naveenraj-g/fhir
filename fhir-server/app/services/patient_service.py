@@ -20,6 +20,7 @@ from app.schemas.resources import (
     PatientCreateSchema,
     PatientFullCreateSchema,
     PatientPatchSchema,
+    PatientFullPatchSchema,
     PhotoCreate,
     PhotoPatch,
     TelecomCreate,
@@ -100,6 +101,11 @@ class PatientService:
         self, patient_id: int, payload: PatientPatchSchema, updated_by: Optional[str] = None
     ) -> Optional[PatientModel]:
         return await self.repository.patch(patient_id, payload, updated_by)
+
+    async def patch_patient_full(
+        self, patient_id: int, payload: PatientFullPatchSchema, updated_by: Optional[str] = None
+    ) -> Optional[PatientModel]:
+        return await self.repository.patch_full(patient_id, payload, updated_by)
 
     async def delete_patient(self, patient_id: int) -> bool:
         return await self.repository.delete(patient_id)

@@ -67,7 +67,7 @@ class LocationService:
         # exclude_none=True removes Optional fields the caller left blank.
         # user_id and org_id are required by the fhir-server and come from the payload.
         # created_by is injected by FhirClient.post() from actor.sub — no action needed here.
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
 
         return await self._client.create(payload, actor, accept=accept)
 
@@ -149,7 +149,7 @@ class LocationService:
         """
         # exclude_none=True strips unset Optional fields — what remains is the
         # explicit set of fields the caller wants to change.
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
 
         # Reject no-op updates explicitly. An empty dict after exclude_none means the
         # caller sent a body with all nulls or an entirely empty JSON object {},

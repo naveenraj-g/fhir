@@ -7,6 +7,11 @@ requiring a schema bump here.
 
 For the FHIR R4 camelCase shape (application/fhir+json), see fhir_schemas.py.
 
+Booking-specific schemas (PlainPractitionerDetail, PractitionerBookingResponse,
+PaginatedPractitionerBookingResponse) mirror the fhir-server's enriched response
+for GET /practitioner-roles/booking — each item includes the linked Practitioner's
+name, gender, photo, and qualifications alongside the role data.
+
 Reference: https://hl7.org/fhir/R4/practitionerrole.html
 """
 
@@ -277,3 +282,75 @@ class PaginatedPractitionerRoleResponse(BaseModel):
     limit: int
     offset: int
     data: List[PractitionerRoleResponse]
+
+
+# ── Booking-enriched response schemas ─────────────────────────────────────────
+# Used by GET /practitioner-roles/booking — each item extends the standard role
+# response with a `practitioner_detail` block containing the linked Practitioner's
+# name, gender, photo, and qualifications. This matches the fhir-server's
+# PaginatedPractitionerBookingResponse shape exactly.
+
+
+class PlainPractitionerQualification(BaseModel):
+    """A single qualification entry for a Practitioner in the booking response."""
+
+    model_config = ConfigDict(extra="allow")
+
+    code: Optional[str] = None
+    display: Optional[str] = None
+    text: Optional[str] = None
+
+
+class PlainPractitionerName(BaseModel):
+    """Structured name for a Practitioner in the booking response."""
+
+    model_config = ConfigDict(extra="allow")
+
+    text: Optional[str] = None
+    family: Optional[str] = None
+    given: Optional[List[str]] = None
+    prefix: Optional[List[str]] = None
+    suffix: Optional[List[str]] = None
+
+
+class PlainPractitionerDetail(BaseModel):
+    """
+    Enriched Practitioner data embedded in each booking response item.
+
+    The fhir-server joins the linked Practitioner record onto the PractitionerRole
+    so the booking UI does not need a second request to show the practitioner's name.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    id: Optional[int] = None
+    gender: Optional[str] = None
+    name: Optional[PlainPractitionerName] = None
+    qualifications: Optional[List[PlainPractitionerQualification]] = None
+    photo_url: Optional[str] = None
+
+
+class PractitionerBookingResponse(PractitionerRoleResponse):
+    """
+    PractitionerRole enriched with the linked Practitioner's details.
+
+    Extends PractitionerRoleResponse with a `practitioner_detail` block that
+    includes the practitioner's name, gender, photo URL, and qualifications —
+    everything a booking UI needs without an extra request.
+    """
+
+    practitioner_detail: Optional[PlainPractitionerDetail] = None
+
+
+class PaginatedPractitionerBookingResponse(BaseModel):
+    """
+    Paginated list response for GET /practitioner-roles/booking (application/json).
+
+    `total` reflects the count across ALL pages, not just this page.
+    Each item in `data` is an enriched PractitionerRole with `practitioner_detail`.
+    """
+
+    total: int
+    limit: int
+    offset: int
+    data: List[PractitionerBookingResponse]

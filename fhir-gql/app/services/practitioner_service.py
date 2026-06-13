@@ -22,6 +22,7 @@ from app.schemas.practitioner.input import (
     PractitionerCommunicationPatchSchema,
     PractitionerCreateSchema,
     PractitionerFullCreateSchema,
+    PractitionerFullPatchSchema,
     PractitionerIdentifierCreateSchema,
     PractitionerIdentifierPatchSchema,
     PractitionerNameCreateSchema,
@@ -79,7 +80,7 @@ class PractitionerService:
         Returns:
             The newly created Practitioner dict (plain JSON or FHIR).
         """
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.create(payload, actor, accept=accept)
 
     async def create_full(
@@ -106,6 +107,44 @@ class PractitionerService:
         """
         payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.create_full(payload, actor, accept=accept)
+
+    async def update_full(
+        self,
+        resource_id: int,
+        dto: PractitionerFullPatchSchema,
+        actor: AuthUser,
+        accept: str | None = None,
+    ) -> dict:
+        """
+        Partially update a Practitioner's scalar fields and/or rewrite any sub-resource arrays.
+
+        Serialises with exclude_none=True so that:
+          - Omitted / null fields → excluded from payload → fhir-server leaves them alone.
+          - Empty lists [] → included in payload → fhir-server deletes all records of that type.
+          - Non-empty lists → included in payload → fhir-server replaces all records.
+
+        mode="json" is required to serialise date/datetime fields to ISO strings
+        before httpx encodes the payload.
+
+        Args:
+            resource_id: The practitioner's integer primary key.
+            dto:         Validated PractitionerFullPatchSchema from the router.
+            actor:       Authenticated caller — used by FhirClient for updated_by.
+            accept:      Content-type preference forwarded to the fhir-server.
+
+        Returns:
+            The updated Practitioner dict with all sub-resources populated.
+
+        Raises:
+            HTTPException(422): If the body is empty (all fields omitted / null).
+        """
+        payload = dto.model_dump(exclude_none=True, mode="json")
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="At least one field or sub-resource array must be provided.",
+            )
+        return await self._client.patch_full(resource_id, payload, actor, accept=accept)
 
     async def get_by_id(
         self,
@@ -188,7 +227,9 @@ class PractitionerService:
         Raises:
             HTTPException(422): If the patch body is empty.
         """
-        payload = dto.model_dump(exclude_none=True)
+        # mode="json" serialises date/datetime fields to ISO strings so httpx
+        # can encode the payload — without it, Python date objects are not JSON serializable.
+        payload = dto.model_dump(exclude_none=True, mode="json")
         if not payload:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -263,7 +304,7 @@ class PractitionerService:
 
     async def add_name(self, practitioner_id: int, dto: PractitionerNameCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a HumanName sub-resource to a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.add_name(practitioner_id, payload, actor, accept=accept)
 
     async def list_names(self, practitioner_id: int, accept: str | None = None) -> dict:
@@ -272,7 +313,7 @@ class PractitionerService:
 
     async def patch_name(self, practitioner_id: int, name_id: int, dto: PractitionerNamePatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Update a specific HumanName on a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "name")
         return await self._client.patch_name(practitioner_id, name_id, payload, actor, accept=accept)
 
@@ -284,7 +325,7 @@ class PractitionerService:
 
     async def add_identifier(self, practitioner_id: int, dto: PractitionerIdentifierCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add an Identifier sub-resource to a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.add_identifier(practitioner_id, payload, actor, accept=accept)
 
     async def list_identifiers(self, practitioner_id: int, accept: str | None = None) -> dict:
@@ -293,7 +334,7 @@ class PractitionerService:
 
     async def patch_identifier(self, practitioner_id: int, identifier_id: int, dto: PractitionerIdentifierPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Update a specific Identifier on a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "identifier")
         return await self._client.patch_identifier(practitioner_id, identifier_id, payload, actor, accept=accept)
 
@@ -305,7 +346,7 @@ class PractitionerService:
 
     async def add_telecom(self, practitioner_id: int, dto: PractitionerTelecomCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a ContactPoint sub-resource to a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.add_telecom(practitioner_id, payload, actor, accept=accept)
 
     async def list_telecom(self, practitioner_id: int, accept: str | None = None) -> dict:
@@ -314,7 +355,7 @@ class PractitionerService:
 
     async def patch_telecom(self, practitioner_id: int, telecom_id: int, dto: PractitionerTelecomPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Update a specific ContactPoint on a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "telecom")
         return await self._client.patch_telecom(practitioner_id, telecom_id, payload, actor, accept=accept)
 
@@ -326,7 +367,7 @@ class PractitionerService:
 
     async def add_address(self, practitioner_id: int, dto: PractitionerAddressCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add an Address sub-resource to a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.add_address(practitioner_id, payload, actor, accept=accept)
 
     async def list_addresses(self, practitioner_id: int, accept: str | None = None) -> dict:
@@ -335,7 +376,7 @@ class PractitionerService:
 
     async def patch_address(self, practitioner_id: int, address_id: int, dto: PractitionerAddressPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Update a specific Address on a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "address")
         return await self._client.patch_address(practitioner_id, address_id, payload, actor, accept=accept)
 
@@ -347,7 +388,7 @@ class PractitionerService:
 
     async def add_photo(self, practitioner_id: int, dto: PractitionerPhotoCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a photo Attachment sub-resource to a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.add_photo(practitioner_id, payload, actor, accept=accept)
 
     async def list_photos(self, practitioner_id: int, accept: str | None = None) -> dict:
@@ -356,7 +397,7 @@ class PractitionerService:
 
     async def patch_photo(self, practitioner_id: int, photo_id: int, dto: PractitionerPhotoPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Update a specific photo on a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "photo")
         return await self._client.patch_photo(practitioner_id, photo_id, payload, actor, accept=accept)
 
@@ -368,7 +409,7 @@ class PractitionerService:
 
     async def add_qualification(self, practitioner_id: int, dto: PractitionerQualificationCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a qualification sub-resource to a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.add_qualification(practitioner_id, payload, actor, accept=accept)
 
     async def list_qualifications(self, practitioner_id: int, accept: str | None = None) -> dict:
@@ -377,7 +418,7 @@ class PractitionerService:
 
     async def patch_qualification(self, practitioner_id: int, qualification_id: int, dto: PractitionerQualificationPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Update a specific qualification on a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "qualification")
         return await self._client.patch_qualification(practitioner_id, qualification_id, payload, actor, accept=accept)
 
@@ -389,7 +430,7 @@ class PractitionerService:
 
     async def add_communication(self, practitioner_id: int, dto: PractitionerCommunicationCreateSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Add a language/communication preference to a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.add_communication(practitioner_id, payload, actor, accept=accept)
 
     async def list_communications(self, practitioner_id: int, accept: str | None = None) -> dict:
@@ -398,7 +439,7 @@ class PractitionerService:
 
     async def patch_communication(self, practitioner_id: int, communication_id: int, dto: PractitionerCommunicationPatchSchema, actor: AuthUser, accept: str | None = None) -> dict:
         """Update a specific language preference on a Practitioner. Returns full Practitioner."""
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         self._require_patch_payload(payload, "communication")
         return await self._client.patch_communication(practitioner_id, communication_id, payload, actor, accept=accept)
 

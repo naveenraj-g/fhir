@@ -43,6 +43,7 @@ from app.schemas.practitioner.input import (
     PractitionerCommunicationPatchSchema,
     PractitionerCreateSchema,
     PractitionerFullCreateSchema,
+    PractitionerFullPatchSchema,
     PractitionerIdentifierCreateSchema,
     PractitionerIdentifierPatchSchema,
     PractitionerNameCreateSchema,
@@ -187,6 +188,40 @@ async def create_practitioner_full(
 ) -> JSONResponse:
     """Create a Practitioner and all provided sub-resources atomically in one fhir-server request."""
     data = await service.create_full(dto, actor, accept=get_accept_header(request))
+    return format_response(data, request)
+
+
+# ── PATCH /practitioners/{practitioner_id}/full ───────────────────────────────
+
+
+@router.patch(
+    "/{resource_id}/full",
+    operation_id="update_practitioner_full",
+    summary="Update a Practitioner's scalar fields and/or rewrite sub-resource arrays",
+    description=(
+        "Partially update a Practitioner resource and any combination of its sub-resource arrays "
+        "(names, identifiers, telecom, addresses, photos, qualifications, communications) "
+        "in a single call. "
+        "Array semantics: **omit / null** → leave sub-resource untouched; "
+        "**[]** → delete all records of that type; "
+        "**[{...}]** → replace all records with the provided items. "
+        "Scalar fields follow standard PATCH semantics — omitted means unchanged. "
+        "At least one field or array must be provided. "
+        "`updated_by` is stamped automatically from the caller's JWT. "
+        "Send `Accept: application/fhir+json` to receive the result in FHIR R4 format."
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("practitioner", "update"))],
+)
+async def update_practitioner_full(
+    resource_id: int,
+    dto: PractitionerFullPatchSchema,
+    request: Request,
+    actor: AuthUser = Depends(require_permission("practitioner", "update")),
+    service: PractitionerService = Depends(get_practitioner_service),
+) -> JSONResponse:
+    """Update a Practitioner's scalar fields and/or rewrite sub-resource arrays in one call."""
+    data = await service.update_full(resource_id, dto, actor, accept=get_accept_header(request))
     return format_response(data, request)
 
 

@@ -89,7 +89,7 @@ class OrganizationsService:
 
         # exclude_none=True removes optional fields the caller left blank so we don't
         # send null values to the FHIR Server for fields that were not provided.
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
 
         # Forward accept only to the final create call — the client receives this response.
         return await self._client.create(payload, actor, accept=accept)
@@ -190,7 +190,7 @@ class OrganizationsService:
         """
         # exclude_none=True strips unset Optional fields — what remains is the
         # explicit set of fields the caller wants to change.
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
 
         # Reject no-op updates explicitly. An empty dict after exclude_none means the
         # caller sent a body with all nulls or an entirely empty JSON object {},

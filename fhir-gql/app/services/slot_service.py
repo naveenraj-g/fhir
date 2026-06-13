@@ -58,7 +58,7 @@ class SlotService:
         Returns:
             The newly created Slot as a dict (plain JSON or FHIR depending on accept).
         """
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.create(payload, actor, accept=accept)
 
     async def get_by_id(
@@ -143,7 +143,7 @@ class SlotService:
         Raises:
             HTTPException(422): If the patch body is empty.
         """
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         if not payload:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

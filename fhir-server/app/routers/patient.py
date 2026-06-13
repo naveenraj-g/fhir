@@ -36,6 +36,7 @@ from app.schemas.resources import (
     PatientCreateSchema,
     PatientFullCreateSchema,
     PatientPatchSchema,
+    PatientFullPatchSchema,
     NameCreate,
     NamePatch,
     IdentifierCreate,
@@ -225,6 +226,32 @@ async def patch_patient(
 ):
     updated_by = payload.updated_by
     updated = await patient_service.patch_patient(patient.patient_id, payload, updated_by)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)
+
+
+@router.patch(
+    "/{patient_id}/full",
+    operation_id="patch_patient_full",
+    summary="Atomically update a Patient and replace any sub-resource lists in one request",
+    description=(
+        "Patches a Patient's scalar fields (same semantics as `PATCH /{patient_id}`) AND "
+        "replaces sub-resource lists atomically in a single DB transaction. "
+        "For each list that is **provided** (even `[]`): all existing rows are deleted and the "
+        "new items are inserted. Lists that are **omitted** (null / not in body) are left untouched. "
+        "Contacts with nested relationship / telecom grandchildren are handled correctly. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def patch_patient_full(
+    payload: PatientFullPatchSchema,
+    request: Request,
+    patient: PatientModel = Depends(resolve_patient),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    updated = await patient_service.patch_patient_full(patient.patient_id, payload, payload.updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Patient not found")
     return format_response(patient_service._to_fhir(updated), patient_service._to_plain(updated), request)

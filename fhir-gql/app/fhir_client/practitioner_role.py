@@ -106,6 +106,26 @@ class PractitionerRoleClient:
         """
         return await self._fhir.patch(f"{_PATH}/{resource_id}", data, actor, accept=accept)
 
+    async def list_for_booking(self, accept: str | None = None, **params) -> dict:
+        """
+        GET /practitioner-roles/booking — list practitioners enriched for booking UIs.
+
+        Proxies to the fhir-server's /practitioner-roles/booking endpoint which joins
+        each PractitionerRole with its linked Practitioner record (name, gender, photo,
+        qualifications). Filters: active, specialty_code, day_of_week, limit, offset.
+
+        Strips None values from **params to avoid sending null query strings.
+
+        Args:
+            accept:   Content-type preference forwarded to the fhir-server.
+            **params: Arbitrary keyword filters; None values are dropped.
+
+        Returns:
+            Paginated plain JSON or FHIR Bundle depending on `accept`.
+        """
+        clean = {k: v for k, v in params.items() if v is not None}
+        return await self._fhir.get(f"{_PATH}/booking", params=clean, accept=accept)
+
     async def delete(self, resource_id: int) -> None:
         """
         DELETE /practitioner-roles/{resource_id} — permanently remove a PractitionerRole.

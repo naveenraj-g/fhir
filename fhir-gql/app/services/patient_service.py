@@ -36,6 +36,7 @@ from app.schemas.patient.input import (
     NamePatchSchema,
     PatientCreateSchema,
     PatientFullCreateSchema,
+    PatientFullPatchSchema,
     PatientPatchSchema,
     PhotoCreateSchema,
     PhotoPatchSchema,
@@ -100,6 +101,44 @@ class PatientService:
         """
         payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.create_full(payload, actor, accept=accept)
+
+    async def update_full(
+        self,
+        patient_id: int,
+        dto: PatientFullPatchSchema,
+        actor: AuthUser,
+        accept: str | None = None,
+    ) -> dict:
+        """
+        Partially update a Patient's scalar fields and/or rewrite any sub-resource arrays.
+
+        Serialises with exclude_none=True so that:
+          - Omitted / null fields → excluded from payload → fhir-server leaves them alone.
+          - Empty lists [] → included in payload → fhir-server deletes all records of that type.
+          - Non-empty lists → included in payload → fhir-server replaces all records.
+
+        mode="json" is required to serialise date/datetime fields to ISO strings
+        before httpx encodes the payload.
+
+        Args:
+            patient_id: The patient's integer primary key.
+            dto:        Validated PatientFullPatchSchema from the router.
+            actor:      Authenticated caller — used by FhirClient for updated_by.
+            accept:     Content-type preference forwarded to the fhir-server.
+
+        Returns:
+            The updated Patient dict with all sub-resources populated.
+
+        Raises:
+            HTTPException(422): If the body is empty (all fields omitted / null).
+        """
+        payload = dto.model_dump(exclude_none=True, mode="json")
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="At least one field or sub-resource array must be provided.",
+            )
+        return await self._client.patch_full(patient_id, payload, actor, accept=accept)
 
     async def get_by_id(self, patient_id: int, actor: AuthUser, accept: str | None = None) -> dict:
         """

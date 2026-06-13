@@ -2,6 +2,7 @@
 FastAPI router for PractitionerRole resources.
 
 Exposes the standard CRUD surface for PractitionerRole:
+  GET    /practitioner-roles/booking         — enriched list for booking UIs (name, photo, availability)
   POST   /practitioner-roles/                — create a new PractitionerRole
   GET    /practitioner-roles/{resource_id}   — fetch a single PractitionerRole by ID
   GET    /practitioner-roles/                — paginated list with optional filters
@@ -18,7 +19,7 @@ All routes support content negotiation:
 RBAC is enforced via require_permission() for the ("practitioner_role", <action>) pair.
 """
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
@@ -32,7 +33,11 @@ from app.schemas.practitioner_role.input import (
     PractitionerRoleCreateSchema,
     PractitionerRolePatchSchema,
 )
-from app.schemas.practitioner_role.response import PaginatedPractitionerRoleResponse, PractitionerRoleResponse
+from app.schemas.practitioner_role.response import (
+    PaginatedPractitionerBookingResponse,
+    PaginatedPractitionerRoleResponse,
+    PractitionerRoleResponse,
+)
 from app.services.practitioner_role_service import PractitionerRoleService
 
 # All practitioner-role routes use hyphen prefix (matching the fhir-server).
@@ -89,6 +94,69 @@ _LIST_200 = {
         },
     }
 }
+
+_BOOKING_LIST_200 = {
+    200: {
+        "description": "Paginated list of practitioners enriched for booking UIs",
+        "content": {
+            "application/json": {
+                "schema": inline_schema(PaginatedPractitionerBookingResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FhirBundleResponse.model_json_schema())
+            },
+        },
+    }
+}
+
+
+# ── GET /practitioner-roles/booking ──────────────────────────────────────────
+# MUST be registered before GET /{resource_id} to prevent FastAPI routing the
+# literal string "booking" as an integer path parameter.
+
+
+@router.get(
+    "/booking",
+    operation_id="list_practitioner_roles_for_booking",
+    summary="List practitioners available for appointment booking",
+    description=(
+        "Returns active PractitionerRole resources enriched with the linked Practitioner's "
+        "name, gender, photo, and qualifications. Also includes specialty, availability "
+        "schedule (availableTime / notAvailableTime), location, and healthcare services — "
+        "everything a booking UI needs in one call without a second request. "
+        "Filter by `specialty_code` (SNOMED code e.g. '394814009') and/or `day_of_week` "
+        "(mon | tue | wed | thu | fri | sat | sun). "
+        "Send `Accept: application/fhir+json` to receive FHIR R4 Bundle with the "
+        "Practitioner embedded as a `contained` resource."
+    ),
+    responses={**_BOOKING_LIST_200},
+    dependencies=[Depends(require_permission("practitioner_role", "read"))],
+)
+async def list_practitioner_roles_for_booking(
+    request: Request,
+    specialty_code: str | None = None,
+    day_of_week: str | None = None,
+    org_id: str | None = Query(None, description="Filter by organization ID."),
+    active: bool = True,
+    limit: int = 50,
+    offset: int = 0,
+    actor: AuthUser = Depends(require_permission("practitioner_role", "read")),
+    service: PractitionerRoleService = Depends(get_practitioner_role_service),
+) -> JSONResponse:
+    """
+    Return practitioners enriched with name, photo, qualifications, and availability
+    for use in booking UIs. Proxies to fhir-server's /practitioner-roles/booking endpoint.
+    """
+    data = await service.list_for_booking(
+        active=active,
+        specialty_code=specialty_code,
+        day_of_week=day_of_week,
+        org_id=org_id,
+        limit=limit,
+        offset=offset,
+        accept=get_accept_header(request),
+    )
+    return format_paginated_response(data, request)
 
 
 # ── POST /practitioner-roles/ ─────────────────────────────────────────────────

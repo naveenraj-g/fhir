@@ -289,3 +289,26 @@ class PractitionerFullCreateSchema(PractitionerCreateSchema):
     photos: Optional[List[PractitionerPhotoCreate]] = None
     qualifications: Optional[List[PractitionerQualificationCreate]] = None
     communications: Optional[List[PractitionerCommunicationCreate]] = None
+
+
+class PractitionerFullPatchSchema(PractitionerPatchSchema):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "active": True,
+                "gender": "female",
+                "names": [{"use": "official", "family": "Smith", "given": ["Jane"]}],
+                "telecom": [{"system": "email", "value": "jane.smith@hospital.org", "use": "work"}],
+                "qualifications": [{"code_code": "MD", "code_display": "Doctor of Medicine"}],
+                "communications": [{"language_code": "en", "preferred": True}],
+            }
+        },
+    )
+    names: Optional[List[PractitionerNameCreate]] = None
+    identifiers: Optional[List[PractitionerIdentifierCreate]] = None
+    telecom: Optional[List[PractitionerTelecomCreate]] = None
+    addresses: Optional[List[PractitionerAddressCreate]] = None
+    photos: Optional[List[PractitionerPhotoCreate]] = None
+    qualifications: Optional[List[PractitionerQualificationCreate]] = None
+    communications: Optional[List[PractitionerCommunicationCreate]] = None

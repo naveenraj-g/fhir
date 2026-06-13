@@ -540,6 +540,42 @@ class LinkPatchSchema(BaseModel):
     type: Optional[PatientLinkType] = None
 
 
+# ── Full atomic patch ─────────────────────────────────────────────────────────
+
+
+class PatientFullPatchSchema(PatientPatchSchema):
+    """
+    Input schema for PATCH /patients/{id}/full.
+
+    Extends PatientPatchSchema with all nine sub-resource arrays.
+    The semantics differ from the regular sub-resource routes:
+
+      - null / omitted → leave that sub-resource completely untouched.
+      - []             → delete ALL records of that sub-resource type.
+      - [{...}, ...]   → replace ALL records with the provided items
+                         (full replacement, not a merge).
+
+    This allows a single call to update scalar fields AND/OR rewrite any
+    combination of sub-resources atomically on the fhir-server.
+
+    At least one field or array must be provided (enforced in the service layer).
+    updated_by is NOT included — FhirClient injects it from actor.sub automatically.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Sub-resource arrays — None means "leave alone"; [] means "delete all".
+    names: Optional[List[NameCreateSchema]] = None
+    identifiers: Optional[List[IdentifierCreateSchema]] = None
+    telecom: Optional[List[TelecomCreateSchema]] = None
+    addresses: Optional[List[AddressCreateSchema]] = None
+    photos: Optional[List[PhotoCreateSchema]] = None
+    contacts: Optional[List[ContactCreateSchema]] = None
+    communications: Optional[List[CommunicationCreateSchema]] = None
+    general_practitioners: Optional[List[GeneralPractitionerCreateSchema]] = None
+    links: Optional[List[LinkCreateSchema]] = None
+
+
 # ── Full atomic create ────────────────────────────────────────────────────────
 
 

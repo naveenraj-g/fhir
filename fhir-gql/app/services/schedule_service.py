@@ -66,7 +66,7 @@ class ScheduleService:
         # exclude_none=True removes Optional fields the caller left blank so we don't
         # send null values to the fhir-server for fields that were not provided.
         # created_by is injected by FhirClient.post() from actor.sub automatically.
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.create(payload, actor, accept=accept)
 
     async def get_by_id(
@@ -143,7 +143,7 @@ class ScheduleService:
         Raises:
             HTTPException 422: If the request body contained no updateable fields.
         """
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
 
         if not payload:
             raise HTTPException(

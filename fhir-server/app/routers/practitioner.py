@@ -32,6 +32,7 @@ from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerFullCreateSchema,
     PractitionerPatchSchema,
+    PractitionerFullPatchSchema,
     PractitionerNameCreate,
     PractitionerNamePatch,
     PractitionerIdentifierCreate,
@@ -229,6 +230,39 @@ async def patch_practitioner(
 ):
     updated_by = payload.updated_by
     updated = await practitioner_service.patch_practitioner(practitioner.practitioner_id, payload, updated_by)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Practitioner not found")
+    return format_response(
+        practitioner_service._to_fhir(updated),
+        practitioner_service._to_plain(updated),
+        request,
+    )
+
+
+@router.patch(
+    "/{practitioner_id}/full",
+    operation_id="patch_practitioner_full",
+    summary="Atomically update a Practitioner and replace any sub-resource lists in one request",
+    description=(
+        "Patches a Practitioner's scalar fields (same semantics as `PATCH /{practitioner_id}`) AND "
+        "replaces sub-resource lists atomically in a single DB transaction. "
+        "For each list that is **provided** (even `[]`): all existing rows are deleted and the "
+        "new items are inserted. Lists that are **omitted** (null / not in body) are left untouched. "
+        "Qualifications with nested identifiers are handled correctly. "
+        + _CONTENT_NEG
+    ),
+    response_description="The updated Practitioner resource",
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def patch_practitioner_full(
+    payload: PractitionerFullPatchSchema,
+    request: Request,
+    practitioner: PractitionerModel = Depends(resolve_practitioner),
+    practitioner_service: PractitionerService = Depends(get_practitioner_service),
+):
+    updated = await practitioner_service.patch_practitioner_full(
+        practitioner.practitioner_id, payload, payload.updated_by
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="Practitioner not found")
     return format_response(

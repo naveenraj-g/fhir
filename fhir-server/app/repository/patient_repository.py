@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status as http_status
-from sqlalchemy import exists, func, select
+from sqlalchemy import delete, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.orm import selectinload
 
@@ -38,6 +38,7 @@ from app.schemas.resources import (
     PatientCreateSchema,
     PatientFullCreateSchema,
     PatientPatchSchema,
+    PatientFullPatchSchema,
     PhotoCreate,
     PhotoPatch,
     TelecomCreate,
@@ -481,6 +482,179 @@ class PatientRepository:
             try:
                 await session.commit()
                 await session.refresh(patient)
+            except Exception:
+                await session.rollback()
+                raise
+
+        return await self.get_by_patient_id(patient_id)
+
+    async def patch_full(
+        self,
+        patient_id: int,
+        payload: PatientFullPatchSchema,
+        updated_by: Optional[str] = None,
+    ) -> Optional[PatientModel]:
+        async with self.session_factory() as session:
+            stmt = select(PatientModel).where(PatientModel.patient_id == patient_id)
+            patient = (await session.execute(stmt)).scalars().first()
+            if not patient:
+                return None
+
+            _SUB = {
+                "names", "identifiers", "telecom", "addresses", "photos",
+                "contacts", "communications", "general_practitioners", "links",
+            }
+            for field, value in payload.model_dump(exclude_unset=True).items():
+                if field in _SUB:
+                    continue
+                if field == "managing_organization":
+                    if value is not None:
+                        patient.managing_organization_type, patient.managing_organization_id = _parse_org_ref(value)
+                    else:
+                        patient.managing_organization_type = None
+                        patient.managing_organization_id = None
+                else:
+                    setattr(patient, field, value)
+            if updated_by is not None:
+                patient.updated_by = updated_by
+
+            if payload.names is not None:
+                await session.execute(delete(PatientName).where(PatientName.patient_id == patient.id))
+                for n in payload.names:
+                    session.add(PatientName(
+                        patient_id=patient.id, org_id=patient.org_id,
+                        use=n.use, text=n.text, family=n.family,
+                        given=", ".join(n.given) if n.given else None,
+                        prefix=", ".join(n.prefix) if n.prefix else None,
+                        suffix=", ".join(n.suffix) if n.suffix else None,
+                        period_start=n.period_start, period_end=n.period_end,
+                    ))
+
+            if payload.identifiers is not None:
+                await session.execute(delete(PatientIdentifier).where(PatientIdentifier.patient_id == patient.id))
+                for i in payload.identifiers:
+                    session.add(PatientIdentifier(
+                        patient_id=patient.id, org_id=patient.org_id,
+                        use=i.use, type_system=i.type_system, type_code=i.type_code,
+                        type_display=i.type_display, type_text=i.type_text,
+                        system=i.system, value=i.value,
+                        period_start=i.period_start, period_end=i.period_end, assigner=i.assigner,
+                    ))
+
+            if payload.telecom is not None:
+                await session.execute(delete(PatientTelecom).where(PatientTelecom.patient_id == patient.id))
+                for t in payload.telecom:
+                    session.add(PatientTelecom(
+                        patient_id=patient.id, org_id=patient.org_id,
+                        system=t.system, value=t.value, use=t.use, rank=t.rank,
+                        period_start=t.period_start, period_end=t.period_end,
+                    ))
+
+            if payload.addresses is not None:
+                await session.execute(delete(PatientAddress).where(PatientAddress.patient_id == patient.id))
+                for a in payload.addresses:
+                    session.add(PatientAddress(
+                        patient_id=patient.id, org_id=patient.org_id,
+                        use=a.use, type=a.type, text=a.text,
+                        line=", ".join(a.line) if a.line else None,
+                        city=a.city, district=a.district, state=a.state,
+                        postal_code=a.postal_code, country=a.country,
+                        period_start=a.period_start, period_end=a.period_end,
+                    ))
+
+            if payload.photos is not None:
+                await session.execute(delete(PatientPhoto).where(PatientPhoto.patient_id == patient.id))
+                for p in payload.photos:
+                    session.add(PatientPhoto(
+                        patient_id=patient.id, org_id=patient.org_id,
+                        content_type=p.content_type, language=p.language, data=p.data,
+                        url=p.url, size=p.size, hash=p.hash, title=p.title, creation=p.creation,
+                    ))
+
+            if payload.contacts is not None:
+                contact_ids = list((await session.execute(
+                    select(PatientContact.id).where(PatientContact.patient_id == patient.id)
+                )).scalars().all())
+                if contact_ids:
+                    await session.execute(
+                        delete(PatientContactRelationship).where(
+                            PatientContactRelationship.contact_id.in_(contact_ids)
+                        )
+                    )
+                    await session.execute(
+                        delete(PatientContactTelecom).where(
+                            PatientContactTelecom.contact_id.in_(contact_ids)
+                        )
+                    )
+                await session.execute(delete(PatientContact).where(PatientContact.patient_id == patient.id))
+                for c in payload.contacts:
+                    contact = PatientContact(
+                        patient_id=patient.id, org_id=patient.org_id,
+                        name_use=c.name_use, name_text=c.name_text, name_family=c.name_family,
+                        name_given=", ".join(c.name_given) if c.name_given else None,
+                        name_prefix=", ".join(c.name_prefix) if c.name_prefix else None,
+                        name_suffix=", ".join(c.name_suffix) if c.name_suffix else None,
+                        address_use=c.address_use, address_type=c.address_type, address_text=c.address_text,
+                        address_line=", ".join(c.address_line) if c.address_line else None,
+                        address_city=c.address_city, address_district=c.address_district,
+                        address_state=c.address_state, address_postal_code=c.address_postal_code,
+                        address_country=c.address_country,
+                        address_period_start=c.address_period_start, address_period_end=c.address_period_end,
+                        gender=c.gender,
+                        organization_type=(_parse_org_ref(c.organization)[0] if c.organization else None),
+                        organization_id=(_parse_org_ref(c.organization)[1] if c.organization else None),
+                        organization_display=c.organization_display,
+                        period_start=c.period_start, period_end=c.period_end,
+                    )
+                    session.add(contact)
+                    await session.flush()
+                    if c.relationship:
+                        for r in c.relationship:
+                            session.add(PatientContactRelationship(
+                                contact_id=contact.id, org_id=patient.org_id,
+                                coding_system=r.coding_system, coding_code=r.coding_code,
+                                coding_display=r.coding_display, text=r.text,
+                            ))
+                    if c.telecom:
+                        for t in c.telecom:
+                            session.add(PatientContactTelecom(
+                                contact_id=contact.id, org_id=patient.org_id,
+                                system=t.system, value=t.value, use=t.use, rank=t.rank,
+                                period_start=t.period_start, period_end=t.period_end,
+                            ))
+
+            if payload.communications is not None:
+                await session.execute(delete(PatientCommunication).where(PatientCommunication.patient_id == patient.id))
+                for cm in payload.communications:
+                    session.add(PatientCommunication(
+                        patient_id=patient.id, org_id=patient.org_id,
+                        language_system=cm.language_system, language_code=cm.language_code,
+                        language_display=cm.language_display, language_text=cm.language_text,
+                        preferred=cm.preferred,
+                    ))
+
+            if payload.general_practitioners is not None:
+                await session.execute(
+                    delete(PatientGeneralPractitioner).where(PatientGeneralPractitioner.patient_id == patient.id)
+                )
+                for gp in payload.general_practitioners:
+                    session.add(PatientGeneralPractitioner(
+                        patient_id=patient.id, org_id=patient.org_id,
+                        reference_type=gp.reference_type, reference_id=gp.reference_id,
+                        reference_display=gp.reference_display,
+                    ))
+
+            if payload.links is not None:
+                await session.execute(delete(PatientLink).where(PatientLink.patient_id == patient.id))
+                for lk in payload.links:
+                    session.add(PatientLink(
+                        patient_id=patient.id, org_id=patient.org_id,
+                        other_type=lk.other_type, other_id=lk.other_id,
+                        other_display=lk.other_display, type=lk.type,
+                    ))
+
+            try:
+                await session.commit()
             except Exception:
                 await session.rollback()
                 raise

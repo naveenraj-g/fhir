@@ -64,7 +64,7 @@ class PractitionerRoleService:
         Returns:
             The newly created PractitionerRole dict (plain JSON or FHIR).
         """
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         return await self._client.create(payload, actor, accept=accept)
 
     async def get_by_id(
@@ -146,13 +146,53 @@ class PractitionerRoleService:
         Raises:
             HTTPException(422): If the patch body is empty.
         """
-        payload = dto.model_dump(exclude_none=True)
+        payload = dto.model_dump(exclude_none=True, mode="json")
         if not payload:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="At least one field must be provided for update.",
             )
         return await self._client.patch(resource_id, payload, actor, accept=accept)
+
+    async def list_for_booking(
+        self,
+        active: bool = True,
+        specialty_code: str | None = None,
+        day_of_week: str | None = None,
+        org_id: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+        accept: str | None = None,
+    ) -> dict:
+        """
+        List PractitionerRoles enriched with Practitioner details for booking UIs.
+
+        Proxies directly to the fhir-server's /practitioner-roles/booking endpoint
+        which joins each role with its linked Practitioner (name, gender, photo,
+        qualifications, specialty, availability schedule, location, and healthcare
+        services) in a single query — no second request needed by the caller.
+
+        Args:
+            active:         Filter by active status (default: True).
+            specialty_code: Filter by SNOMED specialty code e.g. '394814009' (General Practice).
+            day_of_week:    Filter by availability day e.g. 'mon', 'tue', 'wed'.
+            org_id:         Filter by organization ID for tenant scoping.
+            limit:          Maximum number of records to return (1–200, default 50).
+            offset:         Number of records to skip before returning (default 0).
+            accept:         Content-type preference forwarded to the fhir-server.
+
+        Returns:
+            Paginated plain JSON or FHIR Bundle depending on `accept`.
+        """
+        return await self._client.list_for_booking(
+            accept=accept,
+            active=active,
+            specialty_code=specialty_code,
+            day_of_week=day_of_week,
+            org_id=org_id,
+            limit=limit,
+            offset=offset,
+        )
 
     async def delete(self, resource_id: int, actor: AuthUser) -> None:
         """

@@ -2,6 +2,7 @@
 FastAPI router for Appointment resources.
 
 Endpoints:
+  POST   /appointments/book          — simplified booking: validate slot, create Appointment, mark Slot busy
   POST   /appointments/              — create a new Appointment (with all child arrays in body)
   GET    /appointments/me            — caller's own appointments (paginated, from JWT)
   GET    /appointments/{id}          — fetch a single Appointment by integer ID
@@ -31,6 +32,7 @@ from app.schemas.appointment.fhir_schemas import FhirAppointmentResponse, FhirBu
 from app.schemas.appointment.input import (
     AppointmentCreateSchema,
     AppointmentPatchSchema,
+    BookAppointmentInput,
     ListAppointmentsSchema,
     MeAppointmentsSchema,
 )
@@ -43,6 +45,7 @@ router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 _ERR_NOT_FOUND = {404: {"description": "Appointment not found"}}
 _ERR_VALIDATION = {422: {"description": "Validation error — request body or query params failed schema validation"}}
+_ERR_SLOT_CONFLICT = {409: {"description": "Slot is not available — already booked or blocked"}}
 
 # ── Shared success response descriptors ──────────────────────────────────────
 # inline_schema() resolves Pydantic v2 $defs/$ref pointers so nested sub-model
@@ -90,6 +93,46 @@ _LIST_200 = {
         },
     }
 }
+
+
+# ── POST /appointments/book ──────────────────────────────────────────────────
+# Registered before POST / so FastAPI does not confuse the literal path segment
+# "book" with the root collection endpoint. Both are POST so ordering matters.
+
+
+@router.post(
+    "/book",
+    status_code=status.HTTP_201_CREATED,
+    operation_id="book_appointment",
+    summary="Book an Appointment with a Practitioner",
+    description=(
+        "Simplified booking endpoint. Provide a Practitioner ID, a free Slot ID, "
+        "and a Patient ID — the service validates slot availability, builds the FHIR "
+        "participant array automatically, creates the Appointment, and marks the Slot "
+        "as busy in a single call. "
+        "Returns 409 Conflict if the Slot is no longer free. "
+        "Rolls back the created Appointment if the Slot busy-update fails. "
+        "Send `Accept: application/fhir+json` to receive the result in FHIR R4 format."
+    ),
+    responses={**_SINGLE_201, **_ERR_VALIDATION, **_ERR_SLOT_CONFLICT},
+    dependencies=[Depends(require_permission("appointment", "create"))],
+)
+async def book_appointment(
+    dto: BookAppointmentInput,
+    request: Request,
+    actor: AuthUser = Depends(require_permission("appointment", "create")),
+    service: AppointmentService = Depends(get_appointment_service),
+) -> JSONResponse:
+    """
+    Book a Practitioner appointment for a Patient against a specific free Slot.
+
+    The service layer handles:
+      1. Slot availability check (must be status='free').
+      2. Appointment creation with auto-built participant array.
+      3. Slot status update to 'busy' (rollback on failure).
+    """
+    data = await service.book(dto, actor, accept=get_accept_header(request))
+    return format_response(data, request)
 
 
 # ── POST /appointments/ ──────────────────────────────────────────────────────

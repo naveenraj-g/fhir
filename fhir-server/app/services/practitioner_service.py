@@ -6,6 +6,7 @@ from app.schemas.practitioner import (
     PractitionerCreateSchema,
     PractitionerPatchSchema,
     PractitionerFullCreateSchema,
+    PractitionerFullPatchSchema,
     PractitionerNameCreate,
     PractitionerNamePatch,
     PractitionerIdentifierCreate,
@@ -93,6 +94,14 @@ class PractitionerService:
         updated_by: Optional[str] = None,
     ) -> Optional[PractitionerModel]:
         return await self.repository.patch(practitioner_id, payload, updated_by)
+
+    async def patch_practitioner_full(
+        self,
+        practitioner_id: int,
+        payload: PractitionerFullPatchSchema,
+        updated_by: Optional[str] = None,
+    ) -> Optional[PractitionerModel]:
+        return await self.repository.patch_full(practitioner_id, payload, updated_by)
 
     async def delete_practitioner(self, practitioner_id: int) -> bool:
         return await self.repository.delete(practitioner_id)

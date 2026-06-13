@@ -61,6 +61,7 @@ from app.schemas.patient.input import (
     NamePatchSchema,
     PatientCreateSchema,
     PatientFullCreateSchema,
+    PatientFullPatchSchema,
     PatientPatchSchema,
     PhotoCreateSchema,
     PhotoPatchSchema,
@@ -241,6 +242,40 @@ async def create_patient_full(
 ) -> JSONResponse:
     """Create a Patient and all provided sub-resources atomically in one fhir-server request."""
     data = await service.create_full(dto, actor, accept=get_accept_header(request))
+    return format_response(data, request)
+
+
+# ── PATCH /patients/{patient_id}/full ────────────────────────────────────────
+
+
+@router.patch(
+    "/{patient_id}/full",
+    operation_id="update_patient_full",
+    summary="Update a Patient's scalar fields and/or rewrite sub-resource arrays",
+    description=(
+        "Partially update a Patient resource and any combination of its sub-resource arrays "
+        "(names, identifiers, telecom, addresses, photos, contacts, communications, "
+        "general_practitioners, links) in a single call. "
+        "Array semantics: **omit / null** → leave sub-resource untouched; "
+        "**[]** → delete all records of that type; "
+        "**[{...}]** → replace all records with the provided items. "
+        "Scalar fields follow standard PATCH semantics — omitted means unchanged. "
+        "At least one field or array must be provided. "
+        "`updated_by` is stamped automatically from the caller's JWT. "
+        "Send `Accept: application/fhir+json` to receive the result in FHIR R4 format."
+    ),
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("patient", "update"))],
+)
+async def update_patient_full(
+    patient_id: int,
+    dto: PatientFullPatchSchema,
+    request: Request,
+    actor: AuthUser = Depends(require_permission("patient", "update")),
+    service: PatientService = Depends(get_patient_service),
+) -> JSONResponse:
+    """Update a Patient's scalar fields and/or rewrite sub-resource arrays in one call."""
+    data = await service.update_full(patient_id, dto, actor, accept=get_accept_header(request))
     return format_response(data, request)
 
 
