@@ -122,12 +122,14 @@ async def list_practitioner_roles_for_booking(
         description="Filter by available day: mon | tue | wed | thu | fri | sat | sun.",
     ),
     active: bool = Query(True, description="Filter by active status (default: true)."),
+    org_id: Optional[str] = Query(None, description="Filter by organization ID."),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
 ):
     items, total = await pr_service.list_for_booking(
         active=active,
+        org_id=org_id,
         specialty_code=specialty_code,
         day_of_week=day_of_week,
         limit=limit,
