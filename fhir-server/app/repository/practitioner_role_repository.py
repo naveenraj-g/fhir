@@ -7,6 +7,11 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.models.enums import OrganizationReferenceType
+from app.models.healthcare_service.healthcare_service import (
+    HealthcareServiceModel,
+    HealthcareServiceCategory,
+)
+from app.models.location.location import LocationModel, LocationTelecom
 from app.models.practitioner.practitioner import (
     PractitionerModel,
     PractitionerName,
@@ -242,7 +247,34 @@ class PractitionerRoleRepository:
                 base.order_by(PractitionerRoleModel.practitioner_role_id)
                     .offset(offset).limit(limit)
             )).scalars().all())
-        return rows, total
+
+            # Batch-load Location and HealthcareService details for booking enrichment
+            loc_pub_ids = {
+                loc.reference_id for pr in rows for loc in pr.locations if loc.reference_id
+            }
+            hs_pub_ids = {
+                hs.reference_id for pr in rows for hs in pr.healthcare_services if hs.reference_id
+            }
+
+            loc_lookup: dict = {}
+            if loc_pub_ids:
+                loc_rows = (await session.execute(
+                    select(LocationModel)
+                    .options(selectinload(LocationModel.telecoms))
+                    .where(LocationModel.location_id.in_(loc_pub_ids))
+                )).scalars().all()
+                loc_lookup = {lm.location_id: lm for lm in loc_rows}
+
+            hs_lookup: dict = {}
+            if hs_pub_ids:
+                hs_rows = (await session.execute(
+                    select(HealthcareServiceModel)
+                    .options(selectinload(HealthcareServiceModel.categories))
+                    .where(HealthcareServiceModel.healthcare_service_id.in_(hs_pub_ids))
+                )).scalars().all()
+                hs_lookup = {hm.healthcare_service_id: hm for hm in hs_rows}
+
+        return rows, total, loc_lookup, hs_lookup
 
     # ── Create ────────────────────────────────────────────────────────────────
 

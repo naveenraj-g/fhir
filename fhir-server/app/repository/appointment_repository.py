@@ -117,6 +117,7 @@ class AppointmentRepository:
         org_id: str,
         status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        practitioner_id: Optional[int] = None,
         start_from: Optional[datetime] = None,
         start_to: Optional[datetime] = None,
         limit: int = 50,
@@ -126,10 +127,12 @@ class AppointmentRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(AppointmentModel)),
                 user_id, org_id, status, patient_id, start_from, start_to,
+                practitioner_id=practitioner_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(AppointmentModel),
                 user_id, org_id, status, patient_id, start_from, start_to,
+                practitioner_id=practitioner_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
@@ -137,7 +140,10 @@ class AppointmentRepository:
             )).scalars().all())
         return rows, total
 
-    def _apply_list_filters(self, stmt, user_id, org_id, status, patient_id, start_from, start_to):
+    def _apply_list_filters(
+        self, stmt, user_id, org_id, status, patient_id, start_from, start_to,
+        practitioner_id=None,
+    ):
         if user_id:
             stmt = stmt.where(AppointmentModel.user_id == user_id)
         if org_id:
@@ -149,6 +155,17 @@ class AppointmentRepository:
                 AppointmentModel.subject_type == SubjectReferenceType.Patient,
                 AppointmentModel.subject_id == patient_id,
             )
+        if practitioner_id is not None:
+            sub = (
+                select(AppointmentParticipant.id)
+                .where(
+                    AppointmentParticipant.appointment_id == AppointmentModel.id,
+                    AppointmentParticipant.reference_type == AppointmentParticipantActorType.Practitioner,
+                    AppointmentParticipant.reference_id == practitioner_id,
+                )
+                .correlate(AppointmentModel)
+            )
+            stmt = stmt.where(sub.exists())
         if start_from is not None:
             stmt = stmt.where(AppointmentModel.start >= start_from)
         if start_to is not None:
@@ -161,6 +178,7 @@ class AppointmentRepository:
         org_id: Optional[str] = None,
         status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        practitioner_id: Optional[int] = None,
         start_from: Optional[datetime] = None,
         start_to: Optional[datetime] = None,
         limit: int = 50,
@@ -170,10 +188,12 @@ class AppointmentRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(AppointmentModel)),
                 user_id, org_id, status, patient_id, start_from, start_to,
+                practitioner_id=practitioner_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(AppointmentModel),
                 user_id, org_id, status, patient_id, start_from, start_to,
+                practitioner_id=practitioner_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(

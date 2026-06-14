@@ -26,6 +26,9 @@ class SlotService:
         slot_status: Optional[str] = None,
         schedule_id: Optional[int] = None,
         practitioner_role_id: Optional[int] = None,
+        date: Optional[str] = None,
+        start_from: Optional[str] = None,
+        start_to: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[SlotModel], int]:
@@ -33,6 +36,7 @@ class SlotService:
             user_id, org_id,
             slot_status=slot_status, schedule_id=schedule_id,
             practitioner_role_id=practitioner_role_id,
+            date=date, start_from=start_from, start_to=start_to,
             limit=limit, offset=offset,
         )
 
@@ -43,6 +47,9 @@ class SlotService:
         slot_status: Optional[str] = None,
         schedule_id: Optional[int] = None,
         practitioner_role_id: Optional[int] = None,
+        date: Optional[str] = None,
+        start_from: Optional[str] = None,
+        start_to: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[SlotModel], int]:
@@ -50,6 +57,7 @@ class SlotService:
             user_id=user_id, org_id=org_id,
             slot_status=slot_status, schedule_id=schedule_id,
             practitioner_role_id=practitioner_role_id,
+            date=date, start_from=start_from, start_to=start_to,
             limit=limit, offset=offset,
         )
 

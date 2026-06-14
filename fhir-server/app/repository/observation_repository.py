@@ -155,7 +155,8 @@ class ObservationRepository:
             return result.scalars().first()
 
     def _apply_list_filters(
-        self, stmt, user_id, org_id, obs_status, patient_id, effective_from, effective_to
+        self, stmt, user_id, org_id, obs_status, patient_id, effective_from, effective_to,
+        encounter_id=None,
     ):
         if user_id:
             stmt = stmt.where(ObservationModel.user_id == user_id)
@@ -168,6 +169,11 @@ class ObservationRepository:
                 ObservationModel.subject_type == ObservationSubjectReferenceType.Patient,
                 ObservationModel.subject_id == patient_id,
             )
+        if encounter_id is not None:
+            sub = select(EncounterModel.id).where(
+                EncounterModel.encounter_id == encounter_id
+            ).scalar_subquery()
+            stmt = stmt.where(ObservationModel.encounter_id == sub)
         if effective_from is not None:
             stmt = stmt.where(ObservationModel.effective_date_time >= effective_from)
         if effective_to is not None:
@@ -180,6 +186,7 @@ class ObservationRepository:
         org_id: str,
         obs_status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        encounter_id: Optional[int] = None,
         effective_from: Optional[datetime] = None,
         effective_to: Optional[datetime] = None,
         limit: int = 50,
@@ -189,10 +196,12 @@ class ObservationRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(ObservationModel)),
                 user_id, org_id, obs_status, patient_id, effective_from, effective_to,
+                encounter_id=encounter_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(ObservationModel),
                 user_id, org_id, obs_status, patient_id, effective_from, effective_to,
+                encounter_id=encounter_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
@@ -206,6 +215,7 @@ class ObservationRepository:
         org_id: Optional[str] = None,
         obs_status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        encounter_id: Optional[int] = None,
         effective_from: Optional[datetime] = None,
         effective_to: Optional[datetime] = None,
         limit: int = 50,
@@ -215,10 +225,12 @@ class ObservationRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(ObservationModel)),
                 user_id, org_id, obs_status, patient_id, effective_from, effective_to,
+                encounter_id=encounter_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(ObservationModel),
                 user_id, org_id, obs_status, patient_id, effective_from, effective_to,
+                encounter_id=encounter_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(

@@ -133,7 +133,8 @@ class ServiceRequestRepository:
             return result.scalars().first()
 
     def _apply_list_filters(
-        self, stmt, user_id, org_id, sr_status, patient_id, authored_from, authored_to
+        self, stmt, user_id, org_id, sr_status, patient_id, authored_from, authored_to,
+        encounter_id=None,
     ):
         if user_id:
             stmt = stmt.where(ServiceRequestModel.user_id == user_id)
@@ -146,6 +147,11 @@ class ServiceRequestRepository:
                 ServiceRequestModel.subject_type == ServiceRequestSubjectType.Patient,
                 ServiceRequestModel.subject_id == patient_id,
             )
+        if encounter_id is not None:
+            sub = select(EncounterModel.id).where(
+                EncounterModel.encounter_id == encounter_id
+            ).scalar_subquery()
+            stmt = stmt.where(ServiceRequestModel.encounter_id == sub)
         if authored_from is not None:
             stmt = stmt.where(ServiceRequestModel.authored_on >= authored_from)
         if authored_to is not None:
@@ -158,6 +164,7 @@ class ServiceRequestRepository:
         org_id: str,
         sr_status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        encounter_id: Optional[int] = None,
         authored_from: Optional[datetime] = None,
         authored_to: Optional[datetime] = None,
         limit: int = 50,
@@ -167,10 +174,12 @@ class ServiceRequestRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(ServiceRequestModel)),
                 user_id, org_id, sr_status, patient_id, authored_from, authored_to,
+                encounter_id=encounter_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(ServiceRequestModel),
                 user_id, org_id, sr_status, patient_id, authored_from, authored_to,
+                encounter_id=encounter_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
@@ -184,6 +193,7 @@ class ServiceRequestRepository:
         org_id: Optional[str] = None,
         sr_status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        encounter_id: Optional[int] = None,
         authored_from: Optional[datetime] = None,
         authored_to: Optional[datetime] = None,
         limit: int = 50,
@@ -193,10 +203,12 @@ class ServiceRequestRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(ServiceRequestModel)),
                 user_id, org_id, sr_status, patient_id, authored_from, authored_to,
+                encounter_id=encounter_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(ServiceRequestModel),
                 user_id, org_id, sr_status, patient_id, authored_from, authored_to,
+                encounter_id=encounter_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(

@@ -127,7 +127,7 @@ async def list_practitioner_roles_for_booking(
     offset: int = Query(0, ge=0),
     pr_service: PractitionerRoleService = Depends(get_practitioner_role_service),
 ):
-    items, total = await pr_service.list_for_booking(
+    items, total, loc_lookup, hs_lookup = await pr_service.list_for_booking(
         active=active,
         org_id=org_id,
         specialty_code=specialty_code,
@@ -135,8 +135,8 @@ async def list_practitioner_roles_for_booking(
         limit=limit,
         offset=offset,
     )
-    fhir_items = [pr_service._to_fhir_booking(p) for p in items]
-    plain_items = [pr_service._to_plain_booking(p) for p in items]
+    fhir_items = [pr_service._to_fhir_booking(p, loc_lookup, hs_lookup) for p in items]
+    plain_items = [pr_service._to_plain_booking(p, loc_lookup, hs_lookup) for p in items]
     return format_paginated_response(fhir_items, plain_items, total, limit, offset, request)
 
 

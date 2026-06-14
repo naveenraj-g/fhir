@@ -1,7 +1,8 @@
+from datetime import datetime, date as PyDate
 from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status as http_status
-from sqlalchemy import func
+from sqlalchemy import func, cast, Date as SADate
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -54,6 +55,15 @@ def _parse_ref(ref: str, enum_cls, field: str):
     return ref_type, ref_id
 
 
+def _parse_dt(s: str, end_of_day: bool = False) -> datetime:
+    if "T" in s or " " in s:
+        return datetime.fromisoformat(s)
+    d = PyDate.fromisoformat(s)
+    if end_of_day:
+        return datetime(d.year, d.month, d.day, 23, 59, 59)
+    return datetime(d.year, d.month, d.day, 0, 0, 0)
+
+
 class SlotRepository:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         self.session_factory = session_factory
@@ -66,7 +76,10 @@ class SlotRepository:
             result = await session.execute(stmt)
             return result.scalars().first()
 
-    def _apply_list_filters(self, stmt, user_id, org_id, slot_status, schedule_id, practitioner_role_id=None):
+    def _apply_list_filters(
+        self, stmt, user_id, org_id, slot_status, schedule_id,
+        practitioner_role_id=None, date=None, start_from=None, start_to=None,
+    ):
         if user_id:
             stmt = stmt.where(SlotModel.user_id == user_id)
         if org_id:
@@ -90,6 +103,13 @@ class SlotRepository:
                 .scalar_subquery()
             )
             stmt = stmt.where(SlotModel.schedule_fk_id == sub)
+        if date is not None:
+            d = PyDate.fromisoformat(date)
+            stmt = stmt.where(cast(SlotModel.start, SADate) == d)
+        if start_from is not None:
+            stmt = stmt.where(SlotModel.start >= _parse_dt(start_from, end_of_day=False))
+        if start_to is not None:
+            stmt = stmt.where(SlotModel.start <= _parse_dt(start_to, end_of_day=True))
         return stmt
 
     async def get_me(
@@ -99,6 +119,9 @@ class SlotRepository:
         slot_status: Optional[str] = None,
         schedule_id: Optional[int] = None,
         practitioner_role_id: Optional[int] = None,
+        date: Optional[str] = None,
+        start_from: Optional[str] = None,
+        start_to: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[SlotModel], int]:
@@ -106,14 +129,16 @@ class SlotRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(SlotModel)),
                 user_id, org_id, slot_status, schedule_id, practitioner_role_id,
+                date=date, start_from=start_from, start_to=start_to,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(SlotModel),
                 user_id, org_id, slot_status, schedule_id, practitioner_role_id,
+                date=date, start_from=start_from, start_to=start_to,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
-                base.order_by(SlotModel.slot_id.desc()).offset(offset).limit(limit)
+                base.order_by(SlotModel.start.asc()).offset(offset).limit(limit)
             )).scalars().all())
         return rows, total
 
@@ -124,6 +149,9 @@ class SlotRepository:
         slot_status: Optional[str] = None,
         schedule_id: Optional[int] = None,
         practitioner_role_id: Optional[int] = None,
+        date: Optional[str] = None,
+        start_from: Optional[str] = None,
+        start_to: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[SlotModel], int]:
@@ -131,14 +159,16 @@ class SlotRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(SlotModel)),
                 user_id, org_id, slot_status, schedule_id, practitioner_role_id,
+                date=date, start_from=start_from, start_to=start_to,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(SlotModel),
                 user_id, org_id, slot_status, schedule_id, practitioner_role_id,
+                date=date, start_from=start_from, start_to=start_to,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
-                base.order_by(SlotModel.slot_id.desc()).offset(offset).limit(limit)
+                base.order_by(SlotModel.start.asc()).offset(offset).limit(limit)
             )).scalars().all())
         return rows, total
 

@@ -168,7 +168,8 @@ async def patch_appointment(
 async def list_appointments(
     request: Request,
     appt_status: Optional[str] = Query(None, alias="status"),
-    patient_id: Optional[int] = Query(None),
+    patient_id: Optional[int] = Query(None, description="Filter by public patient_id."),
+    practitioner_id: Optional[int] = Query(None, description="Filter by public practitioner_id — returns appointments where this practitioner is a participant."),
     start_from: Optional[datetime] = Query(None),
     start_to: Optional[datetime] = Query(None),
     user_id: Optional[str] = Query(None),
@@ -179,6 +180,7 @@ async def list_appointments(
 ):
     appointments, total = await appointment_service.list_appointments(
         user_id=user_id, org_id=org_id, status=appt_status, patient_id=patient_id,
+        practitioner_id=practitioner_id,
         start_from=start_from, start_to=start_to, limit=limit, offset=offset,
     )
     return format_paginated_response(

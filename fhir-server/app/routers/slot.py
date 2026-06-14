@@ -168,6 +168,9 @@ async def list_slots(
     ),
     schedule_id: Optional[int] = Query(None, description="Filter by public schedule_id."),
     practitioner_role_id: Optional[int] = Query(None, description="Filter by public practitioner_role_id — returns slots belonging to that practitioner's schedule."),
+    date: Optional[str] = Query(None, description="Filter by exact start date (YYYY-MM-DD). Returns all slots whose start falls on this date."),
+    start_from: Optional[str] = Query(None, description="Filter slots with start >= this value (ISO datetime or YYYY-MM-DD)."),
+    start_to: Optional[str] = Query(None, description="Filter slots with start <= this value (ISO datetime or YYYY-MM-DD)."),
     user_id: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
@@ -178,6 +181,7 @@ async def list_slots(
         user_id=user_id, org_id=org_id,
         slot_status=slot_status, schedule_id=schedule_id,
         practitioner_role_id=practitioner_role_id,
+        date=date, start_from=start_from, start_to=start_to,
         limit=limit, offset=offset,
     )
     return format_paginated_response(

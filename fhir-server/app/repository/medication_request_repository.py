@@ -132,7 +132,8 @@ class MedicationRequestRepository:
             return result.scalars().first()
 
     def _apply_list_filters(
-        self, stmt, user_id, org_id, mr_status, patient_id, authored_from, authored_to
+        self, stmt, user_id, org_id, mr_status, patient_id, authored_from, authored_to,
+        encounter_id=None,
     ):
         if user_id:
             stmt = stmt.where(MedicationRequestModel.user_id == user_id)
@@ -145,6 +146,11 @@ class MedicationRequestRepository:
                 MedicationRequestModel.subject_type == MedicationSubjectType.Patient,
                 MedicationRequestModel.subject_id == patient_id,
             )
+        if encounter_id is not None:
+            sub = select(EncounterModel.id).where(
+                EncounterModel.encounter_id == encounter_id
+            ).scalar_subquery()
+            stmt = stmt.where(MedicationRequestModel.encounter_id == sub)
         if authored_from is not None:
             stmt = stmt.where(MedicationRequestModel.authored_on >= authored_from)
         if authored_to is not None:
@@ -157,6 +163,7 @@ class MedicationRequestRepository:
         org_id: str,
         mr_status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        encounter_id: Optional[int] = None,
         authored_from: Optional[datetime] = None,
         authored_to: Optional[datetime] = None,
         limit: int = 50,
@@ -166,10 +173,12 @@ class MedicationRequestRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(MedicationRequestModel)),
                 user_id, org_id, mr_status, patient_id, authored_from, authored_to,
+                encounter_id=encounter_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(MedicationRequestModel),
                 user_id, org_id, mr_status, patient_id, authored_from, authored_to,
+                encounter_id=encounter_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
@@ -183,6 +192,7 @@ class MedicationRequestRepository:
         org_id: Optional[str] = None,
         mr_status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        encounter_id: Optional[int] = None,
         authored_from: Optional[datetime] = None,
         authored_to: Optional[datetime] = None,
         limit: int = 50,
@@ -192,10 +202,12 @@ class MedicationRequestRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(MedicationRequestModel)),
                 user_id, org_id, mr_status, patient_id, authored_from, authored_to,
+                encounter_id=encounter_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(MedicationRequestModel),
                 user_id, org_id, mr_status, patient_id, authored_from, authored_to,
+                encounter_id=encounter_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(

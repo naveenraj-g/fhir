@@ -54,6 +54,7 @@ class EncounterService:
         org_id: Optional[str] = None,
         status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        appointment_id: Optional[int] = None,
         actual_period_start_from: Optional[datetime] = None,
         actual_period_start_to: Optional[datetime] = None,
         limit: int = 50,
@@ -61,6 +62,7 @@ class EncounterService:
     ) -> Tuple[List[EncounterModel], int]:
         return await self.repository.list(
             user_id=user_id, org_id=org_id, status=status, patient_id=patient_id,
+            appointment_id=appointment_id,
             actual_period_start_from=actual_period_start_from,
             actual_period_start_to=actual_period_start_to,
             limit=limit, offset=offset,

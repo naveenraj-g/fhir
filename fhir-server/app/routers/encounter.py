@@ -160,7 +160,8 @@ async def patch_encounter(
 async def list_encounters(
     request: Request,
     enc_status: Optional[str] = Query(None, alias="status"),
-    patient_id: Optional[int] = Query(None),
+    patient_id: Optional[int] = Query(None, description="Filter by public patient_id."),
+    appointment_id: Optional[int] = Query(None, description="Filter by public appointment_id — returns encounters linked to that appointment via Encounter.appointment[]."),
     actual_period_start_from: Optional[datetime] = Query(None),
     actual_period_start_to: Optional[datetime] = Query(None),
     user_id: Optional[str] = Query(None),
@@ -171,6 +172,7 @@ async def list_encounters(
 ):
     encounters, total = await encounter_service.list_encounters(
         user_id=user_id, org_id=org_id, status=enc_status, patient_id=patient_id,
+        appointment_id=appointment_id,
         actual_period_start_from=actual_period_start_from,
         actual_period_start_to=actual_period_start_to,
         limit=limit, offset=offset,

@@ -128,6 +128,7 @@ class EncounterRepository:
     def _apply_list_filters(
         self, stmt, user_id, org_id, status, patient_id,
         actual_period_start_from, actual_period_start_to,
+        appointment_id=None,
     ):
         if user_id:
             stmt = stmt.where(EncounterModel.user_id == user_id)
@@ -140,6 +141,17 @@ class EncounterRepository:
                 EncounterModel.subject_type == SubjectReferenceType.Patient,
                 EncounterModel.subject_id == patient_id,
             )
+        if appointment_id is not None:
+            sub = (
+                select(EncounterAppointmentRef.id)
+                .where(
+                    EncounterAppointmentRef.encounter_id == EncounterModel.id,
+                    EncounterAppointmentRef.reference_type == EncounterAppointmentReferenceType.Appointment,
+                    EncounterAppointmentRef.reference_id == appointment_id,
+                )
+                .correlate(EncounterModel)
+            )
+            stmt = stmt.where(sub.exists())
         if actual_period_start_from is not None:
             stmt = stmt.where(EncounterModel.actual_period_start >= actual_period_start_from)
         if actual_period_start_to is not None:
@@ -152,6 +164,7 @@ class EncounterRepository:
         org_id: str,
         status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        appointment_id: Optional[int] = None,
         actual_period_start_from: Optional[datetime] = None,
         actual_period_start_to: Optional[datetime] = None,
         limit: int = 50,
@@ -162,11 +175,13 @@ class EncounterRepository:
                 _with_relationships(select(EncounterModel)),
                 user_id, org_id, status, patient_id,
                 actual_period_start_from, actual_period_start_to,
+                appointment_id=appointment_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(EncounterModel),
                 user_id, org_id, status, patient_id,
                 actual_period_start_from, actual_period_start_to,
+                appointment_id=appointment_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
@@ -180,6 +195,7 @@ class EncounterRepository:
         org_id: Optional[str] = None,
         status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        appointment_id: Optional[int] = None,
         actual_period_start_from: Optional[datetime] = None,
         actual_period_start_to: Optional[datetime] = None,
         limit: int = 50,
@@ -190,11 +206,13 @@ class EncounterRepository:
                 _with_relationships(select(EncounterModel)),
                 user_id, org_id, status, patient_id,
                 actual_period_start_from, actual_period_start_to,
+                appointment_id=appointment_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(EncounterModel),
                 user_id, org_id, status, patient_id,
                 actual_period_start_from, actual_period_start_to,
+                appointment_id=appointment_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(

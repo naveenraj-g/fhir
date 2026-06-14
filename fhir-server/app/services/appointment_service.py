@@ -54,6 +54,7 @@ class AppointmentService:
         org_id: Optional[str] = None,
         status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        practitioner_id: Optional[int] = None,
         start_from: Optional[datetime] = None,
         start_to: Optional[datetime] = None,
         limit: int = 50,
@@ -61,6 +62,7 @@ class AppointmentService:
     ) -> Tuple[List[AppointmentModel], int]:
         return await self.repository.list(
             user_id=user_id, org_id=org_id, status=status, patient_id=patient_id,
+            practitioner_id=practitioner_id,
             start_from=start_from, start_to=start_to, limit=limit, offset=offset,
         )
 

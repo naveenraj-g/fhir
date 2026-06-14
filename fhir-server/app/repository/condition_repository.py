@@ -95,6 +95,7 @@ class ConditionRepository:
         org_id: str,
         clinical_status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        encounter_id: Optional[int] = None,
         recorded_from: Optional[datetime] = None,
         recorded_to: Optional[datetime] = None,
         limit: int = 50,
@@ -104,10 +105,12 @@ class ConditionRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(ConditionModel)),
                 user_id, org_id, clinical_status, patient_id, recorded_from, recorded_to,
+                encounter_id=encounter_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(ConditionModel),
                 user_id, org_id, clinical_status, patient_id, recorded_from, recorded_to,
+                encounter_id=encounter_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
@@ -116,7 +119,8 @@ class ConditionRepository:
         return rows, total
 
     def _apply_list_filters(
-        self, stmt, user_id, org_id, clinical_status, patient_id, recorded_from, recorded_to
+        self, stmt, user_id, org_id, clinical_status, patient_id, recorded_from, recorded_to,
+        encounter_id=None,
     ):
         if user_id:
             stmt = stmt.where(ConditionModel.user_id == user_id)
@@ -129,6 +133,11 @@ class ConditionRepository:
                 ConditionModel.subject_type == ConditionSubjectType.Patient,
                 ConditionModel.subject_id == patient_id,
             )
+        if encounter_id is not None:
+            sub = select(EncounterModel.id).where(
+                EncounterModel.encounter_id == encounter_id
+            ).scalar_subquery()
+            stmt = stmt.where(ConditionModel.encounter_id == sub)
         if recorded_from is not None:
             stmt = stmt.where(ConditionModel.recorded_date >= recorded_from)
         if recorded_to is not None:
@@ -141,6 +150,7 @@ class ConditionRepository:
         org_id: Optional[str] = None,
         clinical_status: Optional[str] = None,
         patient_id: Optional[int] = None,
+        encounter_id: Optional[int] = None,
         recorded_from: Optional[datetime] = None,
         recorded_to: Optional[datetime] = None,
         limit: int = 50,
@@ -150,10 +160,12 @@ class ConditionRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(ConditionModel)),
                 user_id, org_id, clinical_status, patient_id, recorded_from, recorded_to,
+                encounter_id=encounter_id,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(ConditionModel),
                 user_id, org_id, clinical_status, patient_id, recorded_from, recorded_to,
+                encounter_id=encounter_id,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(

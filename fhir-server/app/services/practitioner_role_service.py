@@ -80,7 +80,7 @@ class PractitionerRoleService:
         day_of_week: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> Tuple[List[PractitionerRoleModel], int]:
+    ) -> Tuple[List[PractitionerRoleModel], int, dict, dict]:
         return await self.repository.list_for_booking(
             org_id=org_id,
             active=active,
@@ -90,7 +90,7 @@ class PractitionerRoleService:
             offset=offset,
         )
 
-    def _to_fhir_booking(self, pr: PractitionerRoleModel) -> dict:
+    def _to_fhir_booking(self, pr: PractitionerRoleModel, loc_lookup: dict = None, hs_lookup: dict = None) -> dict:
         result = to_fhir_practitioner_role(pr)
         if pr.practitioner:
             contained = to_fhir_practitioner(pr.practitioner)
@@ -99,14 +99,16 @@ class PractitionerRoleService:
             result["practitioner"] = {"reference": "#pr"}
         return result
 
-    def _to_plain_booking(self, pr: PractitionerRoleModel) -> dict:
+    def _to_plain_booking(self, pr: PractitionerRoleModel, loc_lookup: dict = None, hs_lookup: dict = None) -> dict:
         result = to_plain_practitioner_role(pr)
+
         if pr.practitioner:
             prac = pr.practitioner
             name = prac.names[0] if prac.names else None
             result["practitioner_detail"] = {
                 "id": prac.practitioner_id,
                 "gender": prac.gender.value if prac.gender else None,
+                "birth_date": prac.birth_date.isoformat() if prac.birth_date else None,
                 "name": {
                     "text": name.text,
                     "family": name.family,
@@ -114,11 +116,35 @@ class PractitionerRoleService:
                     "prefix": name.prefix.split(",") if name.prefix else [],
                     "suffix": name.suffix.split(",") if name.suffix else [],
                 } if name else None,
+                "telecom": [
+                    {
+                        "system": t.system.value if t.system else None,
+                        "value": t.value,
+                        "use": t.use.value if t.use else None,
+                        "rank": t.rank,
+                    }
+                    for t in (prac.telecoms or [])
+                ],
+                "languages": [
+                    {
+                        "code": c.language_code,
+                        "display": c.language_display,
+                        "preferred": c.preferred,
+                    }
+                    for c in (prac.communications or [])
+                    if c.language_code
+                ],
                 "qualifications": [
                     {
                         "code": q.code_code,
                         "display": q.code_display,
                         "text": q.code_text,
+                        "period_start": q.period_start.isoformat() if q.period_start else None,
+                        "issuer": q.issuer_display,
+                        "npi": next(
+                            (qi.value for qi in (q.identifiers or []) if qi.type_code == "NPI"),
+                            None,
+                        ),
                     }
                     for q in (prac.qualifications or [])
                 ],
@@ -126,4 +152,46 @@ class PractitionerRoleService:
             }
         else:
             result["practitioner_detail"] = None
+
+        # Enrich location entries with Location model data
+        if loc_lookup:
+            enriched = []
+            for entry in result.get("location") or []:
+                lm = loc_lookup.get(entry.get("reference_id"))
+                if lm:
+                    phone = next(
+                        (t.value for t in (lm.telecoms or []) if t.system and t.system.value == "phone"),
+                        None,
+                    )
+                    entry = {
+                        **entry,
+                        "name": lm.name,
+                        "address_text": lm.address_text,
+                        "address_city": lm.address_city,
+                        "address_state": lm.address_state,
+                        "address_postal_code": lm.address_postal_code,
+                        "address_country": lm.address_country,
+                        "phone": phone,
+                    }
+                enriched.append(entry)
+            result["location"] = enriched
+
+        # Enrich healthcare_service entries with HealthcareService model data
+        if hs_lookup:
+            enriched = []
+            for entry in result.get("healthcare_service") or []:
+                hm = hs_lookup.get(entry.get("reference_id"))
+                if hm:
+                    category = hm.categories[0].coding_display if hm.categories else None
+                    entry = {
+                        **entry,
+                        "name": hm.name,
+                        "comment": hm.comment,
+                        "appointment_required": hm.appointment_required,
+                        "category": category,
+                        "availability_exceptions": hm.availability_exceptions,
+                    }
+                enriched.append(entry)
+            result["healthcare_service"] = enriched
+
         return result
