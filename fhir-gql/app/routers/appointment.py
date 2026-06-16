@@ -35,6 +35,7 @@ from app.schemas.appointment.input import (
     BookAppointmentInput,
     ListAppointmentsSchema,
     MeAppointmentsSchema,
+    RescheduleAppointmentInput,
 )
 from app.schemas.appointment.response import AppointmentResponse, PaginatedAppointmentResponse
 from app.services.appointment_service import AppointmentService
@@ -193,6 +194,53 @@ async def get_my_appointments(
     return format_paginated_response(data, request)
 
 
+# ── POST /appointments/{appointment_id}/reschedule ───────────────────────────
+# MUST be registered before GET/PATCH /{appointment_id} so FastAPI does not
+# attempt to match the literal path segment "reschedule" as an integer ID.
+
+
+@router.post(
+    "/{appointment_id}/reschedule",
+    operation_id="reschedule_appointment",
+    summary="Reschedule an Appointment to a different Slot",
+    description=(
+        "Moves an existing Appointment to a new free Slot. "
+        "Provide the new `new_slot_id` — the service handles the full swap atomically:\n\n"
+        "1. Fetches the current appointment to discover the old slot reference.\n"
+        "2. Validates the new slot is free (raises 409 if already booked).\n"
+        "3. Frees the old slot so it becomes available for other bookings.\n"
+        "4. Updates the appointment's `start`/`end` to match the new slot's times.\n"
+        "5. Marks the new slot as busy.\n\n"
+        "Full rollback is applied if any step after Step 3 fails. "
+        "The appointment's internal slot reference is not updated (fhir-server limitation — "
+        "child arrays are immutable via PATCH). Only the timing fields are changed. "
+        "Send `Accept: application/fhir+json` to receive the result in FHIR R4 format."
+    ),
+    responses={
+        **_SINGLE_200,
+        **_ERR_NOT_FOUND,
+        **_ERR_VALIDATION,
+        **_ERR_SLOT_CONFLICT,
+    },
+    dependencies=[Depends(require_permission("appointment", "update"))],
+)
+async def reschedule_appointment(
+    appointment_id: int,
+    dto: RescheduleAppointmentInput,
+    request: Request,
+    actor: AuthUser = Depends(require_permission("appointment", "update")),
+    service: AppointmentService = Depends(get_appointment_service),
+) -> JSONResponse:
+    """
+    Reschedule an Appointment by swapping it from its current Slot to a new free Slot.
+
+    The service atomically frees the old slot, updates the appointment timing,
+    and marks the new slot as busy — with full rollback on any failure.
+    """
+    data = await service.reschedule(appointment_id, dto, actor, accept=get_accept_header(request))
+    return format_response(data, request)
+
+
 # ── GET /appointments/{appointment_id} ───────────────────────────────────────
 
 
@@ -228,7 +276,7 @@ async def get_appointment(
     summary="List Appointments",
     description=(
         "Returns a paginated list of Appointment resources. "
-        "Filter by `status`, `patient_id`, time range (`start_from`/`start_to`), "
+        "Filter by `status`, `patient_id`, `practitioner_id`, time range (`start_from`/`start_to`), "
         "`user_id`, or `org_id`. "
         "Send `Accept: application/fhir+json` to receive a FHIR Bundle searchset."
     ),

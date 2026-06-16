@@ -318,28 +318,75 @@ class PlainPractitionerDetail(BaseModel):
     Enriched Practitioner data embedded in each booking response item.
 
     The fhir-server joins the linked Practitioner record onto the PractitionerRole
-    so the booking UI does not need a second request to show the practitioner's name.
+    so the booking UI does not need a second request to show the practitioner's name,
+    contact details, languages, and qualifications.
     """
 
     model_config = ConfigDict(extra="allow")
 
     id: Optional[int] = None
     gender: Optional[str] = None
+    birth_date: Optional[str] = None
     name: Optional[PlainPractitionerName] = None
+    # Each entry: {system, value, use, rank}
+    telecom: Optional[List[dict]] = None
+    # Each entry: {code, display, preferred}
+    languages: Optional[List[dict]] = None
     qualifications: Optional[List[PlainPractitionerQualification]] = None
     photo_url: Optional[str] = None
 
 
+class PlainBookingLocation(PlainPRLocation):
+    """
+    Location reference enriched with Location model data for booking UIs.
+
+    Extends the bare reference (id, reference_type, reference_id, reference_display)
+    with address and phone fields fetched from the Location resource by the fhir-server.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    name: Optional[str] = None
+    address_text: Optional[str] = None
+    address_city: Optional[str] = None
+    address_state: Optional[str] = None
+    address_postal_code: Optional[str] = None
+    address_country: Optional[str] = None
+    phone: Optional[str] = None
+
+
+class PlainBookingHealthcareService(PlainPRHealthcareService):
+    """
+    HealthcareService reference enriched with HealthcareService model data for booking UIs.
+
+    Extends the bare reference with descriptive fields fetched from the
+    HealthcareService resource by the fhir-server.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    name: Optional[str] = None
+    comment: Optional[str] = None
+    appointment_required: Optional[bool] = None
+    category: Optional[str] = None
+    availability_exceptions: Optional[str] = None
+
+
 class PractitionerBookingResponse(PractitionerRoleResponse):
     """
-    PractitionerRole enriched with the linked Practitioner's details.
+    PractitionerRole enriched with the linked Practitioner's details and resolved
+    Location / HealthcareService data.
 
-    Extends PractitionerRoleResponse with a `practitioner_detail` block that
-    includes the practitioner's name, gender, photo URL, and qualifications —
-    everything a booking UI needs without an extra request.
+    Extends PractitionerRoleResponse with:
+      - practitioner_detail: name, gender, birth_date, telecom, languages, qualifications, photo
+      - location: enriched with address and phone from the Location resource
+      - healthcare_service: enriched with name, category, and availability from HealthcareService
     """
 
     practitioner_detail: Optional[PlainPractitionerDetail] = None
+    # Override parent's bare-reference lists with enriched variants
+    location: Optional[List[PlainBookingLocation]] = None
+    healthcare_service: Optional[List[PlainBookingHealthcareService]] = None
 
 
 class PaginatedPractitionerBookingResponse(BaseModel):

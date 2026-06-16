@@ -23,6 +23,7 @@ from app.schemas.appointment.input import (
     BookAppointmentInput,
     ListAppointmentsSchema,
     MeAppointmentsSchema,
+    RescheduleAppointmentInput,
 )
 
 
@@ -120,6 +121,7 @@ class AppointmentService:
             accept=accept,
             status=filters.status.value if filters.status else None,
             patient_id=filters.patient_id,
+            practitioner_id=filters.practitioner_id,
             start_from=filters.start_from.isoformat() if filters.start_from else None,
             start_to=filters.start_to.isoformat() if filters.start_to else None,
             user_id=filters.user_id,
@@ -260,7 +262,7 @@ class AppointmentService:
 
         # Carry the slot's own times into the appointment so they stay in sync.
         payload: dict = {
-            "status": "booked",
+            "status": "pending",
             "start": slot.get("start"),
             "end": slot.get("end"),
             "participant": participant,
@@ -329,6 +331,155 @@ class AppointmentService:
             raise
 
         return appointment
+
+    async def reschedule(
+        self,
+        appointment_id: int,
+        dto: RescheduleAppointmentInput,
+        actor: AuthUser,
+        accept: str | None = None,
+    ) -> dict:
+        """
+        Move an existing Appointment to a different Slot.
+
+        Orchestrates a 5-step atomic swap with rollback on every failure point:
+
+        Step 1 — Fetch the current appointment (plain JSON, no accept forwarding)
+            and extract the old slot ID from the first entry of the `slot` reference
+            array (e.g. `"Slot/42"` → 42). Raises 422 if the appointment has no
+            slot reference (was not created via /book or did not include a slot array).
+
+        Step 2 — Fetch the new slot (plain JSON) and validate it is still "free".
+            Raises 409 Conflict if the new slot is already booked or blocked.
+            Captures the new slot's `start` and `end` to sync them onto the appointment.
+
+        Step 3 — PATCH old slot → status = "free".
+            Un-books the previously reserved time window so it becomes available again.
+
+        Step 4 — PATCH appointment → start + end from the new slot's times.
+            Updates the appointment timing to match the new slot. On failure, the old
+            slot is re-busied (rollback Step 3) and the error is re-raised.
+
+        Note: the appointment's `slot` reference array is immutable on the fhir-server
+        (child arrays cannot be patched), so only `start`/`end` are updated. The slot
+        reference string continues to point to the original slot — this is a known
+        fhir-server limitation that can only be resolved by delete+recreate.
+
+        Step 5 — PATCH new slot → status = "busy".
+            Marks the new time window as taken. On failure, the old slot is re-busied
+            and the appointment timing is reverted (rollback Steps 3+4).
+
+        Args:
+            appointment_id: Integer ID of the appointment to reschedule.
+            dto:            Validated RescheduleAppointmentInput (new_slot_id only).
+            actor:          Authenticated caller — used for updated_by stamping.
+            accept:         Content-type preference forwarded for the final response.
+
+        Returns:
+            The updated Appointment dict (plain JSON or FHIR R4).
+
+        Raises:
+            HTTPException(422): If the appointment has no slot reference.
+            HTTPException(409): If the new slot is not free.
+            HTTPException(500): If a rollback step also fails — leaves a note with details.
+        """
+        # ── Step 1: Fetch current appointment and extract old slot ID ─────────
+        # Always fetch plain JSON here — we need to read the slot reference string
+        # programmatically, not consume a FHIR Bundle.
+        appointment = await self._client.get_by_id(appointment_id)
+
+        slot_array = appointment.get("slot") or []
+        if not slot_array:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Appointment {appointment_id} has no slot reference and cannot be rescheduled.",
+            )
+
+        # The fhir-server returns slot references as split fields: reference_type + reference_id.
+        # reference_id is the integer slot PK — use it directly without string parsing.
+        old_slot_id: int | None = slot_array[0].get("reference_id")
+        if not old_slot_id:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Appointment {appointment_id} slot entry has no reference_id — cannot reschedule.",
+            )
+
+        # ── Step 2: Validate the new slot is free ─────────────────────────────
+        # Fetch plain JSON — we need to inspect status and capture start/end.
+        new_slot = await self._slot_client.get_by_id(dto.new_slot_id)
+        new_slot_status = new_slot.get("status")
+        if new_slot_status != "free":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Slot {dto.new_slot_id} is not available for booking (current status: '{new_slot_status}').",
+            )
+
+        # Capture the new slot's timing — these will replace the appointment's own
+        # start/end so the appointment reflects the new time window.
+        new_start = new_slot.get("start")
+        new_end = new_slot.get("end")
+
+        # ── Step 3: Free the old slot ─────────────────────────────────────────
+        # Un-book the previously reserved time window so it becomes available
+        # for other patients to book.
+        await self._slot_client.patch(old_slot_id, {"status": "free"}, actor)
+
+        # ── Step 4: Update appointment timing ─────────────────────────────────
+        # Sync the appointment's start/end to the new slot's times.
+        # Rollback: re-busy the old slot if this patch fails.
+        timing_patch: dict = {}
+        if new_start:
+            timing_patch["start"] = new_start
+        if new_end:
+            timing_patch["end"] = new_end
+
+        try:
+            updated_appointment = await self._client.patch(
+                appointment_id, timing_patch, actor, accept=accept
+            )
+        except HTTPException as appt_err:
+            # Appointment patch failed — re-busy the old slot to restore consistency.
+            try:
+                await self._slot_client.patch(old_slot_id, {"status": "busy"}, actor)
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=(
+                        f"Appointment {appointment_id} timing update failed and rollback of Slot {old_slot_id} "
+                        f"also failed. Manual intervention required. Original error: {appt_err.detail}"
+                    ),
+                )
+            raise
+
+        # ── Step 5: Mark the new slot as busy ─────────────────────────────────
+        # Rollback: revert old slot back to busy + revert appointment timing if this fails.
+        try:
+            await self._slot_client.patch(dto.new_slot_id, {"status": "busy"}, actor)
+        except HTTPException as slot_err:
+            # New slot couldn't be marked busy — roll back both Steps 3 and 4.
+            try:
+                await self._slot_client.patch(old_slot_id, {"status": "busy"}, actor)
+                # Restore original appointment timing.
+                old_start = appointment.get("start")
+                old_end = appointment.get("end")
+                revert_patch: dict = {}
+                if old_start:
+                    revert_patch["start"] = old_start
+                if old_end:
+                    revert_patch["end"] = old_end
+                if revert_patch:
+                    await self._client.patch(appointment_id, revert_patch, actor)
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=(
+                        f"New Slot {dto.new_slot_id} could not be marked busy and full rollback failed. "
+                        f"Manual intervention required. Original error: {slot_err.detail}"
+                    ),
+                )
+            raise
+
+        return updated_appointment
 
     async def get_me(
         self,

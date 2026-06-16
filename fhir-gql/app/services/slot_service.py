@@ -92,7 +92,7 @@ class SlotService:
         Forwards all non-None filter values to SlotClient.list(), which strips
         remaining Nones before hitting the fhir-server.
 
-        Available filters: status, schedule_id, practitioner_role_id, user_id, org_id.
+        Available filters: status, schedule_id, practitioner_role_id, date, start_from, start_to, user_id, org_id.
 
         Args:
             filters: Validated query parameters from the router.
@@ -107,6 +107,9 @@ class SlotService:
             status=filters.status,
             schedule_id=filters.schedule_id,
             practitioner_role_id=filters.practitioner_role_id,
+            date=filters.date,
+            start_from=filters.start_from,
+            start_to=filters.start_to,
             user_id=filters.user_id,
             org_id=filters.org_id,
             limit=filters.limit,

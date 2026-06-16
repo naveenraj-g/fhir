@@ -557,6 +557,7 @@ class ListAppointmentsSchema(BaseModel):
 
     status: Optional[AppointmentStatus] = Field(None, description="Filter by appointment lifecycle status.")
     patient_id: Optional[int] = Field(None, description="Filter appointments that include this patient (integer ID).")
+    practitioner_id: Optional[int] = Field(None, description="Filter appointments where this practitioner is a participant (integer ID).")
     start_from: Optional[datetime] = Field(None, description="Return appointments starting at or after this datetime (ISO 8601).")
     start_to: Optional[datetime] = Field(None, description="Return appointments starting at or before this datetime (ISO 8601).")
     user_id: Optional[str] = Field(None, description="Filter by user_id for tenant scoping.")
@@ -577,3 +578,26 @@ class MeAppointmentsSchema(BaseModel):
     start_to: Optional[datetime] = Field(None, description="Return appointments starting at or before this datetime.")
     limit: int = Field(default=50, ge=1, le=200, description="Maximum number of records to return per page.")
     offset: int = Field(default=0, ge=0, description="Number of records to skip before returning results.")
+
+
+class RescheduleAppointmentInput(BaseModel):
+    """
+    Input schema for POST /appointments/{id}/reschedule.
+
+    The caller provides only the new slot ID. The service fetches the current
+    appointment to discover the old slot reference, validates the new slot is free,
+    then atomically swaps the timing and slot statuses.
+
+    Only `new_slot_id` is required — the service derives everything else from
+    the existing appointment and the new slot's own start/end times.
+
+    Note: the appointment's internal slot reference array is immutable on the
+    fhir-server (child arrays cannot be patched), so only the appointment's
+    `start`/`end` fields are updated to reflect the new slot's timing.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # The slot the appointment should be moved to.
+    # Must be status='free' at the time of the reschedule call.
+    new_slot_id: int = Field(..., description="Integer ID of the new free Slot to move this appointment to. Must have status='free'.")

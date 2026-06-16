@@ -34,13 +34,18 @@ from dependency_injector import containers, providers
 from app.di.core import CoreContainer
 from app.di.modules import (
     AppointmentContainer,
+    ConditionContainer,
+    EncounterContainer,
     HealthcareServiceContainer,
     LocationContainer,
+    MedicationRequestContainer,
+    ObservationContainer,
     OrganizationContainer,
     PatientContainer,
     PractitionerContainer,
     PractitionerRoleContainer,
     ScheduleContainer,
+    ServiceRequestContainer,
     SlotContainer,
 )
 
@@ -135,5 +140,47 @@ class Container(containers.DeclarativeContainer):
     # fhir-server has no separate sub-resource routes for Appointment.
     appointment = providers.Container(
         AppointmentContainer,
+        core=core,
+    )
+
+    # Domain container for Encounter resources.
+    # An Encounter is a clinical interaction between a patient and one or more
+    # providers. All child arrays (participant, diagnosis, location, reason, etc.)
+    # are created in the POST body — the fhir-server has no separate sub-resource
+    # routes for Encounter.
+    encounter = providers.Container(
+        EncounterContainer,
+        core=core,
+    )
+
+    # Domain container for ServiceRequest resources.
+    # A ServiceRequest captures a clinical order or referral for a service,
+    # diagnostic test, or procedure. All child arrays are created in the POST body.
+    service_request = providers.Container(
+        ServiceRequestContainer,
+        core=core,
+    )
+
+    # Domain container for MedicationRequest resources.
+    # A MedicationRequest captures an order for medication including dosage
+    # instructions, dispense request, and substitution rules.
+    medication_request = providers.Container(
+        MedicationRequestContainer,
+        core=core,
+    )
+
+    # Domain container for Observation resources.
+    # An Observation captures a measurement or clinical assertion about a patient,
+    # including value[x] polymorphic values and optional component sub-observations.
+    observation = providers.Container(
+        ObservationContainer,
+        core=core,
+    )
+
+    # Domain container for Condition resources.
+    # A Condition captures a clinical problem, diagnosis, or health matter including
+    # clinical/verification status, onset, abatement, stage, and evidence.
+    condition = providers.Container(
+        ConditionContainer,
         core=core,
     )

@@ -157,6 +157,7 @@ async def get_slot(
     description=(
         "Returns a paginated list of Slot resources. "
         "Filter by `status`, `schedule_id`, `practitioner_role_id`, `user_id`, or `org_id`. "
+        "Narrow by date using `date` (exact YYYY-MM-DD), `start_from`, or `start_to` (ISO datetime or date). "
         "Send `Accept: application/fhir+json` to receive a FHIR Bundle searchset."
     ),
     responses={**_LIST_200},

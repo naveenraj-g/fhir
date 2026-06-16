@@ -107,7 +107,6 @@ class PatientRepository:
             stmt = _with_relationships(
                 select(PatientModel).where(
                     PatientModel.patient_id == patient_id,
-                    PatientModel.user_id == user_id,
                     PatientModel.org_id == org_id,
                 )
             )

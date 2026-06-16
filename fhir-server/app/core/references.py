@@ -75,7 +75,10 @@ async def resolve_subject(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Patient/{subject_id} not found.",
             )
-        return f"{patient.given_name or ''} {patient.family_name or ''}".strip()
+        name = patient.names[0] if patient.names else None
+        given = (name.given or "") if name else ""
+        family = (name.family or "") if name else ""
+        return f"{given} {family}".strip()
 
     elif subject_type == SubjectReferenceType.Group:
         raise HTTPException(

@@ -270,6 +270,21 @@ class ListSlotsSchema(BaseModel):
         description="Filter by practitioner_role_id — returns slots on that practitioner's schedules",
     )
 
+    # Date range filters — all accept ISO datetime strings or YYYY-MM-DD date strings
+    # date narrows to a single day; start_from/start_to define an inclusive range
+    date: Optional[str] = Field(
+        default=None,
+        description="Exact start date filter (YYYY-MM-DD) — returns all slots whose start falls on this date",
+    )
+    start_from: Optional[str] = Field(
+        default=None,
+        description="Return slots with start >= this value (ISO datetime or YYYY-MM-DD)",
+    )
+    start_to: Optional[str] = Field(
+        default=None,
+        description="Return slots with start <= this value (ISO datetime or YYYY-MM-DD)",
+    )
+
     # Tenant scoping — optional, narrows results to a specific user/org
     user_id: Optional[str] = Field(default=None, description="Filter by user_id for tenant scoping")
     org_id: Optional[str] = Field(default=None, description="Filter by org_id for tenant scoping")
