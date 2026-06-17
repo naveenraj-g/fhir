@@ -1,6 +1,6 @@
 {
-  "user_id": "Tp7CkKsmrEiTnad3aia5SBwSQsBdGi0P",
-  "org_id": "f5ea33b0-60b1-4a30-9791-8040829d9cc6",
+  "user_id": "VsHqNde5bO7NsoLddPX2NljS7hhZRd4Y",
+  "org_id": "0fb41e50-82a4-461e-96c7-bd11359d892d",
   "active": true,
   "name": "City Health Clinic",
   "alias": [{ "value": "CHC" }],
@@ -14,7 +14,12 @@
   ],
   "telecom": [
     { "system": "phone", "value": "+1-555-200-3000", "use": "work", "rank": 1 },
-    { "system": "email", "value": "info@cityhealthclinic.example.com", "use": "work", "rank": 2 }
+    {
+      "system": "email",
+      "value": "info@cityhealthclinic.example.com",
+      "use": "work",
+      "rank": 2
+    }
   ],
   "address": [
     {

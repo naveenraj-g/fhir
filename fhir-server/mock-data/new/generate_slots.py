@@ -15,11 +15,11 @@ import urllib.request
 from datetime import date, datetime, timedelta, timezone
 
 START = date(2026, 6, 15)
-END = date(2026, 12, 31)
+END = date(2026, 8, 31)
 
-USER_ID = "Tp7CkKsmrEiTnad3aia5SBwSQsBdGi0P"
-ORG_ID = "f5ea33b0-60b1-4a30-9791-8040829d9cc6"
-SCHEDULE_ID = "Schedule/200000"
+USER_ID = "VsHqNde5bO7NsoLddPX2NljS7hhZRd4Y"
+ORG_ID = "0fb41e50-82a4-461e-96c7-bd11359d892d"
+SCHEDULE_ID = "Schedule/200003"
 SCHEDULE_DISPLAY = "Dr. Doctor 1 — General Practice"
 
 MORNING_SLOTS = [

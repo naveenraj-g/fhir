@@ -1,6 +1,6 @@
 {
-  "user_id": "Tp7CkKsmrEiTnad3aia5SBwSQsBdGi0P",
-  "org_id": "f5ea33b0-60b1-4a30-9791-8040829d9cc6",
+  "user_id": "VsHqNde5bO7NsoLddPX2NljS7hhZRd4Y",
+  "org_id": "0fb41e50-82a4-461e-96c7-bd11359d892d",
   "status": "active",
   "name": "City Health Clinic — Main Branch",
   "description": "Primary outpatient clinic with general practice services.",
@@ -15,7 +15,11 @@
   ],
   "telecoms": [
     { "system": "phone", "value": "+1-555-200-3001", "use": "work", "rank": 1 },
-    { "system": "email", "value": "clinic@cityhealthclinic.example.com", "use": "work" }
+    {
+      "system": "email",
+      "value": "clinic@cityhealthclinic.example.com",
+      "use": "work"
+    }
   ],
   "address_use": "work",
   "address_type": "both",
@@ -31,7 +35,7 @@
   "managing_organization": "Organization/190001",
   "managing_organization_display": "City Health Clinic",
   "position_longitude": 72.8777,
-  "position_latitude": 19.0760,
+  "position_latitude": 19.076,
   "hours_of_operation": [
     {
       "days_of_week": ["mon", "tue", "wed", "thu", "fri"],
