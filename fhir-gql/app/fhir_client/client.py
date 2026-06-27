@@ -92,7 +92,7 @@ class FhirClient:
             raise HTTPException(status_code=r.status_code, detail=detail)
         return r.json()
 
-    async def post(self, path: str, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
+    async def post(self, path: str, data: dict, actor: AuthUser, accept: str | None = None, inject_audit: bool = True) -> dict:
         """
         Send a POST (create) request to the FHIR Server.
 
@@ -101,30 +101,31 @@ class FhirClient:
         those fields manually in every service call.
 
         Args:
-            path:   FHIR Server endpoint path relative to base_url (e.g. "/organizations").
-            data:   Resource payload from the schema's model_dump().
-            actor:  Authenticated user performing the operation — only `sub` is used
-                    to stamp `created_by`; org/tenant scoping is handled by the FHIR Server.
-            accept: Optional Accept header value forwarded from the client request.
-                    When set to "application/fhir+json", the FHIR Server returns the
-                    resource in FHIR R4 format instead of plain JSON.
+            path:         FHIR Server endpoint path relative to base_url (e.g. "/organizations").
+            data:         Resource payload from the schema's model_dump().
+            actor:        Authenticated user performing the operation — only `sub` is used
+                          to stamp `created_by`; org/tenant scoping is handled by the FHIR Server.
+            accept:       Optional Accept header value forwarded from the client request.
+                          When set to "application/fhir+json", the FHIR Server returns the
+                          resource in FHIR R4 format instead of plain JSON.
+            inject_audit: When True (default), injects `created_by` from actor.sub.
+                          Pass False for sub-resource endpoints whose input schemas use
+                          extra="forbid" and do not declare a created_by field.
 
         Returns:
             The newly created resource dict — in FHIR R4 or plain JSON format
             depending on the `accept` value.
         """
-        # Inject only the audit field — the FHIR Server owns org_id/user_id scoping.
-        body = {
-            **data,
-            "created_by": actor.sub,  # audit trail: who created this record
-        }
+        # Inject the audit field unless the caller opts out (e.g. sub-resource schemas
+        # that use extra="forbid" and have no created_by field).
+        body = {**data, "created_by": actor.sub} if inject_audit else data
         # Forward the Accept header per-request so the FHIR Server applies content
         # negotiation. httpx merges per-request headers with client-level headers.
         extra_headers = {"Accept": accept} if accept else {}
         r = await self._http.post(path, json=body, headers=extra_headers)
         return await self._handle(r)
 
-    async def patch(self, path: str, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
+    async def patch(self, path: str, data: dict, actor: AuthUser, accept: str | None = None, inject_audit: bool = True) -> dict:
         """
         Send a PATCH (partial update) request to the FHIR Server.
 
@@ -132,16 +133,19 @@ class FhirClient:
         resource without callers needing to supply it.
 
         Args:
-            path:   FHIR Server endpoint path including the resource ID.
-            data:   Partial payload from the schema's model_dump(exclude_none=True, mode="json").
-            actor:  Authenticated user performing the operation.
-            accept: Optional Accept header forwarded from the client request for
-                    content negotiation — same semantics as in post().
+            path:         FHIR Server endpoint path including the resource ID.
+            data:         Partial payload from the schema's model_dump(exclude_none=True, mode="json").
+            actor:        Authenticated user performing the operation.
+            accept:       Optional Accept header forwarded from the client request for
+                          content negotiation — same semantics as in post().
+            inject_audit: When True (default), injects `updated_by` from actor.sub.
+                          Pass False for sub-resource endpoints whose input schemas use
+                          extra="forbid" and do not declare an updated_by field.
 
         Returns:
             The updated resource dict in FHIR R4 or plain JSON format.
         """
-        body = {**data, "updated_by": actor.sub}
+        body = {**data, "updated_by": actor.sub} if inject_audit else data
         extra_headers = {"Accept": accept} if accept else {}
         r = await self._http.patch(path, json=body, headers=extra_headers)
         return await self._handle(r)

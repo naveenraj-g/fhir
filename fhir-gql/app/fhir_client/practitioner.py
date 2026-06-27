@@ -235,7 +235,8 @@ class PractitionerClient:
 
     async def add_photo(self, practitioner_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """POST /practitioners/{id}/photos — add a photo Attachment to a Practitioner."""
-        return await self._fhir.post(f"{_PATH}/{practitioner_id}/photos", data, actor, accept=accept)
+        # PhotoCreateSchema uses extra="forbid" and has no created_by field — skip audit injection.
+        return await self._fhir.post(f"{_PATH}/{practitioner_id}/photos", data, actor, accept=accept, inject_audit=False)
 
     async def list_photos(self, practitioner_id: int, accept: str | None = None) -> dict:
         """GET /practitioners/{id}/photos — list all photos for a Practitioner."""
@@ -243,7 +244,8 @@ class PractitionerClient:
 
     async def patch_photo(self, practitioner_id: int, photo_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """PATCH /practitioners/{id}/photos/{photo_id} — update a photo; returns full Practitioner."""
-        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/photos/{photo_id}", data, actor, accept=accept)
+        # PhotoPatchSchema uses extra="forbid" and has no updated_by field — skip audit injection.
+        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/photos/{photo_id}", data, actor, accept=accept, inject_audit=False)
 
     async def delete_photo(self, practitioner_id: int, photo_id: int) -> None:
         """DELETE /practitioners/{id}/photos/{photo_id} — remove a photo."""

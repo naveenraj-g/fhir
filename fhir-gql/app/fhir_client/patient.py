@@ -236,7 +236,8 @@ class PatientClient:
 
     async def add_photo(self, patient_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """POST /patients/{patient_id}/photos — add an Attachment (photo) to a Patient."""
-        return await self._fhir.post(f"{_PATH}/{patient_id}/photos", data, actor, accept=accept)
+        # PhotoCreateSchema uses extra="forbid" and has no created_by field — skip audit injection.
+        return await self._fhir.post(f"{_PATH}/{patient_id}/photos", data, actor, accept=accept, inject_audit=False)
 
     async def list_photos(self, patient_id: int, accept: str | None = None) -> dict:
         """GET /patients/{patient_id}/photos — list all photos for a Patient."""
@@ -244,7 +245,8 @@ class PatientClient:
 
     async def patch_photo(self, patient_id: int, photo_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """PATCH /patients/{patient_id}/photos/{photo_id} — update a specific photo."""
-        return await self._fhir.patch(f"{_PATH}/{patient_id}/photos/{photo_id}", data, actor, accept=accept)
+        # PhotoPatchSchema uses extra="forbid" and has no updated_by field — skip audit injection.
+        return await self._fhir.patch(f"{_PATH}/{patient_id}/photos/{photo_id}", data, actor, accept=accept, inject_audit=False)
 
     async def delete_photo(self, patient_id: int, photo_id: int) -> None:
         """DELETE /patients/{patient_id}/photos/{photo_id} — remove a specific photo."""
