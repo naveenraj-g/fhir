@@ -10,6 +10,10 @@ provisioning of healthcare. This resource stores the practitioner's demographics
 Child records (names, identifiers, telecom, address, photo, qualification,
 communication) are managed via separate sub-routes on the fhir-server.
 
+All sub-resource schemas use extra="forbid" and contain no created_by /
+updated_by fields, so every sub-resource POST and PATCH passes inject_audit=False
+to prevent FhirClient from injecting those fields into the body.
+
 Reference: https://hl7.org/fhir/R4/practitioner.html
 """
 
@@ -163,15 +167,15 @@ class PractitionerClient:
 
     async def add_name(self, practitioner_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """POST /practitioners/{id}/names — add a HumanName to a Practitioner."""
-        return await self._fhir.post(f"{_PATH}/{practitioner_id}/names", data, actor, accept=accept)
+        return await self._fhir.post(f"{_PATH}/{practitioner_id}/names", data, actor, accept=accept, inject_audit=False)
 
     async def list_names(self, practitioner_id: int, accept: str | None = None) -> dict:
         """GET /practitioners/{id}/names — list all names for a Practitioner."""
         return await self._fhir.get(f"{_PATH}/{practitioner_id}/names", accept=accept)
 
     async def patch_name(self, practitioner_id: int, name_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
-        """PATCH /practitioners/{id}/names/{name_id} — update a specific name; returns full Practitioner."""
-        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/names/{name_id}", data, actor, accept=accept)
+        """PATCH /practitioners/{id}/names/{name_id} — update a specific name."""
+        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/names/{name_id}", data, actor, accept=accept, inject_audit=False)
 
     async def delete_name(self, practitioner_id: int, name_id: int) -> None:
         """DELETE /practitioners/{id}/names/{name_id} — remove a specific name."""
@@ -181,15 +185,15 @@ class PractitionerClient:
 
     async def add_identifier(self, practitioner_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """POST /practitioners/{id}/identifiers — add an Identifier to a Practitioner."""
-        return await self._fhir.post(f"{_PATH}/{practitioner_id}/identifiers", data, actor, accept=accept)
+        return await self._fhir.post(f"{_PATH}/{practitioner_id}/identifiers", data, actor, accept=accept, inject_audit=False)
 
     async def list_identifiers(self, practitioner_id: int, accept: str | None = None) -> dict:
         """GET /practitioners/{id}/identifiers — list all identifiers for a Practitioner."""
         return await self._fhir.get(f"{_PATH}/{practitioner_id}/identifiers", accept=accept)
 
     async def patch_identifier(self, practitioner_id: int, identifier_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
-        """PATCH /practitioners/{id}/identifiers/{identifier_id} — update an identifier; returns full Practitioner."""
-        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/identifiers/{identifier_id}", data, actor, accept=accept)
+        """PATCH /practitioners/{id}/identifiers/{identifier_id} — update a specific identifier."""
+        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/identifiers/{identifier_id}", data, actor, accept=accept, inject_audit=False)
 
     async def delete_identifier(self, practitioner_id: int, identifier_id: int) -> None:
         """DELETE /practitioners/{id}/identifiers/{identifier_id} — remove an identifier."""
@@ -199,15 +203,15 @@ class PractitionerClient:
 
     async def add_telecom(self, practitioner_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """POST /practitioners/{id}/telecom — add a ContactPoint to a Practitioner."""
-        return await self._fhir.post(f"{_PATH}/{practitioner_id}/telecom", data, actor, accept=accept)
+        return await self._fhir.post(f"{_PATH}/{practitioner_id}/telecom", data, actor, accept=accept, inject_audit=False)
 
     async def list_telecom(self, practitioner_id: int, accept: str | None = None) -> dict:
         """GET /practitioners/{id}/telecom — list all contact points for a Practitioner."""
         return await self._fhir.get(f"{_PATH}/{practitioner_id}/telecom", accept=accept)
 
     async def patch_telecom(self, practitioner_id: int, telecom_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
-        """PATCH /practitioners/{id}/telecom/{telecom_id} — update a contact point; returns full Practitioner."""
-        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/telecom/{telecom_id}", data, actor, accept=accept)
+        """PATCH /practitioners/{id}/telecom/{telecom_id} — update a specific contact point."""
+        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/telecom/{telecom_id}", data, actor, accept=accept, inject_audit=False)
 
     async def delete_telecom(self, practitioner_id: int, telecom_id: int) -> None:
         """DELETE /practitioners/{id}/telecom/{telecom_id} — remove a contact point."""
@@ -217,15 +221,15 @@ class PractitionerClient:
 
     async def add_address(self, practitioner_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """POST /practitioners/{id}/addresses — add an Address to a Practitioner."""
-        return await self._fhir.post(f"{_PATH}/{practitioner_id}/addresses", data, actor, accept=accept)
+        return await self._fhir.post(f"{_PATH}/{practitioner_id}/addresses", data, actor, accept=accept, inject_audit=False)
 
     async def list_addresses(self, practitioner_id: int, accept: str | None = None) -> dict:
         """GET /practitioners/{id}/addresses — list all addresses for a Practitioner."""
         return await self._fhir.get(f"{_PATH}/{practitioner_id}/addresses", accept=accept)
 
     async def patch_address(self, practitioner_id: int, address_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
-        """PATCH /practitioners/{id}/addresses/{address_id} — update an address; returns full Practitioner."""
-        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/addresses/{address_id}", data, actor, accept=accept)
+        """PATCH /practitioners/{id}/addresses/{address_id} — update a specific address."""
+        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/addresses/{address_id}", data, actor, accept=accept, inject_audit=False)
 
     async def delete_address(self, practitioner_id: int, address_id: int) -> None:
         """DELETE /practitioners/{id}/addresses/{address_id} — remove an address."""
@@ -235,7 +239,6 @@ class PractitionerClient:
 
     async def add_photo(self, practitioner_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """POST /practitioners/{id}/photos — add a photo Attachment to a Practitioner."""
-        # PhotoCreateSchema uses extra="forbid" and has no created_by field — skip audit injection.
         return await self._fhir.post(f"{_PATH}/{practitioner_id}/photos", data, actor, accept=accept, inject_audit=False)
 
     async def list_photos(self, practitioner_id: int, accept: str | None = None) -> dict:
@@ -243,8 +246,7 @@ class PractitionerClient:
         return await self._fhir.get(f"{_PATH}/{practitioner_id}/photos", accept=accept)
 
     async def patch_photo(self, practitioner_id: int, photo_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
-        """PATCH /practitioners/{id}/photos/{photo_id} — update a photo; returns full Practitioner."""
-        # PhotoPatchSchema uses extra="forbid" and has no updated_by field — skip audit injection.
+        """PATCH /practitioners/{id}/photos/{photo_id} — update a photo."""
         return await self._fhir.patch(f"{_PATH}/{practitioner_id}/photos/{photo_id}", data, actor, accept=accept, inject_audit=False)
 
     async def delete_photo(self, practitioner_id: int, photo_id: int) -> None:
@@ -255,15 +257,15 @@ class PractitionerClient:
 
     async def add_qualification(self, practitioner_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """POST /practitioners/{id}/qualifications — add a qualification to a Practitioner."""
-        return await self._fhir.post(f"{_PATH}/{practitioner_id}/qualifications", data, actor, accept=accept)
+        return await self._fhir.post(f"{_PATH}/{practitioner_id}/qualifications", data, actor, accept=accept, inject_audit=False)
 
     async def list_qualifications(self, practitioner_id: int, accept: str | None = None) -> dict:
         """GET /practitioners/{id}/qualifications — list all qualifications for a Practitioner."""
         return await self._fhir.get(f"{_PATH}/{practitioner_id}/qualifications", accept=accept)
 
     async def patch_qualification(self, practitioner_id: int, qualification_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
-        """PATCH /practitioners/{id}/qualifications/{qual_id} — update a qualification; returns full Practitioner."""
-        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/qualifications/{qualification_id}", data, actor, accept=accept)
+        """PATCH /practitioners/{id}/qualifications/{qual_id} — update a qualification."""
+        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/qualifications/{qualification_id}", data, actor, accept=accept, inject_audit=False)
 
     async def delete_qualification(self, practitioner_id: int, qualification_id: int) -> None:
         """DELETE /practitioners/{id}/qualifications/{qual_id} — remove a qualification."""
@@ -273,15 +275,15 @@ class PractitionerClient:
 
     async def add_communication(self, practitioner_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """POST /practitioners/{id}/communications — add a language preference to a Practitioner."""
-        return await self._fhir.post(f"{_PATH}/{practitioner_id}/communications", data, actor, accept=accept)
+        return await self._fhir.post(f"{_PATH}/{practitioner_id}/communications", data, actor, accept=accept, inject_audit=False)
 
     async def list_communications(self, practitioner_id: int, accept: str | None = None) -> dict:
         """GET /practitioners/{id}/communications — list all language preferences for a Practitioner."""
         return await self._fhir.get(f"{_PATH}/{practitioner_id}/communications", accept=accept)
 
     async def patch_communication(self, practitioner_id: int, communication_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
-        """PATCH /practitioners/{id}/communications/{comm_id} — update a language preference; returns full Practitioner."""
-        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/communications/{communication_id}", data, actor, accept=accept)
+        """PATCH /practitioners/{id}/communications/{comm_id} — update a language preference."""
+        return await self._fhir.patch(f"{_PATH}/{practitioner_id}/communications/{communication_id}", data, actor, accept=accept, inject_audit=False)
 
     async def delete_communication(self, practitioner_id: int, communication_id: int) -> None:
         """DELETE /practitioners/{id}/communications/{comm_id} — remove a language preference."""
