@@ -1,0 +1,74 @@
+All recipes parse cleanly. Here's the full VPS workflow:
+
+To deploy and seed on the VPS:
+
+# 1. Build and push image (from your local machine)
+just vps-release
+
+# 2. On VPS — start the stack
+just vps-up
+
+# 3. On VPS — populate terminology_data/ with your files, then run seeder (once)
+just vps-seed
+
+What was added:
+- seed-all.sh — runs all 8 terminology load steps in order using the activated venv (no uv run)
+- Dockerfile — copies seed-all.sh into the image
+- docker-compose.prod.yml — added fhir-seeder service (profile: seed, mounts ./terminology_data:/terminology_data:ro, runs seed-all.sh)
+- justfile — added all vps-* recipes including vps-seed
+
+
+----------------------------------------------------------
+
+Here's exactly what to do on the VPS:
+
+---
+1. Get the compose file onto the VPS
+# Either clone the repo
+git clone https://github.com/naveenraj-g/fhir.git
+cd fhir/fhir-server
+
+# Or if already cloned, just pull
+git pull origin main
+
+2. Create the .env file
+cp .env.example .env
+nano .env   # fill in real values
+Set POSTGRES_PASSWORD, IAM_ISSUER, IAM_JWKS_URL — leave hostnames as db and redis (Docker service names).
+
+3. Log in to ghcr.io and start the stack
+echo YOUR_GITHUB_TOKEN | docker --password-stdin
+docker compose -f docker-compose.prod.yml up -d
+This pulls the image, starts Postgres + Redis + the app, and runs migrations automatically on startup.
+
+4. Upload your terminology data
+# From your local machine — copy the whole folder to the VPS
+scp -r E:/work/code/terminology-@your-vps-ip:~/fhir/fhir-server/
+
+5. Run the seeder (once)
+docker compose -f docker-composer
+This takes ~20–30 min (SNOMED is the slow one). Safe to re-run if it fails partway through — all imports are idempotent.
+
+---
+After that, for future deploys (new image push):
+docker compose -f docker-compose.prod.yml pull api
+docker compose -f docker-compose
+No need to re-seed unless you reset the DB.
+
+
+
+----------------------------------------------------------
+
+# Stop the stack and wipe the postgres volume
+docker compose -f docker-compose.prod.yml down -v
+
+# Start fresh — Postgres will re-initialize with the password in your .env
+docker compose -f docker-compose.prod.yml up -d
+
+Wait ~15 seconds for the app to run migrations, then check it's healthy:
+
+docker compose -f docker-compose.prod.yml ps
+
+Once fhir-server shows healthy, run the seeder:
+
+docker compose -f docker-compose.prod.yml run --rm fhir-seeder
