@@ -101,7 +101,7 @@ class LocationService:
         string, so unset filters are simply not applied.
 
         Args:
-            filters: Validated query parameters (name, status, limit, offset).
+            filters: Validated query parameters (org_id, status, limit, offset).
             actor:   Authenticated user (accepted for interface consistency).
             accept:  Optional Accept header forwarded from the client. When
                      "application/fhir+json", the fhir-server wraps results in a
@@ -112,7 +112,7 @@ class LocationService:
         """
         return await self._client.list(
             accept=accept,
-            name=filters.name,
+            org_id=filters.org_id,
             status=filters.status,
             limit=filters.limit,
             offset=filters.offset,

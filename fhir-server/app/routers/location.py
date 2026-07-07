@@ -141,13 +141,14 @@ async def patch_location(
 )
 async def list_locations(
     request: Request,
+    org_id: Optional[str] = Query(None, description="Filter by organization ID."),
     location_status: Optional[str] = Query(None, alias="status", description="Filter by status."),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     location_service: LocationService = Depends(get_location_service),
 ):
     rows, total = await location_service.list_locations(
-        location_status=location_status, limit=limit, offset=offset
+        org_id=org_id, location_status=location_status, limit=limit, offset=offset
     )
     return format_paginated_response(
         [location_service._to_fhir(r) for r in rows],

@@ -181,6 +181,12 @@ class RegisterOrgSchema(BaseModel):
         },
     )
 
+    # ── Tenant scoping ─────────────────────────────────────────────────────────
+    # Forwarded as-is to the fhir-server for multi-tenant record ownership.
+    # If omitted, the fhir-server falls back to the actor's JWT claims.
+    user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
+    org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+
     # ── REQUIRED by Pulse ──────────────────────────────────────────────────────
     name: str = Field(..., description="Name used for the organization.")
     type: List[OrgTypeInput] = Field(

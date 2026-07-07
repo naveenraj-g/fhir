@@ -169,7 +169,7 @@ async def get_location(
     summary="List Locations",
     description=(
         "Returns a paginated list of Locations. "
-        "Filter by `name` (case-insensitive substring) and `status` "
+        "Filter by `org_id` (tenant scoping) and `status` "
         "(active | suspended | inactive). "
         "Use `limit` and `offset` for pagination. "
         "Send `Accept: application/fhir+json` to receive results as a FHIR Bundle searchset."

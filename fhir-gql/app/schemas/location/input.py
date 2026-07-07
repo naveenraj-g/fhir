@@ -390,8 +390,10 @@ class ListLocationsSchema(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: Optional[str] = Field(
-        default=None, description="Case-insensitive name filter (substring match)"
+    # org_id scopes results to a single tenant organisation — mirrors the fhir-server
+    # list_locations router which accepts org_id as a query param.
+    org_id: Optional[str] = Field(
+        default=None, description="Filter by organisation ID (tenant scoping)."
     )
     status: Optional[str] = Field(
         default=None, description="Filter by status: active | suspended | inactive"
