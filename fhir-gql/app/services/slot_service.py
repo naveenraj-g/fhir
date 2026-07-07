@@ -259,13 +259,11 @@ class SlotService:
             if dto.generation_end.tzinfo is None:
                 horizon_end = horizon_end.replace(tzinfo=None)
             if dto.generation_end > horizon_end:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=(
-                        f"generation_end ({dto.generation_end.isoformat()}) exceeds "
-                        f"the schedule's planningHorizon end ({horizon_end_raw})."
-                    ),
-                )
+                # Clamp to the planning horizon end rather than rejecting.
+                # The client DatePicker appends T23:59:59 to any picked date; when
+                # the user selects the last valid day we honour that intent by
+                # capping at the actual horizon end instead of failing the request.
+                dto = dto.model_copy(update={"generation_end": horizon_end})
 
         # ── 3. Resolve service_category, service_type, specialty ──────────────
         # Priority: caller override → Schedule fields → PractitionerRole actor

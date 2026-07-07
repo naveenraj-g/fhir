@@ -59,7 +59,7 @@ class SlotServiceCategoryInput(BaseModel):
     Maps to the FHIR CodeableConcept stored in the slot_service_category child table.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     # First coding entry — the fhir-server expects exactly one Coding per category
     coding_system: Optional[str] = Field(default=None, description="Coding system URI (e.g. http://example.org/service-category)")
@@ -74,7 +74,7 @@ class SlotServiceTypeInput(BaseModel):
     Maps to the FHIR CodeableConcept stored in the slot_service_type child table.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     coding_system: Optional[str] = Field(default=None, description="Coding system URI for the service type")
     coding_code: Optional[str] = Field(default=None, description="Code value for the service type")
@@ -88,7 +88,7 @@ class SlotSpecialtyInput(BaseModel):
     Maps to the FHIR CodeableConcept stored in the slot_specialty child table.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     coding_system: Optional[str] = Field(default=None, description="Coding system URI for the specialty (e.g. http://snomed.info/sct)")
     coding_code: Optional[str] = Field(default=None, description="SNOMED CT or other code for the specialty")
