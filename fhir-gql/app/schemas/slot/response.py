@@ -13,6 +13,7 @@ For the FHIR R4 camelCase shape (used when the caller sends
 Reference: https://hl7.org/fhir/R4/slot.html
 """
 
+from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -147,3 +148,32 @@ class PaginatedSlotResponse(BaseModel):
     limit: int
     offset: int
     data: List[SlotResponse]
+
+
+class SlotGenerateResponse(BaseModel):
+    """
+    Response returned by POST /slots/generate after auto-generating Slots.
+
+    Reports how many slots were created, their IDs, and any that failed
+    (partial-failure model — successfully created slots are not rolled back
+    if later ones in the batch fail).
+
+    Fields:
+      schedule_id:           The schedule the slots were generated for.
+      generated_count:       Number of slots successfully created.
+      slot_ids:              Ordered list of the new slot integer IDs.
+      generation_start:      The requested window start (echoed back).
+      generation_end:        The requested window end (echoed back).
+      slot_duration_minutes: The duration used for each slot.
+      failed_count:          Number of slot windows that could not be created.
+      errors:                One error string per failure — "{start_iso}: {reason}".
+    """
+
+    schedule_id: int
+    generated_count: int
+    slot_ids: List[int]
+    generation_start: datetime
+    generation_end: datetime
+    slot_duration_minutes: int
+    failed_count: int = 0
+    errors: List[str] = []

@@ -22,7 +22,7 @@ Design notes:
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class SlotIdentifierInput(BaseModel):
@@ -212,6 +212,131 @@ class SlotCreateSchema(BaseModel):
         default=None,
         description="Clinical specialties required to deliver the service in this slot",
     )
+
+
+class SlotGenerateSchema(BaseModel):
+    """
+    Input schema for auto-generating Slot resources (POST /slots/generate).
+
+    The service fetches the target Schedule, validates the generation window
+    against its planningHorizon, then creates one Slot per
+    `slot_duration_minutes` interval between `generation_start` and
+    `generation_end`. All generated slots are set to status=free.
+
+    service_category, service_type, and specialty are optional overrides.
+    When omitted they are auto-inherited in this priority order:
+      1. Fields already stored on the Schedule resource.
+      2. specialty[] on the PractitionerRole actor (if one is listed on the Schedule).
+    The caller may always supply explicit values to override the auto-resolved ones.
+
+    appointment_type_* is intentionally optional — the FHIR pattern is to set
+    appointmentType on the Appointment at booking time, not on the Slot at
+    generation time. It can still be pre-set here if all slots in a batch share
+    the same appointment type (e.g. a dedicated ROUTINE session).
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "user_id": "user-123",
+                "org_id": "org-456",
+                "schedule_id": 200001,
+                "generation_start": "2025-08-01T09:00:00",
+                "generation_end": "2025-08-01T13:00:00",
+                "slot_duration_minutes": 30,
+                "overbooked": False,
+                "comment": "Morning session — Cardiology OPD",
+            }
+        },
+    )
+
+    # Tenant scoping
+    user_id: Optional[str] = Field(default=None, description="User ID for tenant scoping")
+    org_id: Optional[str] = Field(default=None, description="Organisation ID for tenant scoping")
+
+    # Target schedule — REQUIRED
+    schedule_id: int = Field(
+        ...,
+        description="Integer ID of the Schedule to generate slots for",
+    )
+
+    # Generation window — REQUIRED; both must fall within the Schedule's planningHorizon
+    generation_start: datetime = Field(
+        ...,
+        description="Start of the generation window (inclusive). Must be within the Schedule's planningHorizon.",
+    )
+    generation_end: datetime = Field(
+        ...,
+        description="End of the generation window (exclusive). Must be within the Schedule's planningHorizon.",
+    )
+
+    # Slot duration — REQUIRED
+    slot_duration_minutes: int = Field(
+        ...,
+        ge=1,
+        le=1440,
+        description="Duration of each generated slot in minutes (1–1440). Must divide evenly into the window.",
+    )
+
+    # Appointment type — OPTIONAL; can be set at booking time instead
+    appointment_type_system: Optional[str] = Field(
+        default=None,
+        description="Coding system URI for the appointment type (e.g. http://terminology.hl7.org/CodeSystem/v2-0276)",
+    )
+    appointment_type_code: Optional[str] = Field(
+        default=None,
+        description="Appointment type code (e.g. ROUTINE, WALKIN, FOLLOWUP, EMERGENCY). Can be set at booking time.",
+    )
+    appointment_type_display: Optional[str] = Field(
+        default=None,
+        description="Human-readable display for the appointment type code",
+    )
+    appointment_type_text: Optional[str] = Field(
+        default=None,
+        description="Free-text appointment type description when no code applies",
+    )
+
+    # Override arrays — if omitted, auto-inherited from Schedule / PractitionerRole actor
+    service_category: Optional[List[SlotServiceCategoryInput]] = Field(
+        default=None,
+        description=(
+            "Broad service category for every generated slot. "
+            "Auto-inherited from the Schedule's service_category if omitted."
+        ),
+    )
+    service_type: Optional[List[SlotServiceTypeInput]] = Field(
+        default=None,
+        description=(
+            "Specific service type for every generated slot. "
+            "Auto-inherited from the Schedule's service_type if omitted."
+        ),
+    )
+    specialty: Optional[List[SlotSpecialtyInput]] = Field(
+        default=None,
+        description=(
+            "Clinical specialty for every generated slot. "
+            "Auto-inherited from the Schedule's specialty, then from the PractitionerRole "
+            "actor's specialty[], if omitted."
+        ),
+    )
+
+    # Slot flags
+    overbooked: bool = Field(
+        default=False,
+        description="Mark every generated slot as overbooked. Default: False.",
+    )
+    comment: Optional[str] = Field(
+        default=None,
+        description="Free-text comment stamped on every generated slot",
+    )
+
+    @model_validator(mode="after")
+    def validate_window(self) -> "SlotGenerateSchema":
+        """Ensure the generation window is valid before hitting the fhir-server."""
+        if self.generation_end <= self.generation_start:
+            raise ValueError("generation_end must be after generation_start")
+        return self
 
 
 class SlotPatchSchema(BaseModel):

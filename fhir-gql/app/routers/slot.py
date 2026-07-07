@@ -29,8 +29,8 @@ from app.core.content_negotiation import format_paginated_response, format_respo
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.slot import get_slot_service
 from app.schemas.slot.fhir_schemas import FhirBundleResponse, FhirSlotResponse
-from app.schemas.slot.input import ListSlotsSchema, SlotCreateSchema, SlotPatchSchema
-from app.schemas.slot.response import PaginatedSlotResponse, SlotResponse
+from app.schemas.slot.input import ListSlotsSchema, SlotCreateSchema, SlotGenerateSchema, SlotPatchSchema
+from app.schemas.slot.response import PaginatedSlotResponse, SlotGenerateResponse, SlotResponse
 from app.services.slot_service import SlotService
 
 # All slot routes are prefixed with /slots; tagged for Swagger grouping.
@@ -91,6 +91,48 @@ _LIST_200 = {
         },
     }
 }
+
+
+# ── POST /slots/generate ─────────────────────────────────────────────────────
+# Registered BEFORE /{resource_id} to prevent FastAPI treating "generate" as an
+# integer path parameter.
+
+
+@router.post(
+    "/generate",
+    status_code=status.HTTP_201_CREATED,
+    operation_id="generate_slots",
+    summary="Auto-generate Slots for a Schedule",
+    description=(
+        "Automatically creates one free Slot per `slot_duration_minutes` interval "
+        "between `generation_start` and `generation_end` for the given `schedule_id`. "
+        "\n\n"
+        "**service_category**, **service_type**, and **specialty** are optional overrides. "
+        "When omitted they are auto-inherited in this priority order:\n"
+        "  1. Fields already stored on the Schedule resource.\n"
+        "  2. `specialty[]` from the PractitionerRole actor listed on the Schedule.\n\n"
+        "**appointment_type** fields are optional — FHIR convention is to set "
+        "`appointmentType` on the Appointment at booking time, not on the Slot at "
+        "generation time. Pre-set here only when every slot in the batch shares "
+        "the same type (e.g. a dedicated ROUTINE session).\n\n"
+        "Uses a partial-failure model: successfully created slots are NOT rolled back "
+        "if later ones fail. `failed_count` and `errors[]` report any failures."
+    ),
+    response_model=SlotGenerateResponse,
+    responses={
+        201: {"description": "Slots generated — see generated_count and slot_ids"},
+        **_ERR_VALIDATION,
+        404: {"description": "Schedule not found"},
+    },
+    dependencies=[Depends(require_permission("slot", "create"))],
+)
+async def generate_slots(
+    dto: SlotGenerateSchema,
+    actor: AuthUser = Depends(require_permission("slot", "create")),
+    service: SlotService = Depends(get_slot_service),
+) -> SlotGenerateResponse:
+    """Generate Slots for a Schedule within a time window at a fixed duration interval."""
+    return await service.generate(dto, actor)
 
 
 # ── POST /slots/ ──────────────────────────────────────────────────────────────
