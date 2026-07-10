@@ -26,7 +26,9 @@ Container hierarchy:
     ├── slot               →  SlotContainer               (Slot CRUD service + client)
     ├── practitioner       →  PractitionerContainer       (Practitioner CRUD service + client)
     ├── practitioner_role  →  PractitionerRoleContainer   (PractitionerRole CRUD service + client)
-    └── patient            →  PatientContainer            (Patient CRUD + 9 sub-resource clients)
+    ├── patient            →  PatientContainer            (Patient CRUD + 9 sub-resource clients)
+    ├── diagnostic_report  →  DiagnosticReportContainer   (DiagnosticReport CRUD service + client)
+    └── document_reference →  DocumentReferenceContainer  (DocumentReference CRUD service + client)
 """
 
 from dependency_injector import containers, providers
@@ -35,6 +37,8 @@ from app.di.core import CoreContainer
 from app.di.modules import (
     AppointmentContainer,
     ConditionContainer,
+    DiagnosticReportContainer,
+    DocumentReferenceContainer,
     EncounterContainer,
     HealthcareServiceContainer,
     LocationContainer,
@@ -182,5 +186,22 @@ class Container(containers.DeclarativeContainer):
     # clinical/verification status, onset, abatement, stage, and evidence.
     condition = providers.Container(
         ConditionContainer,
+        core=core,
+    )
+
+    # Domain container for DiagnosticReport resources.
+    # A DiagnosticReport records the findings and interpretation of diagnostic tests
+    # (labs, imaging, pathology). Links to a ServiceRequest via `based_on` and holds
+    # the result document via `presented_form`.
+    diagnostic_report = providers.Container(
+        DiagnosticReportContainer,
+        core=core,
+    )
+
+    # Domain container for DocumentReference resources.
+    # A DocumentReference is a pointer to a document (PDF, image) stored in an
+    # external system (e.g. FilNest). Linked to clinical resources via context.related.
+    document_reference = providers.Container(
+        DocumentReferenceContainer,
         core=core,
     )

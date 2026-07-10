@@ -1,5 +1,7 @@
 from app.di.modules.appointment import AppointmentContainer
 from app.di.modules.condition import ConditionContainer
+from app.di.modules.diagnostic_report import DiagnosticReportContainer
+from app.di.modules.document_reference import DocumentReferenceContainer
 from app.di.modules.encounter import EncounterContainer
 from app.di.modules.healthcare_service import HealthcareServiceContainer
 from app.di.modules.location import LocationContainer
@@ -28,4 +30,6 @@ __all__ = [
     "MedicationRequestContainer",
     "ObservationContainer",
     "ConditionContainer",
+    "DiagnosticReportContainer",
+    "DocumentReferenceContainer",
 ]

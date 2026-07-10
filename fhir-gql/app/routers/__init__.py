@@ -2,6 +2,8 @@ from fastapi import APIRouter
 
 from app.routers.appointment import router as appointments_router
 from app.routers.condition import router as conditions_router
+from app.routers.diagnostic_report import router as diagnostic_reports_router
+from app.routers.document_reference import router as document_references_router
 from app.routers.encounter import router as encounters_router
 from app.routers.healthcare_service import router as healthcare_services_router
 from app.routers.location import router as locations_router
@@ -32,4 +34,6 @@ api_router.include_router(service_requests_router)
 api_router.include_router(medication_requests_router)
 api_router.include_router(observations_router)
 api_router.include_router(conditions_router)
+api_router.include_router(diagnostic_reports_router)
+api_router.include_router(document_references_router)
 api_router.include_router(terminology_router)
