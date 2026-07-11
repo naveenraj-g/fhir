@@ -507,6 +507,16 @@ class BookAppointmentInput(BaseModel):
     slot_id: int = Field(..., description="Integer ID of the free Slot to book. Must have status='free'.")
     patient_id: int = Field(..., description="Integer ID of the Patient being booked. Get from GET /patients/me.")
 
+    # ── Display names — stored as participant reference_display ───────────────
+    practitioner_display: Optional[str] = Field(
+        None,
+        description="Human-readable name of the practitioner. Stored as the Practitioner participant's reference_display.",
+    )
+    patient_display: Optional[str] = Field(
+        None,
+        description="Human-readable name of the patient. Stored as the Patient participant's reference_display.",
+    )
+
     # ── Optional context ──────────────────────────────────────────────────────
     service_type_code: Optional[str] = Field(None, description="Service type code (e.g. SNOMED or local code).")
     service_type_display: Optional[str] = Field(None, description="Human-readable label for the service type code.")

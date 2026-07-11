@@ -246,12 +246,14 @@ class AppointmentService:
                 # Practitioner actor — accepted immediately since the booking is
                 # on their behalf (the practitioner's schedule owns the slot).
                 "reference": f"Practitioner/{dto.practitioner_id}",
+                **({"reference_display": dto.practitioner_display} if dto.practitioner_display else {}),
                 "status": "accepted",
                 "required": True,
             },
             {
                 # Patient actor — needs-action until they confirm attendance.
                 "reference": f"Patient/{dto.patient_id}",
+                **({"reference_display": dto.patient_display} if dto.patient_display else {}),
                 "status": "needs-action",
                 "required": True,
             },
@@ -261,13 +263,21 @@ class AppointmentService:
         slot_ref = [{"reference": f"Slot/{dto.slot_id}"}]
 
         # Carry the slot's own times into the appointment so they stay in sync.
+        # subject is the primary Patient reference — used by the doctor's appointment
+        # list to show the patient name without walking the participant array.
         payload: dict = {
             "status": "pending",
             "start": slot.get("start"),
             "end": slot.get("end"),
+            "subject": f"Patient/{dto.patient_id}",
             "participant": participant,
             "slot": slot_ref,
         }
+
+        # Store patient display name on subject_display so the doctor's appointment
+        # list can show it directly without a secondary Patient fetch.
+        if dto.patient_display:
+            payload["subject_display"] = dto.patient_display
 
         # Tenant scoping — forwarded only when the caller provides them.
         if dto.user_id:
