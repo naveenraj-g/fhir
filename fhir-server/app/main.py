@@ -77,7 +77,7 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 
 app.container = container
 
-app.add_middleware(RateLimitMiddleware)
+# app.add_middleware(RateLimitMiddleware)
 app.middleware("http")(request_context_middleware)
 
 app.include_router(

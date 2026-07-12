@@ -100,7 +100,17 @@ pip install uv
 uv sync
 ```
 
-### 3. Configure environment
+### 3. Start Postgres + Redis
+
+If you don't already have PostgreSQL and Redis running locally, bring up just the datastores in Docker:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+This exposes Postgres on `localhost:5432` and Redis on `localhost:6379`.
+
+### 4. Configure environment
 
 ```bash
 cp .env.example .env
@@ -108,13 +118,13 @@ cp .env.example .env
 
 Edit `.env` with your values (see [Environment Variables](#environment-variables)).
 
-### 4. Run database migrations
+### 5. Run database migrations
 
 ```bash
 uv run alembic upgrade head
 ```
 
-### 5. Start the development server
+### 6. Start the development server
 
 ```bash
 uv run fastapi dev app/main.py
@@ -269,3 +279,13 @@ uv remove <package>
 # Sync dependencies from lockfile
 uv sync
 ```
+
+---
+
+## Contributing
+
+Contributions are welcome! See [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to set up a local environment, run tests, and submit a pull request. This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
+
+For a deeper look at how the system is structured, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+To report a security vulnerability, see [`SECURITY.md`](SECURITY.md) — please don't open a public issue for security reports.
