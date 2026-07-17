@@ -35,6 +35,7 @@ from app.core.logging import get_logger, setup_logging
 from app.core.middleware import RequestIdMiddleware
 from app.core.redis import redis_client
 from app.di.container import Container
+from app.gql.schema import graphql_router
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.routers import api_router
 
@@ -115,6 +116,19 @@ app.include_router(
     api_router,
     prefix="/api/v1",
     dependencies=[Depends(get_current_user)],
+)
+
+# GraphQL — a second transport in front of the exact same service layer the
+# REST routers above call (see app/gql/schema.py and ARCHITECTURE.md).
+# Unlike api_router, auth is NOT a router-level dependency here: GraphiQL's
+# IDE shell is served via GET /graphql, and a router-level Depends(get_current_user)
+# would 401 a browser's plain navigation before the IDE could ever load. Auth
+# instead runs inside app/gql/context.py's get_context() — see that module's
+# docstring for why, and why it's still equivalent to REST's guarantee that
+# every real query/mutation is authenticated.
+app.include_router(
+    graphql_router,
+    prefix="/graphql",
 )
 
 
