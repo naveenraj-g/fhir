@@ -1,18 +1,23 @@
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.deps.patient_deps import resolve_patient
+from app.deps.patient_deps import resolve_patient, resolve_patient_core
 from app.core.content_negotiation import format_response, format_paginated_response, wants_fhir
+from app.core.pagination import ListParams
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.patient import get_patient_service
+from app.models.patient.enums import PatientGeneralPractitionerType
 from app.models.patient.patient import PatientModel
 from app.schemas.fhir import (
     FHIRPatientBundle,
     FHIRPatientSchema,
+    FHIRPatientCoreSchema,
     PaginatedPatientResponse,
     PlainPatientResponse,
+    PlainPatientCoreResponse,
     PatientNamesListResponse,
     PatientIdentifiersListResponse,
     PatientTelecomListResponse,
@@ -87,6 +92,15 @@ _SINGLE_200 = {
     }
 }
 _SINGLE_201 = {201: _SINGLE_200[200]}
+_SINGLE_CORE_200 = {
+    200: {
+        "description": "Patient core fields retrieved successfully — no sub-resource arrays",
+        "content": {
+            "application/json": {"schema": inline_schema(PlainPatientCoreResponse.model_json_schema())},
+            "application/fhir+json": {"schema": inline_schema(FHIRPatientCoreSchema.model_json_schema())},
+        },
+    }
+}
 _LIST_200 = {
     200: {
         "description": "Paginated list of patients",
@@ -202,6 +216,28 @@ async def get_patient(
     return format_response(patient_service._to_fhir(patient), patient_service._to_plain(patient), request)
 
 
+@router.get(
+    "/{patient_id}/core",
+    operation_id="get_patient_core_by_id",
+    summary="Retrieve only a Patient's own table data — no sub-resources",
+    description=(
+        "Returns just the Patient resource's scalar fields (demographics, marital status, "
+        "deceased, multiple birth, managing organization) with none of the nine sub-resource "
+        "arrays (name, identifier, telecom, address, photo, contact, communication, "
+        "generalPractitioner, link) attached. One query against the patients table only — "
+        "use this instead of `GET /{patient_id}` when the sub-resource arrays aren't needed. "
+        + _CONTENT_NEG
+    ),
+    responses={**_SINGLE_CORE_200, **_ERR_NOT_FOUND},
+)
+async def get_patient_core(
+    request: Request,
+    patient: PatientModel = Depends(resolve_patient_core),
+    patient_service: PatientService = Depends(get_patient_service),
+):
+    return format_response(patient_service._to_fhir_core(patient), patient_service._to_plain_core(patient), request)
+
+
 # ── Patch ──────────────────────────────────────────────────────────────────────
 
 
@@ -266,8 +302,14 @@ async def patch_patient_full(
     summary="List all Patient resources",
     description=(
         "Returns a paginated list of Patient resources. "
-        "Filter by `family_name` or `given_name` (searches across the patient_name table), "
-        "`gender`, `active`, `user_id`, or `org_id`. "
+        "Filter by `family_name`/`given_name` (partial match against patient_name), "
+        "`identifier` (exact business-identifier value), `gender`, `active`, `deceased`, "
+        "`birth_date_from`/`birth_date_to` (inclusive range), "
+        "`address_city`/`address_state`/`address_postal_code`, `email`/`phone` (telecom), "
+        "`general_practitioner_type`/`general_practitioner_id`, `organization_id` "
+        "(managingOrganization), `user_id`, or `org_id`. "
+        "Sort with `sort` (e.g. `-birth_date`); set `total_mode=none` to skip the COUNT(*) "
+        "on large result sets. "
         + _CONTENT_NEG
     ),
     responses={**_LIST_200},
@@ -280,19 +322,42 @@ async def list_patients(
     active: Optional[bool] = Query(None),
     user_id: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    identifier: Optional[str] = Query(None, description="Exact match on a business identifier value (MRN, SSN, etc.)."),
+    birth_date_from: Optional[date] = Query(None, description="Inclusive lower bound on birth_date."),
+    birth_date_to: Optional[date] = Query(None, description="Inclusive upper bound on birth_date."),
+    address_city: Optional[str] = Query(None, description="Filter by address city — partial match."),
+    address_state: Optional[str] = Query(None, description="Filter by address state — partial match."),
+    address_postal_code: Optional[str] = Query(None, description="Filter by address postal code — exact match."),
+    email: Optional[str] = Query(None, description="Filter by telecom email — partial match, system=email only."),
+    phone: Optional[str] = Query(None, description="Filter by telecom phone — partial match, system=phone only."),
+    deceased: Optional[bool] = Query(None, description="Filter by deceased_boolean."),
+    general_practitioner_type: Optional[PatientGeneralPractitionerType] = Query(
+        None, description="Reference type for generalPractitioner — narrows general_practitioner_id."
+    ),
+    general_practitioner_id: Optional[int] = Query(
+        None, description="Public id of a referenced Organization/Practitioner/PractitionerRole."
+    ),
+    organization_id: Optional[int] = Query(None, description="Public id of the managingOrganization."),
+    params: ListParams = Depends(),
     patient_service: PatientService = Depends(get_patient_service),
 ):
     patients, total = await patient_service.list_patients(
         user_id=user_id, org_id=org_id, family_name=family_name,
         given_name=given_name, gender=gender, active=active,
-        limit=limit, offset=offset,
+        identifier=identifier,
+        birth_date_from=birth_date_from, birth_date_to=birth_date_to,
+        address_city=address_city, address_state=address_state,
+        address_postal_code=address_postal_code,
+        email=email, phone=phone, deceased=deceased,
+        general_practitioner_type=general_practitioner_type,
+        general_practitioner_id=general_practitioner_id,
+        organization_id=organization_id,
+        limit=params.limit, offset=params.offset, sort=params.sort, total_mode=params.total_mode,
     )
     return format_paginated_response(
         [patient_service._to_fhir(p) for p in patients],
         [patient_service._to_plain(p) for p in patients],
-        total, limit, offset, request,
+        total, params.limit, params.offset, request,
     )
 
 

@@ -105,7 +105,15 @@ def fhir_link(lk: "PatientLink") -> dict:
     return entry
 
 
-def to_fhir_patient(patient: "PatientModel") -> dict:
+def _core_fields(patient: "PatientModel") -> dict:
+    """
+    Scalar-column-only fields shared by to_fhir_patient() and
+    to_fhir_patient_core() — deliberately never touches a relationship
+    attribute (patient.names, patient.identifiers, ...), so it's safe to call
+    on a PatientModel fetched without the selectinload options (see
+    PatientRepository.get_core_by_patient_id()): touching an unloaded
+    relationship on an async session raises rather than lazy-loading.
+    """
     result: dict = {
         "resourceType": "Patient",
         "id": str(patient.patient_id),
@@ -138,6 +146,17 @@ def to_fhir_patient(patient: "PatientModel") -> dict:
             "reference": f"{fhir_enum(patient.managing_organization_type)}/{patient.managing_organization_id}",
             "display": patient.managing_organization_display,
         }.items() if v}
+
+    return result
+
+
+def to_fhir_patient_core(patient: "PatientModel") -> dict:
+    """Patient table scalars only — no sub-resource arrays. Backs GET /{patient_id}/core."""
+    return {k: v for k, v in _core_fields(patient).items() if v is not None}
+
+
+def to_fhir_patient(patient: "PatientModel") -> dict:
+    result: dict = _core_fields(patient)
 
     if patient.names:
         result["name"] = [fhir_human_name(n) for n in patient.names]

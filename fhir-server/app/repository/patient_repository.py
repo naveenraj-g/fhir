@@ -1,10 +1,18 @@
 from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status as http_status
-from sqlalchemy import delete, exists, func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.orm import selectinload
 
+from app.core.filters import (
+    apply_child_exists_filter,
+    apply_date_range_filter,
+    apply_token_filter,
+    parse_reference,
+)
+from app.core.pagination import resolve_sort
+from app.models.patient.enums import PatientGeneralPractitionerType  # noqa: F401 (re-exported for callers)
 from app.models.patient.patient import (
     PatientModel,
     PatientAddress,
@@ -20,6 +28,8 @@ from app.models.patient.patient import (
     PatientTelecom,
 )
 from app.models.enums import OrganizationReferenceType
+from app.repository.base import BaseRepository
+from app.schemas.enums import ContactPointSystem
 from app.schemas.resources import (
     AddressCreate,
     AddressPatch,
@@ -47,28 +57,29 @@ from app.schemas.resources import (
 
 
 def _parse_org_ref(ref: str) -> tuple:
-    """Parse 'Organization/123' → (OrganizationReferenceType.Organization, 123)."""
-    parts = ref.split("/", 1)
-    if len(parts) != 2:
-        raise HTTPException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid reference format: '{ref}'. Expected 'ResourceType/id'.",
-        )
-    try:
-        ref_id = int(parts[1])
-    except ValueError:
-        raise HTTPException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid reference id in: '{ref}'. Id must be an integer.",
-        )
-    try:
-        ref_type = OrganizationReferenceType(parts[0])
-    except ValueError:
-        raise HTTPException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid reference type '{parts[0]}'. Allowed: ['Organization'].",
-        )
-    return ref_type, ref_id
+    """
+    Parse 'Organization/123' → (OrganizationReferenceType.Organization, 123).
+
+    Delegates to the shared app.core.filters.parse_reference — kept as a thin,
+    name-stable wrapper here so every existing call site in this file
+    (create/create_full/patch/patch_full, and the Contact sub-resource
+    mutations) needed zero changes when the parsing logic was generalized.
+    """
+    return parse_reference(ref, OrganizationReferenceType)
+
+
+# Sortable fields exposed via the `sort` list-query param (see
+# app.core.pagination.resolve_sort) — only first-class PatientModel columns
+# are sortable for now; sorting by a child-table field (e.g. family name)
+# would need a join rather than the EXISTS-subquery pattern this file uses
+# for filtering, and hasn't been needed yet.
+_SORTABLE_FIELDS = {
+    "patient_id": PatientModel.patient_id,
+    "birth_date": PatientModel.birth_date,
+    "created_at": PatientModel.created_at,
+    "updated_at": PatientModel.updated_at,
+    "gender": PatientModel.gender,
+}
 
 
 def _with_relationships(stmt):
@@ -86,9 +97,12 @@ def _with_relationships(stmt):
     )
 
 
-class PatientRepository:
-    def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
-        self.session_factory = session_factory
+class PatientRepository(BaseRepository):
+    """
+    session_factory/__init__ inherited from BaseRepository — see that class
+    for the generic paginated-list execution this repository's list() now
+    delegates the sort/count/pagination mechanics to.
+    """
 
     # ── Read ──────────────────────────────────────────────────────────────────
 
@@ -97,6 +111,21 @@ class PatientRepository:
             stmt = _with_relationships(
                 select(PatientModel).where(PatientModel.patient_id == patient_id)
             )
+            result = await session.execute(stmt)
+            return result.scalars().first()
+
+    async def get_core_by_patient_id(self, patient_id: int) -> Optional[PatientModel]:
+        """
+        Same lookup as get_by_patient_id() but WITHOUT the 9 selectinload
+        options — one query against the patients table only, no fan-out to
+        the sub-resource child tables. Backs GET /{patient_id}/core.
+
+        Callers must go through to_plain_patient_core()/to_fhir_patient_core()
+        (never to_plain_patient()/to_fhir_patient()) to format the result —
+        those touch the relationship attributes this query leaves unloaded.
+        """
+        async with self.session_factory() as session:
+            stmt = select(PatientModel).where(PatientModel.patient_id == patient_id)
             result = await session.execute(stmt)
             return result.scalars().first()
 
@@ -132,33 +161,104 @@ class PatientRepository:
             result = await session.execute(stmt)
             return result.scalars().first()
 
-    def _apply_list_filters(self, stmt, user_id, org_id, family_name, given_name, gender, active):
+    def _apply_list_filters(
+        self,
+        stmt,
+        user_id,
+        org_id,
+        family_name,
+        given_name,
+        gender,
+        active,
+        identifier: Optional[str] = None,
+        birth_date_from=None,
+        birth_date_to=None,
+        address_city: Optional[str] = None,
+        address_state: Optional[str] = None,
+        address_postal_code: Optional[str] = None,
+        email: Optional[str] = None,
+        phone: Optional[str] = None,
+        deceased: Optional[bool] = None,
+        general_practitioner_type: Optional[PatientGeneralPractitionerType] = None,
+        general_practitioner_id: Optional[int] = None,
+        organization_id: Optional[int] = None,
+    ):
         if user_id:
             stmt = stmt.where(PatientModel.user_id == user_id)
         if org_id:
             stmt = stmt.where(PatientModel.org_id == org_id)
         if family_name:
-            stmt = stmt.where(
-                exists(
-                    select(PatientName.id).where(
-                        PatientName.patient_id == PatientModel.id,
-                        PatientName.family.ilike(f"%{family_name}%"),
-                    )
-                )
-            )
+            stmt = apply_child_exists_filter(stmt, select(PatientName.id).where(
+                PatientName.patient_id == PatientModel.id,
+                PatientName.family.ilike(f"%{family_name}%"),
+            ))
         if given_name:
-            stmt = stmt.where(
-                exists(
-                    select(PatientName.id).where(
-                        PatientName.patient_id == PatientModel.id,
-                        PatientName.given.ilike(f"%{given_name}%"),
-                    )
+            stmt = apply_child_exists_filter(stmt, select(PatientName.id).where(
+                PatientName.patient_id == PatientModel.id,
+                PatientName.given.ilike(f"%{given_name}%"),
+            ))
+        stmt = apply_token_filter(stmt, PatientModel.gender, gender)
+        stmt = apply_token_filter(stmt, PatientModel.active, active)
+
+        # ── New filters — see dev-docs/12-search-and-filter-standards.md (fhir-gql repo) ──
+        if identifier:
+            # Identifier.value is an exact business-identifier match (MRN/SSN/etc.),
+            # not a substring search — a partial identifier match isn't a meaningful
+            # clinical query the way a partial name search is.
+            stmt = apply_child_exists_filter(stmt, select(PatientIdentifier.id).where(
+                PatientIdentifier.patient_id == PatientModel.id,
+                PatientIdentifier.value == identifier,
+            ))
+        stmt = apply_date_range_filter(stmt, PatientModel.birth_date, birth_date_from, birth_date_to)
+        if address_city:
+            stmt = apply_child_exists_filter(stmt, select(PatientAddress.id).where(
+                PatientAddress.patient_id == PatientModel.id,
+                PatientAddress.city.ilike(f"%{address_city}%"),
+            ))
+        if address_state:
+            stmt = apply_child_exists_filter(stmt, select(PatientAddress.id).where(
+                PatientAddress.patient_id == PatientModel.id,
+                PatientAddress.state.ilike(f"%{address_state}%"),
+            ))
+        if address_postal_code:
+            stmt = apply_child_exists_filter(stmt, select(PatientAddress.id).where(
+                PatientAddress.patient_id == PatientModel.id,
+                PatientAddress.postal_code == address_postal_code,
+            ))
+        if email:
+            # system-scoped EXISTS — matches only telecom rows whose system is
+            # specifically "email", so an email filter can never accidentally
+            # match a phone number that happens to contain the same substring.
+            stmt = apply_child_exists_filter(stmt, select(PatientTelecom.id).where(
+                PatientTelecom.patient_id == PatientModel.id,
+                PatientTelecom.system == ContactPointSystem.email,
+                PatientTelecom.value.ilike(f"%{email}%"),
+            ))
+        if phone:
+            stmt = apply_child_exists_filter(stmt, select(PatientTelecom.id).where(
+                PatientTelecom.patient_id == PatientModel.id,
+                PatientTelecom.system == ContactPointSystem.phone,
+                PatientTelecom.value.ilike(f"%{phone}%"),
+            ))
+        stmt = apply_token_filter(stmt, PatientModel.deceased_boolean, deceased)
+        if general_practitioner_id is not None:
+            gp_predicates = [
+                PatientGeneralPractitioner.patient_id == PatientModel.id,
+                PatientGeneralPractitioner.reference_id == general_practitioner_id,
+            ]
+            if general_practitioner_type is not None:
+                gp_predicates.append(
+                    PatientGeneralPractitioner.reference_type == general_practitioner_type
                 )
+            stmt = apply_child_exists_filter(
+                stmt, select(PatientGeneralPractitioner.id).where(*gp_predicates)
             )
-        if gender is not None:
-            stmt = stmt.where(PatientModel.gender == gender)
-        if active is not None:
-            stmt = stmt.where(PatientModel.active == active)
+        # managingOrganization is a direct column (0..1 reference), not a child
+        # table, so it's a plain equality filter rather than an EXISTS —
+        # organization_id is already the referenced Organization's PUBLIC id,
+        # exactly as stored by _parse_org_ref/parse_reference at write time.
+        stmt = apply_token_filter(stmt, PatientModel.managing_organization_id, organization_id)
+
         return stmt
 
     async def list(
@@ -169,22 +269,51 @@ class PatientRepository:
         given_name: Optional[str] = None,
         gender: Optional[str] = None,
         active: Optional[bool] = None,
+        identifier: Optional[str] = None,
+        birth_date_from=None,
+        birth_date_to=None,
+        address_city: Optional[str] = None,
+        address_state: Optional[str] = None,
+        address_postal_code: Optional[str] = None,
+        email: Optional[str] = None,
+        phone: Optional[str] = None,
+        deceased: Optional[bool] = None,
+        general_practitioner_type: Optional[PatientGeneralPractitionerType] = None,
+        general_practitioner_id: Optional[int] = None,
+        organization_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> Tuple[List[PatientModel], int]:
+        sort: Optional[str] = None,
+        total_mode: str = "accurate",
+    ) -> Tuple[List[PatientModel], Optional[int]]:
         async with self.session_factory() as session:
-            base = self._apply_list_filters(
-                _with_relationships(select(PatientModel)),
-                user_id, org_id, family_name, given_name, gender, active,
+            # Every filter argument is applied identically to both the row
+            # query and the count query so the two can never drift apart —
+            # see BaseRepository._execute_paginated's docstring.
+            filter_kwargs = dict(
+                user_id=user_id, org_id=org_id, family_name=family_name,
+                given_name=given_name, gender=gender, active=active,
+                identifier=identifier,
+                birth_date_from=birth_date_from, birth_date_to=birth_date_to,
+                address_city=address_city, address_state=address_state,
+                address_postal_code=address_postal_code,
+                email=email, phone=phone, deceased=deceased,
+                general_practitioner_type=general_practitioner_type,
+                general_practitioner_id=general_practitioner_id,
+                organization_id=organization_id,
             )
+            base = self._apply_list_filters(_with_relationships(select(PatientModel)), **filter_kwargs)
             count_base = self._apply_list_filters(
-                select(func.count()).select_from(PatientModel),
-                user_id, org_id, family_name, given_name, gender, active,
+                select(func.count()).select_from(PatientModel), **filter_kwargs
             )
-            total = (await session.execute(count_base)).scalar_one()
-            rows = list((await session.execute(
-                base.order_by(PatientModel.patient_id.desc()).offset(offset).limit(limit)
-            )).scalars().all())
+            sort_column, sort_desc = resolve_sort(
+                sort, _SORTABLE_FIELDS, default_column=PatientModel.patient_id, default_desc=True,
+            )
+            rows, total = await self._execute_paginated(
+                session, base, count_base,
+                sort_column=sort_column, sort_desc=sort_desc,
+                limit=limit, offset=offset, total_mode=total_mode,
+            )
         return rows, total
 
     # ── Write ─────────────────────────────────────────────────────────────────

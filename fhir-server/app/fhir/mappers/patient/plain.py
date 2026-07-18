@@ -74,8 +74,16 @@ def plain_link(lk: "PatientLink") -> dict:
     }
 
 
-def to_plain_patient(patient: "PatientModel") -> dict:
-    result: dict = {
+def _core_fields(patient: "PatientModel") -> dict:
+    """
+    Scalar-column-only fields shared by to_plain_patient() and
+    to_plain_patient_core() — deliberately never touches a relationship
+    attribute (patient.names, patient.identifiers, ...), so it's safe to call
+    on a PatientModel fetched without the selectinload options (see
+    PatientRepository.get_core_by_patient_id()): touching an unloaded
+    relationship on an async session raises rather than lazy-loading.
+    """
+    return {
         "id": patient.patient_id,
         "user_id": patient.user_id,
         "org_id": patient.org_id,
@@ -95,7 +103,18 @@ def to_plain_patient(patient: "PatientModel") -> dict:
         "managing_organization_display": patient.managing_organization_display,
         "created_at": patient.created_at.isoformat() if patient.created_at else None,
         "updated_at": patient.updated_at.isoformat() if patient.updated_at else None,
+        "created_by": patient.created_by,
+        "updated_by": patient.updated_by,
     }
+
+
+def to_plain_patient_core(patient: "PatientModel") -> dict:
+    """Patient table scalars only — no sub-resource arrays. Backs GET /{patient_id}/core."""
+    return {k: v for k, v in _core_fields(patient).items() if v is not None}
+
+
+def to_plain_patient(patient: "PatientModel") -> dict:
+    result: dict = _core_fields(patient)
 
     if patient.names:
         result["name"] = [plain_name(n) for n in patient.names]

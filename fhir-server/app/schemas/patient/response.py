@@ -83,6 +83,28 @@ class FHIRPatientSchema(BaseModel):
     link: Optional[List[FHIRPatientLink]] = None
 
 
+class FHIRPatientCoreSchema(BaseModel):
+    """
+    FHIR R4 Patient resource shape for GET /{patient_id}/core — scalar fields
+    only. Unlike FHIRPatientSchema, this model declares no sub-resource array
+    fields (name, identifier, telecom, address, photo, contact, communication,
+    generalPractitioner) at all, since that endpoint's mapper
+    (to_fhir_patient_core()) never returns them.
+    """
+
+    resourceType: str = Field("Patient", description="Always 'Patient'.")
+    id: str = Field(..., description="Public patient_id as a string.")
+    active: Optional[bool] = None
+    gender: Optional[str] = Field(None, description="male|female|other|unknown")
+    birthDate: Optional[str] = Field(None, description="ISO 8601 date (YYYY-MM-DD).")
+    deceasedBoolean: Optional[bool] = None
+    deceasedDateTime: Optional[str] = Field(None, description="ISO 8601 datetime.")
+    maritalStatus: Optional[FHIRCodeableConcept] = None
+    multipleBirthBoolean: Optional[bool] = None
+    multipleBirthInteger: Optional[int] = None
+    managingOrganization: Optional[FHIRReference] = None
+
+
 class FHIRPatientBundleEntry(BaseModel):
     resource: FHIRPatientSchema
 
@@ -262,6 +284,8 @@ class PlainPatientResponse(BaseModel):
     managing_organization_display: Optional[str] = None
     created_at: Optional[str] = Field(None, description="ISO 8601 datetime when record was created.")
     updated_at: Optional[str] = Field(None, description="ISO 8601 datetime when record was last updated.")
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
     name: Optional[List[PlainPatientName]] = None
     identifier: Optional[List[PlainPatientIdentifier]] = None
     telecom: Optional[List[PlainPatientTelecom]] = None
@@ -271,6 +295,42 @@ class PlainPatientResponse(BaseModel):
     communication: Optional[List[PlainPatientCommunication]] = None
     general_practitioner: Optional[List[PlainPatientGeneralPractitioner]] = None
     link: Optional[List[PlainPatientLink]] = None
+
+
+# ── Plain Patient core-only response (GET /{patient_id}/core) ─────────────────
+
+
+class PlainPatientCoreResponse(BaseModel):
+    """
+    Scalar Patient table fields only — backs GET /{patient_id}/core.
+
+    Unlike PlainPatientResponse, this model declares no sub-resource array
+    fields at all (not even as always-None Optionals), since that endpoint's
+    mapper (to_plain_patient_core()) never returns them — this is what makes
+    the OpenAPI/Swagger docs for that route accurate.
+    """
+
+    id: int = Field(..., description="Public patient_id.")
+    user_id: Optional[str] = None
+    org_id: Optional[str] = None
+    active: Optional[bool] = None
+    gender: Optional[str] = Field(None, description="male|female|other|unknown")
+    birth_date: Optional[str] = Field(None, description="ISO 8601 date (YYYY-MM-DD).")
+    deceased_boolean: Optional[bool] = None
+    deceased_datetime: Optional[str] = Field(None, description="ISO 8601 datetime.")
+    marital_status_system: Optional[str] = None
+    marital_status_code: Optional[str] = None
+    marital_status_display: Optional[str] = None
+    marital_status_text: Optional[str] = None
+    multiple_birth_boolean: Optional[bool] = None
+    multiple_birth_integer: Optional[int] = None
+    managing_organization_type: Optional[str] = None
+    managing_organization_id: Optional[int] = None
+    managing_organization_display: Optional[str] = None
+    created_at: Optional[str] = Field(None, description="ISO 8601 datetime when record was created.")
+    updated_at: Optional[str] = Field(None, description="ISO 8601 datetime when record was last updated.")
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
 
 
 # ── Paginated response ─────────────────────────────────────────────────────────

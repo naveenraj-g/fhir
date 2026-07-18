@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple
 
+from app.models.patient.enums import PatientGeneralPractitionerType
 from app.models.patient.patient import PatientModel
 from app.repository.patient_repository import PatientRepository
 from app.schemas.resources import (
@@ -26,7 +27,12 @@ from app.schemas.resources import (
     TelecomCreate,
     TelecomPatch,
 )
-from app.fhir.mappers.patient import to_fhir_patient, to_plain_patient
+from app.fhir.mappers.patient import (
+    to_fhir_patient,
+    to_fhir_patient_core,
+    to_plain_patient,
+    to_plain_patient_core,
+)
 
 
 class PatientService:
@@ -41,10 +47,20 @@ class PatientService:
     def _to_plain(self, patient: PatientModel) -> dict:
         return to_plain_patient(patient)
 
+    def _to_fhir_core(self, patient: PatientModel) -> dict:
+        return to_fhir_patient_core(patient)
+
+    def _to_plain_core(self, patient: PatientModel) -> dict:
+        return to_plain_patient_core(patient)
+
     # ── Read ──────────────────────────────────────────────────────────────────
 
     async def get_raw_by_patient_id(self, patient_id: int) -> Optional[PatientModel]:
         return await self.repository.get_by_patient_id(patient_id)
+
+    async def get_raw_core_by_patient_id(self, patient_id: int) -> Optional[PatientModel]:
+        """Patient table scalars only, no sub-resource fan-out. Backs GET /{patient_id}/core."""
+        return await self.repository.get_core_by_patient_id(patient_id)
 
     async def get_raw_by_user_id(self, user_id: str) -> Optional[PatientModel]:
         return await self.repository.get_by_user_id(user_id)
@@ -68,13 +84,35 @@ class PatientService:
         given_name: Optional[str] = None,
         gender: Optional[str] = None,
         active: Optional[bool] = None,
+        identifier: Optional[str] = None,
+        birth_date_from=None,
+        birth_date_to=None,
+        address_city: Optional[str] = None,
+        address_state: Optional[str] = None,
+        address_postal_code: Optional[str] = None,
+        email: Optional[str] = None,
+        phone: Optional[str] = None,
+        deceased: Optional[bool] = None,
+        general_practitioner_type: Optional[PatientGeneralPractitionerType] = None,
+        general_practitioner_id: Optional[int] = None,
+        organization_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> Tuple[List[PatientModel], int]:
+        sort: Optional[str] = None,
+        total_mode: str = "accurate",
+    ) -> Tuple[List[PatientModel], Optional[int]]:
         return await self.repository.list(
             user_id=user_id, org_id=org_id, family_name=family_name,
             given_name=given_name, gender=gender, active=active,
-            limit=limit, offset=offset,
+            identifier=identifier,
+            birth_date_from=birth_date_from, birth_date_to=birth_date_to,
+            address_city=address_city, address_state=address_state,
+            address_postal_code=address_postal_code,
+            email=email, phone=phone, deceased=deceased,
+            general_practitioner_type=general_practitioner_type,
+            general_practitioner_id=general_practitioner_id,
+            organization_id=organization_id,
+            limit=limit, offset=offset, sort=sort, total_mode=total_mode,
         )
 
     # ── Write ─────────────────────────────────────────────────────────────────

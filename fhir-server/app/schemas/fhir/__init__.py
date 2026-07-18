@@ -15,8 +15,8 @@ from app.schemas.common.fhir import (
     PlainReasonCode,
 )
 from app.schemas.patient.response import (
-    FHIRPatientSchema, FHIRPatientBundle, PaginatedPatientResponse,
-    PlainPatientResponse, PlainPatientName, PlainPatientTelecom, PlainPatientAddress,
+    FHIRPatientSchema, FHIRPatientCoreSchema, FHIRPatientBundle, PaginatedPatientResponse,
+    PlainPatientResponse, PlainPatientCoreResponse, PlainPatientName, PlainPatientTelecom, PlainPatientAddress,
     PlainPatientPhoto, PlainPatientContact, PlainPatientCommunication,
     PlainPatientGeneralPractitioner, PlainPatientLink,
     PatientNamesListResponse, PatientIdentifiersListResponse,
@@ -110,8 +110,8 @@ __all__ = [
     "FHIRContactPoint", "FHIRHumanName", "FHIRIdentifier", "FHIRPeriod", "FHIRReference",
     "PlainCoding", "PlainIdentifier", "PlainIdentifierType", "PlainReasonCode",
     # Patient
-    "FHIRPatientSchema", "FHIRPatientBundle", "PaginatedPatientResponse",
-    "PlainPatientResponse", "PlainPatientName", "PlainPatientTelecom", "PlainPatientAddress",
+    "FHIRPatientSchema", "FHIRPatientCoreSchema", "FHIRPatientBundle", "PaginatedPatientResponse",
+    "PlainPatientResponse", "PlainPatientCoreResponse", "PlainPatientName", "PlainPatientTelecom", "PlainPatientAddress",
     "PlainPatientPhoto", "PlainPatientContact", "PlainPatientCommunication",
     "PlainPatientGeneralPractitioner", "PlainPatientLink",
     "PatientNamesListResponse", "PatientIdentifiersListResponse",
