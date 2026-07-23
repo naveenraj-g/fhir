@@ -12,7 +12,7 @@ from app.core.filters import (
     parse_reference,
 )
 from app.core.pagination import resolve_sort
-from app.models.patient.enums import PatientGeneralPractitionerType  # noqa: F401 (re-exported for callers)
+from app.models.patient.enums import PatientGender, PatientGeneralPractitionerType  # noqa: F401 (re-exported for callers)
 from app.models.patient.patient import (
     PatientModel,
     PatientAddress,
@@ -168,8 +168,8 @@ class PatientRepository(BaseRepository):
         org_id,
         family_name,
         given_name,
-        gender,
-        active,
+        gender: Optional[PatientGender] = None,
+        active=None,
         identifier: Optional[str] = None,
         birth_date_from=None,
         birth_date_to=None,
@@ -267,7 +267,7 @@ class PatientRepository(BaseRepository):
         org_id: Optional[str] = None,
         family_name: Optional[str] = None,
         given_name: Optional[str] = None,
-        gender: Optional[str] = None,
+        gender: Optional[PatientGender] = None,
         active: Optional[bool] = None,
         identifier: Optional[str] = None,
         birth_date_from=None,

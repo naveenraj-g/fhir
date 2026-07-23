@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 
-from app.models.patient.enums import PatientGeneralPractitionerType
+from app.models.patient.enums import PatientGender, PatientGeneralPractitionerType
 from app.models.patient.patient import PatientModel
 from app.repository.patient_repository import PatientRepository
 from app.schemas.resources import (
@@ -82,7 +82,7 @@ class PatientService:
         org_id: Optional[str] = None,
         family_name: Optional[str] = None,
         given_name: Optional[str] = None,
-        gender: Optional[str] = None,
+        gender: Optional[PatientGender] = None,
         active: Optional[bool] = None,
         identifier: Optional[str] = None,
         birth_date_from=None,

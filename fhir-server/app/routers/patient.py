@@ -9,7 +9,7 @@ from app.core.content_negotiation import format_response, format_paginated_respo
 from app.core.pagination import ListParams
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.patient import get_patient_service
-from app.models.patient.enums import PatientGeneralPractitionerType
+from app.models.patient.enums import PatientGender, PatientGeneralPractitionerType
 from app.models.patient.patient import PatientModel
 from app.schemas.fhir import (
     FHIRPatientBundle,
@@ -318,7 +318,7 @@ async def list_patients(
     request: Request,
     family_name: Optional[str] = Query(None, description="Filter by family (last) name — partial match."),
     given_name: Optional[str] = Query(None, description="Filter by given name — partial match."),
-    gender: Optional[str] = Query(None, description="male|female|other|unknown"),
+    gender: Optional[PatientGender] = Query(None, description="male|female|other|unknown"),
     active: Optional[bool] = Query(None),
     user_id: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),

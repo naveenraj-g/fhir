@@ -115,7 +115,9 @@ class HealthcareServiceReferralMethodInput(BaseModel):
 
 class HealthcareServiceAvailableTimeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    days_of_week: Optional[List[str]] = Field(None, description="e.g. ['mon', 'wed', 'fri']")
+    days_of_week: Optional[List[str]] = Field(
+        None, description="e.g. ['mon', 'wed', 'fri']"
+    )
     all_day: Optional[bool] = None
     available_start_time: Optional[str] = Field(None, description="HH:mm:ss")
     available_end_time: Optional[str] = Field(None, description="HH:mm:ss")
@@ -191,7 +193,9 @@ class HealthcareServiceCreateSchema(BaseModel):
     org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
     created_by: Optional[str] = None
 
-    provided_by: Optional[str] = Field(None, description="Reference to Organization, e.g. 'Organization/190001'.")
+    provided_by: Optional[str] = Field(
+        None, description="Reference to Organization, e.g. 'Organization/190001'."
+    )
     provided_by_display: Optional[str] = None
 
     active: Optional[bool] = None
@@ -218,7 +222,9 @@ class HealthcareServiceCreateSchema(BaseModel):
     location: Optional[List[HealthcareServiceLocationInput]] = None
     telecom: Optional[List[HealthcareServiceTelecomInput]] = None
     coverage_area: Optional[List[HealthcareServiceCoverageAreaInput]] = None
-    service_provision_code: Optional[List[HealthcareServiceServiceProvisionCodeInput]] = None
+    service_provision_code: Optional[
+        List[HealthcareServiceServiceProvisionCodeInput]
+    ] = None
     eligibility: Optional[List[HealthcareServiceEligibilityInput]] = None
     program: Optional[List[HealthcareServiceProgramInput]] = None
     characteristic: Optional[List[HealthcareServiceCharacteristicInput]] = None
