@@ -1,6 +1,7 @@
 from app.schemas.slot.input import (
     SlotCreateSchema,
     SlotPatchSchema,
+    SlotGenerateSchema,
     SlotIdentifierInput,
     SlotServiceCategoryInput,
     SlotServiceTypeInput,
@@ -12,6 +13,7 @@ from app.schemas.slot.response import (
     FHIRSlotBundle,
     PlainSlotResponse,
     PaginatedSlotResponse,
+    SlotGenerateResponse,
     PlainSlotIdentifier,
     PlainSlotServiceCategory,
     PlainSlotServiceType,
@@ -21,6 +23,7 @@ from app.schemas.slot.response import (
 __all__ = [
     "SlotCreateSchema",
     "SlotPatchSchema",
+    "SlotGenerateSchema",
     "SlotIdentifierInput",
     "SlotServiceCategoryInput",
     "SlotServiceTypeInput",
@@ -30,6 +33,7 @@ __all__ = [
     "FHIRSlotBundle",
     "PlainSlotResponse",
     "PaginatedSlotResponse",
+    "SlotGenerateResponse",
     "PlainSlotIdentifier",
     "PlainSlotServiceCategory",
     "PlainSlotServiceType",

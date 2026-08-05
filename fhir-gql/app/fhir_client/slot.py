@@ -55,6 +55,25 @@ class SlotClient:
         """
         return await self._fhir.post(_PATH, data, actor, accept=accept)
 
+    async def generate(self, data: dict, actor: AuthUser) -> dict:
+        """
+        POST /slots/generate — auto-generate Slots for a Schedule on the fhir-server.
+
+        The fhir-server resolves the Schedule, clamps the window to its
+        planningHorizon, inherits service_category/service_type/specialty, and
+        creates every slot in a single atomic transaction — no per-slot looping
+        happens here anymore.
+
+        Args:
+            data:  Serialised SlotGenerateSchema (exclude_none=True already applied).
+            actor: Authenticated caller — used by FhirClient to stamp created_by.
+
+        Returns:
+            The generation summary dict (schedule_id, generated_count, slot_ids,
+            generation_start, generation_end, slot_duration_minutes).
+        """
+        return await self._fhir.post(f"{_PATH}/generate", data, actor)
+
     async def get_by_id(self, resource_id: int, accept: str | None = None) -> dict:
         """
         GET /slots/{resource_id} — fetch a single Slot by its integer ID.

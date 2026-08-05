@@ -1,18 +1,19 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
-from app.deps.slot_deps import resolve_slot
-from app.core.content_negotiation import format_response, format_paginated_response
+from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
+from app.deps.slot_deps import resolve_slot
 from app.di.dependencies.slot import get_slot_service
 from app.models.slot.slot import SlotModel
-from app.schemas.slot import SlotCreateSchema, SlotPatchSchema
+from app.schemas.slot import SlotCreateSchema, SlotGenerateSchema, SlotPatchSchema
 from app.schemas.slot.response import (
-    FHIRSlotSchema,
     FHIRSlotBundle,
+    FHIRSlotSchema,
     PaginatedSlotResponse,
     PlainSlotResponse,
+    SlotGenerateResponse,
 )
 from app.services.slot_service import SlotService
 
@@ -24,13 +25,19 @@ _CONTENT_NEG = (
 )
 
 _ERR_NOT_FOUND = {404: {"description": "Slot not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {"description": "Validation error — request body failed schema validation"}
+}
 
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainSlotResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRSlotSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PlainSlotResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRSlotSchema.model_json_schema())
+            },
         }
     }
 }
@@ -39,8 +46,12 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of slots",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedSlotResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRSlotBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PaginatedSlotResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRSlotBundle.model_json_schema())
+            },
         },
     }
 }
@@ -81,8 +92,50 @@ async def create_slot(
     )
 
 
+# ── Generate Slots ────────────────────────────────────────────────────────────
 # Declared before /{slot_id} to avoid routing conflicts.
 
+
+@router.post(
+    "/generate",
+    status_code=status.HTTP_201_CREATED,
+    operation_id="generate_slots",
+    summary="Auto-generate Slots for a Schedule",
+    description=(
+        "Automatically creates one free Slot per `slot_duration_minutes` interval "
+        "between `generation_start` and `generation_end` for the given `schedule_id`. "
+        "`generation_end` is clamped to the Schedule's `planningHorizon` end if it "
+        "exceeds it; `generation_start` before the `planningHorizon` start is rejected "
+        "with a 422. "
+        "`service_category`, `service_type`, and `specialty` are optional overrides — "
+        "when omitted they are inherited from the Schedule, and `specialty` falls back "
+        "further to the `specialty` of the Schedule's PractitionerRole actor, if any. "
+        "All generated slots are created in a single atomic transaction — either every "
+        "slot in the window is created, or none are."
+    ),
+    response_description="Summary of the slot-generation run",
+    responses={
+        201: {
+            "description": "Slots generated — see generated_count and slot_ids",
+            "content": {
+                "application/json": {
+                    "schema": inline_schema(SlotGenerateResponse.model_json_schema())
+                },
+            },
+        },
+        **_ERR_VALIDATION,
+        404: {"description": "Schedule not found"},
+    },
+)
+async def generate_slots(
+    payload: SlotGenerateSchema,
+    slot_service: SlotService = Depends(get_slot_service),
+):
+    result = await slot_service.generate(payload)
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content=jsonable_encoder(result.model_dump()),
+    )
 
 
 @router.get(
@@ -90,8 +143,7 @@ async def create_slot(
     operation_id="get_slot_by_id",
     summary="Retrieve a Slot resource by public slot_id",
     description=(
-        "Fetches a single Slot by its public integer `slot_id`. "
-        + _CONTENT_NEG
+        "Fetches a single Slot by its public integer `slot_id`. " + _CONTENT_NEG
     ),
     response_description="The requested Slot resource",
     responses={**_SINGLE_200, **_ERR_NOT_FOUND},
@@ -121,8 +173,7 @@ async def get_slot(
         "`appointment_type_text`. "
         "Child arrays (identifier, serviceCategory, serviceType, specialty) and the "
         "`schedule` reference cannot be changed via PATCH — delete and re-create the Slot "
-        "to correct those. "
-        + _CONTENT_NEG
+        "to correct those. " + _CONTENT_NEG
     ),
     response_description="The updated Slot resource",
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
@@ -154,40 +205,60 @@ async def patch_slot(
     description=(
         "Returns a paginated list of Slot resources. "
         "Filter by `status`, `schedule_id`, `practitioner_role_id`, `user_id`, or `org_id`. "
-        "Use `limit` and `offset` for pagination. "
-        + _CONTENT_NEG
+        "Use `limit` and `offset` for pagination. " + _CONTENT_NEG
     ),
     response_description="Paginated Slot resources",
     responses={**_LIST_200},
 )
 async def list_slots(
     request: Request,
-    slot_status: Optional[str] = Query(
-        None, alias="status",
+    slot_status: str | None = Query(
+        None,
+        alias="status",
         description="Filter by slot status (busy | free | busy-unavailable | busy-tentative | entered-in-error).",
     ),
-    schedule_id: Optional[int] = Query(None, description="Filter by public schedule_id."),
-    practitioner_role_id: Optional[int] = Query(None, description="Filter by public practitioner_role_id — returns slots belonging to that practitioner's schedule."),
-    date: Optional[str] = Query(None, description="Filter by exact start date (YYYY-MM-DD). Returns all slots whose start falls on this date."),
-    start_from: Optional[str] = Query(None, description="Filter slots with start >= this value (ISO datetime or YYYY-MM-DD)."),
-    start_to: Optional[str] = Query(None, description="Filter slots with start <= this value (ISO datetime or YYYY-MM-DD)."),
-    user_id: Optional[str] = Query(None),
-    org_id: Optional[str] = Query(None),
+    schedule_id: int | None = Query(None, description="Filter by public schedule_id."),
+    practitioner_role_id: int | None = Query(
+        None,
+        description="Filter by public practitioner_role_id — returns slots belonging to that practitioner's schedule.",
+    ),
+    date: str | None = Query(
+        None,
+        description="Filter by exact start date (YYYY-MM-DD). Returns all slots whose start falls on this date.",
+    ),
+    start_from: str | None = Query(
+        None,
+        description="Filter slots with start >= this value (ISO datetime or YYYY-MM-DD).",
+    ),
+    start_to: str | None = Query(
+        None,
+        description="Filter slots with start <= this value (ISO datetime or YYYY-MM-DD).",
+    ),
+    user_id: str | None = Query(None),
+    org_id: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     slot_service: SlotService = Depends(get_slot_service),
 ):
     items, total = await slot_service.list_slots(
-        user_id=user_id, org_id=org_id,
-        slot_status=slot_status, schedule_id=schedule_id,
+        user_id=user_id,
+        org_id=org_id,
+        slot_status=slot_status,
+        schedule_id=schedule_id,
         practitioner_role_id=practitioner_role_id,
-        date=date, start_from=start_from, start_to=start_to,
-        limit=limit, offset=offset,
+        date=date,
+        start_from=start_from,
+        start_to=start_to,
+        limit=limit,
+        offset=offset,
     )
     return format_paginated_response(
         [slot_service._to_fhir(s) for s in items],
         [slot_service._to_plain(s) for s in items],
-        total, limit, offset, request,
+        total,
+        limit,
+        offset,
+        request,
     )
 
 
@@ -211,4 +282,3 @@ async def delete_slot(
     slot_service: SlotService = Depends(get_slot_service),
 ):
     await slot_service.delete_slot(slot.slot_id)
-    return None

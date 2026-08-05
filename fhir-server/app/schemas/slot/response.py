@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -114,3 +115,12 @@ class PaginatedSlotResponse(BaseModel):
     limit: int
     offset: int
     data: List[PlainSlotResponse]
+
+
+class SlotGenerateResponse(BaseModel):
+    schedule_id: int
+    generated_count: int
+    slot_ids: List[int]
+    generation_start: datetime
+    generation_end: datetime
+    slot_duration_minutes: int

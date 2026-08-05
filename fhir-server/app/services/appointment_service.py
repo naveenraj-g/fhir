@@ -2,14 +2,18 @@ from datetime import datetime
 from typing import Optional, List, Tuple
 
 from app.models.appointment.appointment import AppointmentModel
+from app.models.appointment.enums import AppointmentSlotReferenceType, AppointmentStatus
 from app.repository.appointment_repository import AppointmentRepository
+from app.repository.slot_repository import SlotRepository
 from app.schemas.appointment import AppointmentCreateSchema, AppointmentPatchSchema
+from app.schemas.slot import SlotPatchSchema
 from app.fhir.mappers.appointment import to_fhir_appointment, to_plain_appointment
 
 
 class AppointmentService:
-    def __init__(self, repository: AppointmentRepository):
+    def __init__(self, repository: AppointmentRepository, slot_repository: SlotRepository):
         self.repository = repository
+        self.slot_repository = slot_repository
 
     # ── Formatters (called by route layer after content negotiation) ──────
 
@@ -80,7 +84,16 @@ class AppointmentService:
     async def patch_appointment(
         self, appointment_id: int, payload: AppointmentPatchSchema, updated_by: Optional[str] = None
     ) -> Optional[AppointmentModel]:
-        return await self.repository.patch(appointment_id, payload, updated_by)
+        updated = await self.repository.patch(appointment_id, payload, updated_by)
+        if updated is not None and payload.status == AppointmentStatus.cancelled:
+            for s in (updated.slots or []):
+                if s.reference_type == AppointmentSlotReferenceType.Slot and s.reference_id is not None:
+                    await self.slot_repository.patch(
+                        s.reference_id,
+                        SlotPatchSchema(status="free"),
+                        updated_by,
+                    )
+        return updated
 
     async def delete_appointment(self, appointment_id: int) -> bool:
         return await self.repository.delete(appointment_id)

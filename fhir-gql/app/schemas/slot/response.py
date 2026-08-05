@@ -154,19 +154,19 @@ class SlotGenerateResponse(BaseModel):
     """
     Response returned by POST /slots/generate after auto-generating Slots.
 
-    Reports how many slots were created, their IDs, and any that failed
-    (partial-failure model — successfully created slots are not rolled back
-    if later ones in the batch fail).
+    The fhir-server creates every slot in a single atomic transaction — either
+    all slots in the window are created, or none are (a failure surfaces as a
+    normal error response, not a partial result).
 
     Fields:
       schedule_id:           The schedule the slots were generated for.
-      generated_count:       Number of slots successfully created.
+      generated_count:       Number of slots created.
       slot_ids:              Ordered list of the new slot integer IDs.
       generation_start:      The requested window start (echoed back).
-      generation_end:        The requested window end (echoed back).
+      generation_end:        The window end actually used — clamped to the
+                              Schedule's planningHorizon end if the requested
+                              value exceeded it.
       slot_duration_minutes: The duration used for each slot.
-      failed_count:          Number of slot windows that could not be created.
-      errors:                One error string per failure — "{start_iso}: {reason}".
     """
 
     schedule_id: int
@@ -175,5 +175,3 @@ class SlotGenerateResponse(BaseModel):
     generation_start: datetime
     generation_end: datetime
     slot_duration_minutes: int
-    failed_count: int = 0
-    errors: List[str] = []

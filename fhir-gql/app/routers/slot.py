@@ -25,12 +25,25 @@ from fastapi.responses import JSONResponse
 
 from app.auth.models import AuthUser
 from app.auth.rbac import require_permission
-from app.core.content_negotiation import format_paginated_response, format_response, get_accept_header
+from app.core.content_negotiation import (
+    format_paginated_response,
+    format_response,
+    get_accept_header,
+)
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.slot import get_slot_service
 from app.schemas.slot.fhir_schemas import FhirBundleResponse, FhirSlotResponse
-from app.schemas.slot.input import ListSlotsSchema, SlotCreateSchema, SlotGenerateSchema, SlotPatchSchema
-from app.schemas.slot.response import PaginatedSlotResponse, SlotGenerateResponse, SlotResponse
+from app.schemas.slot.input import (
+    ListSlotsSchema,
+    SlotCreateSchema,
+    SlotGenerateSchema,
+    SlotPatchSchema,
+)
+from app.schemas.slot.response import (
+    PaginatedSlotResponse,
+    SlotGenerateResponse,
+    SlotResponse,
+)
 from app.services.slot_service import SlotService
 
 # All slot routes are prefixed with /slots; tagged for Swagger grouping.
@@ -39,7 +52,11 @@ router = APIRouter(prefix="/slots", tags=["Slots"])
 # ── Shared error response descriptors ────────────────────────────────────────
 
 _ERR_NOT_FOUND = {404: {"description": "Slot not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body or query params failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {
+        "description": "Validation error — request body or query params failed schema validation"
+    }
+}
 
 # ── Shared success response descriptors ──────────────────────────────────────
 # inline_schema() resolves Pydantic v2 $defs/$ref pointers so nested sub-model
@@ -115,8 +132,8 @@ _LIST_200 = {
         "`appointmentType` on the Appointment at booking time, not on the Slot at "
         "generation time. Pre-set here only when every slot in the batch shares "
         "the same type (e.g. a dedicated ROUTINE session).\n\n"
-        "Uses a partial-failure model: successfully created slots are NOT rolled back "
-        "if later ones fail. `failed_count` and `errors[]` report any failures."
+        "All generated slots are created atomically by the fhir-server — either "
+        "every slot in the window is created, or none are."
     ),
     response_model=SlotGenerateResponse,
     responses={
@@ -185,7 +202,9 @@ async def get_slot(
     service: SlotService = Depends(get_slot_service),
 ) -> JSONResponse:
     """Fetch a single Slot resource by its primary key."""
-    data = await service.get_by_id(resource_id, actor, accept=get_accept_header(request))
+    data = await service.get_by_id(
+        resource_id, actor, accept=get_accept_header(request)
+    )
     return format_response(data, request)
 
 
@@ -244,7 +263,9 @@ async def update_slot(
     service: SlotService = Depends(get_slot_service),
 ) -> JSONResponse:
     """Partially update a Slot resource. Returns 422 if the body is empty."""
-    data = await service.update(resource_id, dto, actor, accept=get_accept_header(request))
+    data = await service.update(
+        resource_id, dto, actor, accept=get_accept_header(request)
+    )
     return format_response(data, request)
 
 

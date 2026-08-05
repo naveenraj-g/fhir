@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class SlotIdentifierInput(BaseModel):
@@ -103,6 +103,57 @@ class SlotCreateSchema(BaseModel):
     service_category: Optional[List[SlotServiceCategoryInput]] = None
     service_type: Optional[List[SlotServiceTypeInput]] = None
     specialty: Optional[List[SlotSpecialtyInput]] = None
+
+
+class SlotGenerateSchema(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "user_id": "user-123",
+                "org_id": "org-456",
+                "schedule_id": 200001,
+                "generation_start": "2024-06-01T09:00:00Z",
+                "generation_end": "2024-06-01T17:00:00Z",
+                "slot_duration_minutes": 30,
+                "overbooked": False,
+                "comment": "Auto-generated morning clinic slots",
+            }
+        },
+    )
+
+    user_id: Optional[str] = Field(None, description="JWT sub of the record owner.")
+    org_id: Optional[str] = Field(None, description="Active organization ID from JWT.")
+    created_by: Optional[str] = None
+
+    schedule_id: int = Field(..., description="Public schedule_id to generate slots for.")
+    generation_start: datetime = Field(..., description="Inclusive start of the generation window.")
+    generation_end: datetime = Field(..., description="Exclusive end of the generation window.")
+    slot_duration_minutes: int = Field(..., ge=1, le=1440, description="Duration of each generated slot, in minutes.")
+
+    appointment_type_system: Optional[str] = None
+    appointment_type_code: Optional[str] = None
+    appointment_type_display: Optional[str] = None
+    appointment_type_text: Optional[str] = None
+
+    service_category: Optional[List[SlotServiceCategoryInput]] = Field(
+        None, description="Overrides Schedule's serviceCategory if provided."
+    )
+    service_type: Optional[List[SlotServiceTypeInput]] = Field(
+        None, description="Overrides Schedule's serviceType if provided."
+    )
+    specialty: Optional[List[SlotSpecialtyInput]] = Field(
+        None, description="Overrides Schedule's (or its PractitionerRole actor's) specialty if provided."
+    )
+
+    overbooked: Optional[bool] = Field(False, description="Applied to every generated slot.")
+    comment: Optional[str] = Field(None, description="Applied to every generated slot.")
+
+    @model_validator(mode="after")
+    def validate_window(self) -> "SlotGenerateSchema":
+        if self.generation_end <= self.generation_start:
+            raise ValueError("generation_end must be after generation_start")
+        return self
 
 
 class SlotPatchSchema(BaseModel):

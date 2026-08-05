@@ -2,7 +2,7 @@ from datetime import datetime, date as PyDate
 from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status as http_status
-from sqlalchemy import func, cast, Date as SADate
+from sqlalchemy import func, cast, insert, Date as SADate
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -17,7 +17,13 @@ from app.models.slot.slot import (
     SlotServiceType,
     SlotSpecialty,
 )
-from app.schemas.slot import SlotCreateSchema, SlotPatchSchema
+from app.schemas.slot import (
+    SlotCreateSchema,
+    SlotPatchSchema,
+    SlotServiceCategoryInput,
+    SlotServiceTypeInput,
+    SlotSpecialtyInput,
+)
 
 
 def _with_relationships(stmt):
@@ -251,6 +257,83 @@ class SlotRepository:
             stmt = _with_relationships(select(SlotModel).where(SlotModel.id == slot.id))
             result = await session.execute(stmt)
             return result.scalars().one()
+
+    async def bulk_create(
+        self,
+        schedule_fk_id: int,
+        windows: List[Tuple[datetime, datetime]],
+        status: str,
+        overbooked: Optional[bool],
+        comment: Optional[str],
+        appointment_type_system: Optional[str],
+        appointment_type_code: Optional[str],
+        appointment_type_display: Optional[str],
+        appointment_type_text: Optional[str],
+        service_category: List[SlotServiceCategoryInput],
+        service_type: List[SlotServiceTypeInput],
+        specialty: List[SlotSpecialtyInput],
+        user_id: Optional[str],
+        org_id: Optional[str],
+        created_by: Optional[str],
+    ) -> List[int]:
+        """Insert every (start, end) window as a Slot in a single statement/transaction.
+
+        All-or-nothing: a failure rolls back the whole batch rather than leaving
+        a partial set of slots committed.
+        """
+        async with self.session_factory() as session:
+            status_value = SlotStatus(status).value
+            slot_rows = [
+                {
+                    "user_id": user_id,
+                    "org_id": org_id,
+                    "created_by": created_by,
+                    "schedule_type": SlotScheduleReferenceType.Schedule,
+                    "schedule_fk_id": schedule_fk_id,
+                    "status": status_value,
+                    "start": start,
+                    "end": end,
+                    "overbooked": overbooked,
+                    "comment": comment,
+                    "appointment_type_system": appointment_type_system,
+                    "appointment_type_code": appointment_type_code,
+                    "appointment_type_display": appointment_type_display,
+                    "appointment_type_text": appointment_type_text,
+                }
+                for start, end in windows
+            ]
+
+            result = await session.execute(
+                insert(SlotModel).returning(SlotModel.id, SlotModel.slot_id),
+                slot_rows,
+            )
+            inserted = result.all()
+            internal_ids = [row.id for row in inserted]
+            public_ids = [row.slot_id for row in inserted]
+
+            for child_model, items in (
+                (SlotServiceCategory, service_category),
+                (SlotServiceType, service_type),
+                (SlotSpecialty, specialty),
+            ):
+                if not items:
+                    continue
+                child_rows = [
+                    {
+                        "slot_id": sid,
+                        "org_id": org_id,
+                        "coding_system": item.coding_system,
+                        "coding_code": item.coding_code,
+                        "coding_display": item.coding_display,
+                        "text": item.text,
+                    }
+                    for sid in internal_ids
+                    for item in items
+                ]
+                await session.execute(insert(child_model), child_rows)
+
+            await session.commit()
+            return public_ids
 
     # ── Patch ─────────────────────────────────────────────────────────────────
 

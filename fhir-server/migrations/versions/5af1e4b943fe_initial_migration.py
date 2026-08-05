@@ -1,18 +1,18 @@
 """initial_migration
 
-Revision ID: cd944558b27f
+Revision ID: 5af1e4b943fe
 Revises: 
-Create Date: 2026-06-03 20:28:51.636544
+Create Date: 2026-07-31 09:40:30.287688
 
 """
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = 'cd944558b27f'
+revision: str = '5af1e4b943fe'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -35,6 +35,7 @@ def upgrade() -> None:
     op.execute('CREATE SEQUENCE IF NOT EXISTS episode_of_care_pub_seq START 350000 INCREMENT 1')
     op.execute('CREATE SEQUENCE IF NOT EXISTS healthcare_service_pub_seq START 150000 INCREMENT 1')
     op.execute('CREATE SEQUENCE IF NOT EXISTS immunization_pub_seq START 330000 INCREMENT 1')
+    op.execute('CREATE SEQUENCE IF NOT EXISTS insurance_plan_pub_seq START 360000 INCREMENT 1')
     op.execute('CREATE SEQUENCE IF NOT EXISTS invoice_pub_seq START 210000 INCREMENT 1')
     op.execute('CREATE SEQUENCE IF NOT EXISTS location_pub_seq START 230000 INCREMENT 1')
     op.execute('CREATE SEQUENCE IF NOT EXISTS medication_pub_seq START 250000 INCREMENT 1')
@@ -482,6 +483,29 @@ def upgrade() -> None:
     op.create_index(op.f('ix_healthcare_service_name'), 'healthcare_service', ['name'], unique=False)
     op.create_index(op.f('ix_healthcare_service_org_id'), 'healthcare_service', ['org_id'], unique=False)
     op.create_index(op.f('ix_healthcare_service_user_id'), 'healthcare_service', ['user_id'], unique=False)
+    op.create_table('insurance_plan',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('insurance_plan_id', sa.Integer(), server_default=sa.text("nextval('insurance_plan_pub_seq')"), nullable=False),
+    sa.Column('user_id', sa.String(), nullable=True),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('status', sa.Enum('draft', 'active', 'retired', 'unknown', name='insurance_plan_status'), nullable=True),
+    sa.Column('name', sa.String(), nullable=True),
+    sa.Column('period_start', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('period_end', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('owned_by_id', sa.Integer(), nullable=True),
+    sa.Column('owned_by_display', sa.String(), nullable=True),
+    sa.Column('administered_by_id', sa.Integer(), nullable=True),
+    sa.Column('administered_by_display', sa.String(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_by', sa.String(), nullable=True),
+    sa.Column('updated_by', sa.String(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_id'), 'insurance_plan', ['id'], unique=False)
+    op.create_index(op.f('ix_insurance_plan_insurance_plan_id'), 'insurance_plan', ['insurance_plan_id'], unique=True)
+    op.create_index(op.f('ix_insurance_plan_org_id'), 'insurance_plan', ['org_id'], unique=False)
+    op.create_index(op.f('ix_insurance_plan_user_id'), 'insurance_plan', ['user_id'], unique=False)
     op.create_table('invoice',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('invoice_id', sa.Integer(), server_default=sa.text("nextval('invoice_pub_seq')"), nullable=False),
@@ -855,6 +879,40 @@ def upgrade() -> None:
     op.create_index(op.f('ix_task_org_id'), 'task', ['org_id'], unique=False)
     op.create_index(op.f('ix_task_task_id'), 'task', ['task_id'], unique=True)
     op.create_index(op.f('ix_task_user_id'), 'task', ['user_id'], unique=False)
+    op.create_table('terminology_code_system',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('canonical_url', sa.String(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('title', sa.String(), nullable=True),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('version', sa.String(), nullable=True),
+    sa.Column('fhir_version', sa.String(), nullable=True),
+    sa.Column('publisher', sa.String(), nullable=True),
+    sa.Column('jurisdiction', sa.String(), nullable=True),
+    sa.Column('content_mode', sa.String(), nullable=True),
+    sa.Column('experimental', sa.Boolean(), nullable=True),
+    sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_terminology_code_system_canonical_url'), 'terminology_code_system', ['canonical_url'], unique=True)
+    op.create_table('terminology_value_set',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('canonical_url', sa.String(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.Column('title', sa.String(), nullable=True),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('version', sa.String(), nullable=True),
+    sa.Column('fhir_version', sa.String(), nullable=True),
+    sa.Column('binding_strength', sa.String(), nullable=False),
+    sa.Column('experimental', sa.Boolean(), nullable=True),
+    sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_terminology_value_set_canonical_url'), 'terminology_value_set', ['canonical_url'], unique=True)
     op.create_table('vitals',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('vitals_id', sa.Integer(), server_default=sa.text("nextval('vitals_pub_seq')"), nullable=False),
@@ -2566,6 +2624,126 @@ def upgrade() -> None:
     op.create_index(op.f('ix_immunization_manufacturer_id'), 'immunization', ['manufacturer_id'], unique=False)
     op.create_index(op.f('ix_immunization_org_id'), 'immunization', ['org_id'], unique=False)
     op.create_index(op.f('ix_immunization_user_id'), 'immunization', ['user_id'], unique=False)
+    op.create_table('insurance_plan_alias',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('insurance_plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('alias', sa.String(), nullable=False),
+    sa.ForeignKeyConstraint(['insurance_plan_id'], ['insurance_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_alias_insurance_plan_id'), 'insurance_plan_alias', ['insurance_plan_id'], unique=False)
+    op.create_table('insurance_plan_contact',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('insurance_plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('purpose_system', sa.String(), nullable=True),
+    sa.Column('purpose_code', sa.String(), nullable=True),
+    sa.Column('purpose_display', sa.String(), nullable=True),
+    sa.Column('purpose_text', sa.String(), nullable=True),
+    sa.Column('name_use', sa.String(), nullable=True),
+    sa.Column('name_text', sa.String(), nullable=True),
+    sa.Column('name_family', sa.String(), nullable=True),
+    sa.Column('name_given', sa.String(), nullable=True),
+    sa.Column('name_prefix', sa.String(), nullable=True),
+    sa.Column('name_suffix', sa.String(), nullable=True),
+    sa.Column('address_use', sa.String(), nullable=True),
+    sa.Column('address_type', sa.String(), nullable=True),
+    sa.Column('address_text', sa.String(), nullable=True),
+    sa.Column('address_line', sa.String(), nullable=True),
+    sa.Column('address_city', sa.String(), nullable=True),
+    sa.Column('address_district', sa.String(), nullable=True),
+    sa.Column('address_state', sa.String(), nullable=True),
+    sa.Column('address_postal_code', sa.String(), nullable=True),
+    sa.Column('address_country', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['insurance_plan_id'], ['insurance_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_contact_insurance_plan_id'), 'insurance_plan_contact', ['insurance_plan_id'], unique=False)
+    op.create_table('insurance_plan_coverage',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('insurance_plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('type_system', sa.String(), nullable=True),
+    sa.Column('type_code', sa.String(), nullable=True),
+    sa.Column('type_display', sa.String(), nullable=True),
+    sa.Column('type_text', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['insurance_plan_id'], ['insurance_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_coverage_insurance_plan_id'), 'insurance_plan_coverage', ['insurance_plan_id'], unique=False)
+    op.create_table('insurance_plan_coverage_area',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('insurance_plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('reference_id', sa.Integer(), nullable=True),
+    sa.Column('reference_display', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['insurance_plan_id'], ['insurance_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_coverage_area_insurance_plan_id'), 'insurance_plan_coverage_area', ['insurance_plan_id'], unique=False)
+    op.create_table('insurance_plan_endpoint',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('insurance_plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('reference_id', sa.Integer(), nullable=True),
+    sa.Column('reference_display', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['insurance_plan_id'], ['insurance_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_endpoint_insurance_plan_id'), 'insurance_plan_endpoint', ['insurance_plan_id'], unique=False)
+    op.create_table('insurance_plan_identifier',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('insurance_plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('use', sa.String(), nullable=True),
+    sa.Column('type_system', sa.String(), nullable=True),
+    sa.Column('type_code', sa.String(), nullable=True),
+    sa.Column('type_display', sa.String(), nullable=True),
+    sa.Column('type_text', sa.String(), nullable=True),
+    sa.Column('system', sa.String(), nullable=True),
+    sa.Column('value', sa.String(), nullable=True),
+    sa.Column('period_start', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('period_end', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('assigner', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['insurance_plan_id'], ['insurance_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_identifier_insurance_plan_id'), 'insurance_plan_identifier', ['insurance_plan_id'], unique=False)
+    op.create_table('insurance_plan_network',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('insurance_plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('reference_id', sa.Integer(), nullable=True),
+    sa.Column('reference_display', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['insurance_plan_id'], ['insurance_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_network_insurance_plan_id'), 'insurance_plan_network', ['insurance_plan_id'], unique=False)
+    op.create_table('insurance_plan_plan',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('insurance_plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('type_system', sa.String(), nullable=True),
+    sa.Column('type_code', sa.String(), nullable=True),
+    sa.Column('type_display', sa.String(), nullable=True),
+    sa.Column('type_text', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['insurance_plan_id'], ['insurance_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_plan_insurance_plan_id'), 'insurance_plan_plan', ['insurance_plan_id'], unique=False)
+    op.create_table('insurance_plan_type',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('insurance_plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('coding_system', sa.String(), nullable=True),
+    sa.Column('coding_code', sa.String(), nullable=True),
+    sa.Column('coding_display', sa.String(), nullable=True),
+    sa.Column('text', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['insurance_plan_id'], ['insurance_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_type_insurance_plan_id'), 'insurance_plan_type', ['insurance_plan_id'], unique=False)
     op.create_table('invoice_identifier',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('invoice_id', sa.Integer(), nullable=False),
@@ -4051,6 +4229,45 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_task_restriction_recipient_task_id'), 'task_restriction_recipient', ['task_id'], unique=False)
+    op.create_table('terminology_concept',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('code_system_id', sa.Integer(), nullable=False),
+    sa.Column('code', sa.String(), nullable=False),
+    sa.Column('display', sa.String(), nullable=False),
+    sa.Column('definition', sa.Text(), nullable=True),
+    sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=True),
+    sa.Column('deprecated', sa.Boolean(), nullable=True),
+    sa.Column('parent_concept_id', sa.Integer(), nullable=True),
+    sa.Column('search_vector', postgresql.TSVECTOR(), nullable=True),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('user_id', sa.String(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['code_system_id'], ['terminology_code_system.id'], ),
+    sa.ForeignKeyConstraint(['parent_concept_id'], ['terminology_concept.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_terminology_concept_code'), 'terminology_concept', ['code'], unique=False)
+    op.create_index(op.f('ix_terminology_concept_code_system_id'), 'terminology_concept', ['code_system_id'], unique=False)
+    op.create_index(op.f('ix_terminology_concept_org_id'), 'terminology_concept', ['org_id'], unique=False)
+    op.create_index(op.f('ix_terminology_concept_parent_concept_id'), 'terminology_concept', ['parent_concept_id'], unique=False)
+    op.create_index(op.f('ix_terminology_concept_user_id'), 'terminology_concept', ['user_id'], unique=False)
+    op.create_index('uq_terminology_concept_system_code_null_org', 'terminology_concept', ['code_system_id', 'code'], unique=True, postgresql_where=sa.text('org_id IS NULL'))
+    op.create_index('uq_terminology_concept_system_code_org', 'terminology_concept', ['code_system_id', 'code', 'org_id'], unique=True, postgresql_where=sa.text('org_id IS NOT NULL'))
+    op.create_table('terminology_field_binding',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('resource_type', sa.String(), nullable=False),
+    sa.Column('field_name', sa.String(), nullable=False),
+    sa.Column('value_set_id', sa.Integer(), nullable=False),
+    sa.Column('binding_strength', sa.String(), nullable=False),
+    sa.Column('multiple_allowed', sa.Boolean(), nullable=True),
+    sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=True),
+    sa.ForeignKeyConstraint(['value_set_id'], ['terminology_value_set.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('resource_type', 'field_name')
+    )
+    op.create_index(op.f('ix_terminology_field_binding_resource_type'), 'terminology_field_binding', ['resource_type'], unique=False)
+    op.create_index(op.f('ix_terminology_field_binding_value_set_id'), 'terminology_field_binding', ['value_set_id'], unique=False)
     op.create_table('allergy_intolerance_reaction_manifestation',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('reaction_id', sa.Integer(), nullable=False),
@@ -5480,6 +5697,107 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_immunization_subpotent_reason_immunization_id'), 'immunization_subpotent_reason', ['immunization_id'], unique=False)
+    op.create_table('insurance_plan_contact_telecom',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('contact_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('system', sa.String(), nullable=True),
+    sa.Column('value', sa.String(), nullable=True),
+    sa.Column('use', sa.String(), nullable=True),
+    sa.Column('rank', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['contact_id'], ['insurance_plan_contact.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_contact_telecom_contact_id'), 'insurance_plan_contact_telecom', ['contact_id'], unique=False)
+    op.create_table('insurance_plan_coverage_benefit',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('coverage_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('type_system', sa.String(), nullable=True),
+    sa.Column('type_code', sa.String(), nullable=True),
+    sa.Column('type_display', sa.String(), nullable=True),
+    sa.Column('type_text', sa.String(), nullable=True),
+    sa.Column('requirement', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['coverage_id'], ['insurance_plan_coverage.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_coverage_benefit_coverage_id'), 'insurance_plan_coverage_benefit', ['coverage_id'], unique=False)
+    op.create_table('insurance_plan_coverage_network',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('coverage_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('reference_id', sa.Integer(), nullable=True),
+    sa.Column('reference_display', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['coverage_id'], ['insurance_plan_coverage.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_coverage_network_coverage_id'), 'insurance_plan_coverage_network', ['coverage_id'], unique=False)
+    op.create_table('insurance_plan_plan_coverage_area',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('reference_id', sa.Integer(), nullable=True),
+    sa.Column('reference_display', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['plan_id'], ['insurance_plan_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_plan_coverage_area_plan_id'), 'insurance_plan_plan_coverage_area', ['plan_id'], unique=False)
+    op.create_table('insurance_plan_plan_general_cost',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('type_system', sa.String(), nullable=True),
+    sa.Column('type_code', sa.String(), nullable=True),
+    sa.Column('type_display', sa.String(), nullable=True),
+    sa.Column('type_text', sa.String(), nullable=True),
+    sa.Column('group_size', sa.Integer(), nullable=True),
+    sa.Column('cost_value', sa.Numeric(), nullable=True),
+    sa.Column('cost_currency', sa.String(), nullable=True),
+    sa.Column('comment', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['plan_id'], ['insurance_plan_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_plan_general_cost_plan_id'), 'insurance_plan_plan_general_cost', ['plan_id'], unique=False)
+    op.create_table('insurance_plan_plan_identifier',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('use', sa.String(), nullable=True),
+    sa.Column('type_system', sa.String(), nullable=True),
+    sa.Column('type_code', sa.String(), nullable=True),
+    sa.Column('type_display', sa.String(), nullable=True),
+    sa.Column('type_text', sa.String(), nullable=True),
+    sa.Column('system', sa.String(), nullable=True),
+    sa.Column('value', sa.String(), nullable=True),
+    sa.Column('period_start', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('period_end', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('assigner', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['plan_id'], ['insurance_plan_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_plan_identifier_plan_id'), 'insurance_plan_plan_identifier', ['plan_id'], unique=False)
+    op.create_table('insurance_plan_plan_network',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('reference_id', sa.Integer(), nullable=True),
+    sa.Column('reference_display', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['plan_id'], ['insurance_plan_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_plan_network_plan_id'), 'insurance_plan_plan_network', ['plan_id'], unique=False)
+    op.create_table('insurance_plan_plan_specific_cost',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('plan_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('category_system', sa.String(), nullable=True),
+    sa.Column('category_code', sa.String(), nullable=True),
+    sa.Column('category_display', sa.String(), nullable=True),
+    sa.Column('category_text', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['plan_id'], ['insurance_plan_plan.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_plan_specific_cost_plan_id'), 'insurance_plan_plan_specific_cost', ['plan_id'], unique=False)
     op.create_table('invoice_line_item_price_component',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('line_item_id', sa.Integer(), nullable=False),
@@ -6731,6 +7049,88 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_specimen_processing_additive_processing_id'), 'specimen_processing_additive', ['processing_id'], unique=False)
+    op.create_table('terminology_audit_log',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('action', sa.String(), nullable=False),
+    sa.Column('concept_id', sa.Integer(), nullable=True),
+    sa.Column('value_set_id', sa.Integer(), nullable=True),
+    sa.Column('performed_by', sa.String(), nullable=True),
+    sa.Column('old_value', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('new_value', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.ForeignKeyConstraint(['concept_id'], ['terminology_concept.id'], ),
+    sa.ForeignKeyConstraint(['value_set_id'], ['terminology_value_set.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_terminology_audit_log_action'), 'terminology_audit_log', ['action'], unique=False)
+    op.create_index(op.f('ix_terminology_audit_log_concept_id'), 'terminology_audit_log', ['concept_id'], unique=False)
+    op.create_index(op.f('ix_terminology_audit_log_value_set_id'), 'terminology_audit_log', ['value_set_id'], unique=False)
+    op.create_table('terminology_concept_embedding',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('concept_id', sa.Integer(), nullable=False),
+    sa.Column('embedding', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('model', sa.String(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.ForeignKeyConstraint(['concept_id'], ['terminology_concept.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_terminology_concept_embedding_concept_id'), 'terminology_concept_embedding', ['concept_id'], unique=True)
+    op.create_table('terminology_concept_map',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('source_concept_id', sa.Integer(), nullable=False),
+    sa.Column('target_concept_id', sa.Integer(), nullable=False),
+    sa.Column('mapping_type', sa.String(), nullable=True),
+    sa.Column('confidence', sa.Float(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.ForeignKeyConstraint(['source_concept_id'], ['terminology_concept.id'], ),
+    sa.ForeignKeyConstraint(['target_concept_id'], ['terminology_concept.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('source_concept_id', 'target_concept_id', 'mapping_type')
+    )
+    op.create_index(op.f('ix_terminology_concept_map_source_concept_id'), 'terminology_concept_map', ['source_concept_id'], unique=False)
+    op.create_index(op.f('ix_terminology_concept_map_target_concept_id'), 'terminology_concept_map', ['target_concept_id'], unique=False)
+    op.create_table('terminology_concept_synonym',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('concept_id', sa.Integer(), nullable=False),
+    sa.Column('synonym', sa.String(), nullable=False),
+    sa.ForeignKeyConstraint(['concept_id'], ['terminology_concept.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_terminology_concept_synonym_concept_id'), 'terminology_concept_synonym', ['concept_id'], unique=False)
+    op.create_table('terminology_concept_translation',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('concept_id', sa.Integer(), nullable=False),
+    sa.Column('language_code', sa.String(), nullable=False),
+    sa.Column('display', sa.String(), nullable=False),
+    sa.ForeignKeyConstraint(['concept_id'], ['terminology_concept.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('concept_id', 'language_code')
+    )
+    op.create_index(op.f('ix_terminology_concept_translation_concept_id'), 'terminology_concept_translation', ['concept_id'], unique=False)
+    op.create_table('terminology_relationship',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('parent_concept_id', sa.Integer(), nullable=False),
+    sa.Column('child_concept_id', sa.Integer(), nullable=False),
+    sa.Column('relationship_type', sa.String(), nullable=False),
+    sa.ForeignKeyConstraint(['child_concept_id'], ['terminology_concept.id'], ),
+    sa.ForeignKeyConstraint(['parent_concept_id'], ['terminology_concept.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('parent_concept_id', 'child_concept_id', 'relationship_type')
+    )
+    op.create_index(op.f('ix_terminology_relationship_child_concept_id'), 'terminology_relationship', ['child_concept_id'], unique=False)
+    op.create_index(op.f('ix_terminology_relationship_parent_concept_id'), 'terminology_relationship', ['parent_concept_id'], unique=False)
+    op.create_table('terminology_value_set_concept',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('value_set_id', sa.Integer(), nullable=False),
+    sa.Column('concept_id', sa.Integer(), nullable=False),
+    sa.Column('active', sa.Boolean(), server_default=sa.text('true'), nullable=True),
+    sa.ForeignKeyConstraint(['concept_id'], ['terminology_concept.id'], ),
+    sa.ForeignKeyConstraint(['value_set_id'], ['terminology_value_set.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('value_set_id', 'concept_id')
+    )
+    op.create_index(op.f('ix_terminology_value_set_concept_concept_id'), 'terminology_value_set_concept', ['concept_id'], unique=False)
+    op.create_index(op.f('ix_terminology_value_set_concept_value_set_id'), 'terminology_value_set_concept', ['value_set_id'], unique=False)
     op.create_table('appointment_participant_type',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('participant_id', sa.Integer(), nullable=False),
@@ -6936,6 +7336,35 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_immunization_protocol_applied_target_disease_protocol_applied_id'), 'immunization_protocol_applied_target_disease', ['protocol_applied_id'], unique=False)
+    op.create_table('insurance_plan_coverage_benefit_limit',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('benefit_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('value_value', sa.Numeric(), nullable=True),
+    sa.Column('value_comparator', sa.String(), nullable=True),
+    sa.Column('value_unit', sa.String(), nullable=True),
+    sa.Column('value_system', sa.String(), nullable=True),
+    sa.Column('value_code', sa.String(), nullable=True),
+    sa.Column('code_system', sa.String(), nullable=True),
+    sa.Column('code_code', sa.String(), nullable=True),
+    sa.Column('code_display', sa.String(), nullable=True),
+    sa.Column('code_text', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['benefit_id'], ['insurance_plan_coverage_benefit.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_coverage_benefit_limit_benefit_id'), 'insurance_plan_coverage_benefit_limit', ['benefit_id'], unique=False)
+    op.create_table('insurance_plan_plan_sc_benefit',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('specific_cost_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('type_system', sa.String(), nullable=True),
+    sa.Column('type_code', sa.String(), nullable=True),
+    sa.Column('type_display', sa.String(), nullable=True),
+    sa.Column('type_text', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['specific_cost_id'], ['insurance_plan_plan_specific_cost.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_plan_sc_benefit_specific_cost_id'), 'insurance_plan_plan_sc_benefit', ['specific_cost_id'], unique=False)
     op.create_table('medication_request_dosage_additional_instruction',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('dosage_instruction_id', sa.Integer(), nullable=False),
@@ -7202,6 +7631,28 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_claim_response_item_detail_sub_detail_adjudication_sub_detail_id'), 'claim_response_item_detail_sub_detail_adjudication', ['sub_detail_id'], unique=False)
+    op.create_table('insurance_plan_plan_sc_benefit_cost',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('sc_benefit_id', sa.Integer(), nullable=False),
+    sa.Column('org_id', sa.String(), nullable=True),
+    sa.Column('type_system', sa.String(), nullable=True),
+    sa.Column('type_code', sa.String(), nullable=True),
+    sa.Column('type_display', sa.String(), nullable=True),
+    sa.Column('type_text', sa.String(), nullable=True),
+    sa.Column('applicability_system', sa.String(), nullable=True),
+    sa.Column('applicability_code', sa.String(), nullable=True),
+    sa.Column('applicability_display', sa.String(), nullable=True),
+    sa.Column('applicability_text', sa.String(), nullable=True),
+    sa.Column('qualifiers_json', sa.Text(), nullable=True),
+    sa.Column('value_value', sa.Numeric(), nullable=True),
+    sa.Column('value_comparator', sa.String(), nullable=True),
+    sa.Column('value_unit', sa.String(), nullable=True),
+    sa.Column('value_system', sa.String(), nullable=True),
+    sa.Column('value_code', sa.String(), nullable=True),
+    sa.ForeignKeyConstraint(['sc_benefit_id'], ['insurance_plan_plan_sc_benefit.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_insurance_plan_plan_sc_benefit_cost_sc_benefit_id'), 'insurance_plan_plan_sc_benefit_cost', ['sc_benefit_id'], unique=False)
     op.create_table('observation_component_reference_range_applies_to',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('reference_range_id', sa.Integer(), nullable=False),
@@ -7221,6 +7672,8 @@ def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_index(op.f('ix_observation_component_reference_range_applies_to_reference_range_id'), table_name='observation_component_reference_range_applies_to')
     op.drop_table('observation_component_reference_range_applies_to')
+    op.drop_index(op.f('ix_insurance_plan_plan_sc_benefit_cost_sc_benefit_id'), table_name='insurance_plan_plan_sc_benefit_cost')
+    op.drop_table('insurance_plan_plan_sc_benefit_cost')
     op.drop_index(op.f('ix_claim_response_item_detail_sub_detail_adjudication_sub_detail_id'), table_name='claim_response_item_detail_sub_detail_adjudication')
     op.drop_table('claim_response_item_detail_sub_detail_adjudication')
     op.drop_index(op.f('ix_claim_response_add_item_detail_sub_detail_modifier_sub_detail_id'), table_name='claim_response_add_item_detail_sub_detail_modifier')
@@ -7254,6 +7707,10 @@ def downgrade() -> None:
     op.drop_table('medication_request_dosage_dose_and_rate')
     op.drop_index(op.f('ix_medication_request_dosage_additional_instruction_dosage_instruction_id'), table_name='medication_request_dosage_additional_instruction')
     op.drop_table('medication_request_dosage_additional_instruction')
+    op.drop_index(op.f('ix_insurance_plan_plan_sc_benefit_specific_cost_id'), table_name='insurance_plan_plan_sc_benefit')
+    op.drop_table('insurance_plan_plan_sc_benefit')
+    op.drop_index(op.f('ix_insurance_plan_coverage_benefit_limit_benefit_id'), table_name='insurance_plan_coverage_benefit_limit')
+    op.drop_table('insurance_plan_coverage_benefit_limit')
     op.drop_index(op.f('ix_immunization_protocol_applied_target_disease_protocol_applied_id'), table_name='immunization_protocol_applied_target_disease')
     op.drop_table('immunization_protocol_applied_target_disease')
     op.drop_index(op.f('ix_condition_stage_assessment_stage_id'), table_name='condition_stage_assessment')
@@ -7282,6 +7739,25 @@ def downgrade() -> None:
     op.drop_table('claim_item_detail_modifier')
     op.drop_index(op.f('ix_appointment_participant_type_participant_id'), table_name='appointment_participant_type')
     op.drop_table('appointment_participant_type')
+    op.drop_index(op.f('ix_terminology_value_set_concept_value_set_id'), table_name='terminology_value_set_concept')
+    op.drop_index(op.f('ix_terminology_value_set_concept_concept_id'), table_name='terminology_value_set_concept')
+    op.drop_table('terminology_value_set_concept')
+    op.drop_index(op.f('ix_terminology_relationship_parent_concept_id'), table_name='terminology_relationship')
+    op.drop_index(op.f('ix_terminology_relationship_child_concept_id'), table_name='terminology_relationship')
+    op.drop_table('terminology_relationship')
+    op.drop_index(op.f('ix_terminology_concept_translation_concept_id'), table_name='terminology_concept_translation')
+    op.drop_table('terminology_concept_translation')
+    op.drop_index(op.f('ix_terminology_concept_synonym_concept_id'), table_name='terminology_concept_synonym')
+    op.drop_table('terminology_concept_synonym')
+    op.drop_index(op.f('ix_terminology_concept_map_target_concept_id'), table_name='terminology_concept_map')
+    op.drop_index(op.f('ix_terminology_concept_map_source_concept_id'), table_name='terminology_concept_map')
+    op.drop_table('terminology_concept_map')
+    op.drop_index(op.f('ix_terminology_concept_embedding_concept_id'), table_name='terminology_concept_embedding')
+    op.drop_table('terminology_concept_embedding')
+    op.drop_index(op.f('ix_terminology_audit_log_value_set_id'), table_name='terminology_audit_log')
+    op.drop_index(op.f('ix_terminology_audit_log_concept_id'), table_name='terminology_audit_log')
+    op.drop_index(op.f('ix_terminology_audit_log_action'), table_name='terminology_audit_log')
+    op.drop_table('terminology_audit_log')
     op.drop_index(op.f('ix_specimen_processing_additive_processing_id'), table_name='specimen_processing_additive')
     op.drop_table('specimen_processing_additive')
     op.drop_index(op.f('ix_specimen_container_identifier_container_id'), table_name='specimen_container_identifier')
@@ -7461,6 +7937,22 @@ def downgrade() -> None:
     op.drop_table('medication_request_based_on')
     op.drop_index(op.f('ix_invoice_line_item_price_component_line_item_id'), table_name='invoice_line_item_price_component')
     op.drop_table('invoice_line_item_price_component')
+    op.drop_index(op.f('ix_insurance_plan_plan_specific_cost_plan_id'), table_name='insurance_plan_plan_specific_cost')
+    op.drop_table('insurance_plan_plan_specific_cost')
+    op.drop_index(op.f('ix_insurance_plan_plan_network_plan_id'), table_name='insurance_plan_plan_network')
+    op.drop_table('insurance_plan_plan_network')
+    op.drop_index(op.f('ix_insurance_plan_plan_identifier_plan_id'), table_name='insurance_plan_plan_identifier')
+    op.drop_table('insurance_plan_plan_identifier')
+    op.drop_index(op.f('ix_insurance_plan_plan_general_cost_plan_id'), table_name='insurance_plan_plan_general_cost')
+    op.drop_table('insurance_plan_plan_general_cost')
+    op.drop_index(op.f('ix_insurance_plan_plan_coverage_area_plan_id'), table_name='insurance_plan_plan_coverage_area')
+    op.drop_table('insurance_plan_plan_coverage_area')
+    op.drop_index(op.f('ix_insurance_plan_coverage_network_coverage_id'), table_name='insurance_plan_coverage_network')
+    op.drop_table('insurance_plan_coverage_network')
+    op.drop_index(op.f('ix_insurance_plan_coverage_benefit_coverage_id'), table_name='insurance_plan_coverage_benefit')
+    op.drop_table('insurance_plan_coverage_benefit')
+    op.drop_index(op.f('ix_insurance_plan_contact_telecom_contact_id'), table_name='insurance_plan_contact_telecom')
+    op.drop_table('insurance_plan_contact_telecom')
     op.drop_index(op.f('ix_immunization_subpotent_reason_immunization_id'), table_name='immunization_subpotent_reason')
     op.drop_table('immunization_subpotent_reason')
     op.drop_index(op.f('ix_immunization_reason_reference_immunization_id'), table_name='immunization_reason_reference')
@@ -7678,6 +8170,17 @@ def downgrade() -> None:
     op.drop_table('allergy_intolerance_reaction_note')
     op.drop_index(op.f('ix_allergy_intolerance_reaction_manifestation_reaction_id'), table_name='allergy_intolerance_reaction_manifestation')
     op.drop_table('allergy_intolerance_reaction_manifestation')
+    op.drop_index(op.f('ix_terminology_field_binding_value_set_id'), table_name='terminology_field_binding')
+    op.drop_index(op.f('ix_terminology_field_binding_resource_type'), table_name='terminology_field_binding')
+    op.drop_table('terminology_field_binding')
+    op.drop_index('uq_terminology_concept_system_code_org', table_name='terminology_concept', postgresql_where=sa.text('org_id IS NOT NULL'))
+    op.drop_index('uq_terminology_concept_system_code_null_org', table_name='terminology_concept', postgresql_where=sa.text('org_id IS NULL'))
+    op.drop_index(op.f('ix_terminology_concept_user_id'), table_name='terminology_concept')
+    op.drop_index(op.f('ix_terminology_concept_parent_concept_id'), table_name='terminology_concept')
+    op.drop_index(op.f('ix_terminology_concept_org_id'), table_name='terminology_concept')
+    op.drop_index(op.f('ix_terminology_concept_code_system_id'), table_name='terminology_concept')
+    op.drop_index(op.f('ix_terminology_concept_code'), table_name='terminology_concept')
+    op.drop_table('terminology_concept')
     op.drop_index(op.f('ix_task_restriction_recipient_task_id'), table_name='task_restriction_recipient')
     op.drop_table('task_restriction_recipient')
     op.drop_index(op.f('ix_task_relevant_history_task_id'), table_name='task_relevant_history')
@@ -7865,6 +8368,24 @@ def downgrade() -> None:
     op.drop_table('invoice_line_item')
     op.drop_index(op.f('ix_invoice_identifier_invoice_id'), table_name='invoice_identifier')
     op.drop_table('invoice_identifier')
+    op.drop_index(op.f('ix_insurance_plan_type_insurance_plan_id'), table_name='insurance_plan_type')
+    op.drop_table('insurance_plan_type')
+    op.drop_index(op.f('ix_insurance_plan_plan_insurance_plan_id'), table_name='insurance_plan_plan')
+    op.drop_table('insurance_plan_plan')
+    op.drop_index(op.f('ix_insurance_plan_network_insurance_plan_id'), table_name='insurance_plan_network')
+    op.drop_table('insurance_plan_network')
+    op.drop_index(op.f('ix_insurance_plan_identifier_insurance_plan_id'), table_name='insurance_plan_identifier')
+    op.drop_table('insurance_plan_identifier')
+    op.drop_index(op.f('ix_insurance_plan_endpoint_insurance_plan_id'), table_name='insurance_plan_endpoint')
+    op.drop_table('insurance_plan_endpoint')
+    op.drop_index(op.f('ix_insurance_plan_coverage_area_insurance_plan_id'), table_name='insurance_plan_coverage_area')
+    op.drop_table('insurance_plan_coverage_area')
+    op.drop_index(op.f('ix_insurance_plan_coverage_insurance_plan_id'), table_name='insurance_plan_coverage')
+    op.drop_table('insurance_plan_coverage')
+    op.drop_index(op.f('ix_insurance_plan_contact_insurance_plan_id'), table_name='insurance_plan_contact')
+    op.drop_table('insurance_plan_contact')
+    op.drop_index(op.f('ix_insurance_plan_alias_insurance_plan_id'), table_name='insurance_plan_alias')
+    op.drop_table('insurance_plan_alias')
     op.drop_index(op.f('ix_immunization_user_id'), table_name='immunization')
     op.drop_index(op.f('ix_immunization_org_id'), table_name='immunization')
     op.drop_index(op.f('ix_immunization_manufacturer_id'), table_name='immunization')
@@ -8086,6 +8607,10 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_vitals_org_id'), table_name='vitals')
     op.drop_index(op.f('ix_vitals_id'), table_name='vitals')
     op.drop_table('vitals')
+    op.drop_index(op.f('ix_terminology_value_set_canonical_url'), table_name='terminology_value_set')
+    op.drop_table('terminology_value_set')
+    op.drop_index(op.f('ix_terminology_code_system_canonical_url'), table_name='terminology_code_system')
+    op.drop_table('terminology_code_system')
     op.drop_index(op.f('ix_task_user_id'), table_name='task')
     op.drop_index(op.f('ix_task_task_id'), table_name='task')
     op.drop_index(op.f('ix_task_org_id'), table_name='task')
@@ -8136,6 +8661,11 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_invoice_invoice_id'), table_name='invoice')
     op.drop_index(op.f('ix_invoice_id'), table_name='invoice')
     op.drop_table('invoice')
+    op.drop_index(op.f('ix_insurance_plan_user_id'), table_name='insurance_plan')
+    op.drop_index(op.f('ix_insurance_plan_org_id'), table_name='insurance_plan')
+    op.drop_index(op.f('ix_insurance_plan_insurance_plan_id'), table_name='insurance_plan')
+    op.drop_index(op.f('ix_insurance_plan_id'), table_name='insurance_plan')
+    op.drop_table('insurance_plan')
     op.drop_index(op.f('ix_healthcare_service_user_id'), table_name='healthcare_service')
     op.drop_index(op.f('ix_healthcare_service_org_id'), table_name='healthcare_service')
     op.drop_index(op.f('ix_healthcare_service_name'), table_name='healthcare_service')
@@ -8192,6 +8722,7 @@ def downgrade() -> None:
     op.execute('DROP SEQUENCE IF EXISTS episode_of_care_pub_seq')
     op.execute('DROP SEQUENCE IF EXISTS healthcare_service_pub_seq')
     op.execute('DROP SEQUENCE IF EXISTS immunization_pub_seq')
+    op.execute('DROP SEQUENCE IF EXISTS insurance_plan_pub_seq')
     op.execute('DROP SEQUENCE IF EXISTS invoice_pub_seq')
     op.execute('DROP SEQUENCE IF EXISTS location_pub_seq')
     op.execute('DROP SEQUENCE IF EXISTS medication_pub_seq')
