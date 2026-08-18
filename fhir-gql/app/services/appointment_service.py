@@ -202,6 +202,9 @@ class AppointmentService:
         Step 2 — Create the Appointment.
             Build a FHIR-compatible payload with two participants (Practitioner and
             Patient), the Slot reference, and the slot's own start/end times.
+            The appointment type is inherited from the Slot unless the caller
+            overrides it — the Slot fetched in Step 1 already carries it, and the
+            fhir-server cannot patch the type in afterwards.
             Optional fields (service_type, reason, note) are included only if
             provided — None values are dropped so the fhir-server schema is not
             polluted with empty arrays.
@@ -284,6 +287,33 @@ class AppointmentService:
             payload["user_id"] = dto.user_id
         if dto.org_id:
             payload["org_id"] = dto.org_id
+
+        # Appointment type — caller's values win, otherwise inherit the Slot's.
+        #
+        # The Slot was fetched in Step 1 and the fhir-server returns its four
+        # appointment_type_* fields on that plain JSON payload, so inheriting is
+        # free — no extra request. Whoever generated the practitioner's schedule
+        # already declared what kind of visit the slot is for, and booking UIs
+        # display that value before confirming, so copying it keeps the created
+        # Appointment consistent with what the patient was shown.
+        #
+        # Set here rather than later because the fhir-server's
+        # AppointmentPatchSchema has no appointment_type_* fields — create is the
+        # only opportunity.
+        #
+        # The four fields move as one group: a caller supplying a code replaces
+        # the Slot's values entirely, so a caller's code can never end up paired
+        # with the Slot's system.
+        if dto.appointment_type_code or dto.appointment_type_text:
+            payload["appointment_type_system"] = dto.appointment_type_system
+            payload["appointment_type_code"] = dto.appointment_type_code
+            payload["appointment_type_display"] = dto.appointment_type_display
+            payload["appointment_type_text"] = dto.appointment_type_text
+        elif slot.get("appointment_type_code") or slot.get("appointment_type_text"):
+            payload["appointment_type_system"] = slot.get("appointment_type_system")
+            payload["appointment_type_code"] = slot.get("appointment_type_code")
+            payload["appointment_type_display"] = slot.get("appointment_type_display")
+            payload["appointment_type_text"] = slot.get("appointment_type_text")
 
         # Optional fields — only included when the caller provides a value.
         if dto.description:

@@ -517,6 +517,50 @@ class BookAppointmentInput(BaseModel):
         description="Human-readable name of the patient. Stored as the Patient participant's reference_display.",
     )
 
+    # ── Appointment type — inherited from the Slot unless overridden ──────────
+    # The booked Slot already carries these four fields, set by whoever generated
+    # the practitioner's schedule, and the fhir-server returns them on the plain
+    # JSON slot fetch that book() already performs in Step 1. The service copies
+    # them onto the Appointment by default, so a caller that omits them still
+    # gets a correctly typed Appointment without knowing the value set.
+    #
+    # This must happen at create time: the fhir-server's AppointmentPatchSchema
+    # has no appointment_type_* fields, so the type cannot be added afterwards.
+    #
+    # The four are treated as one group — supplying appointment_type_code (or
+    # _text) replaces the Slot's values wholesale rather than merging field by
+    # field, which would otherwise pair a caller's code with the Slot's system.
+    #
+    # Not an enum on purpose: FHIR binds Appointment.appointmentType as
+    # *preferred*, not required, so local code systems are legal, and both the
+    # Slot and Appointment create schemas keep it a free string.
+    appointment_type_system: Optional[str] = Field(
+        None,
+        description=(
+            "Coding system URI for the appointment type "
+            "(e.g. http://terminology.hl7.org/CodeSystem/v2-0276). "
+            "Defaults to the booked Slot's value."
+        ),
+    )
+    appointment_type_code: Optional[str] = Field(
+        None,
+        description=(
+            "Appointment type code (e.g. ROUTINE, CHECKUP, FOLLOWUP, WALKIN, EMERGENCY). "
+            "Defaults to the booked Slot's value; supplying it overrides the Slot."
+        ),
+    )
+    appointment_type_display: Optional[str] = Field(
+        None,
+        description="Human-readable display for the appointment type. Defaults to the booked Slot's value.",
+    )
+    appointment_type_text: Optional[str] = Field(
+        None,
+        description=(
+            "Free-text appointment type used when no code applies. "
+            "Defaults to the booked Slot's value."
+        ),
+    )
+
     # ── Optional context ──────────────────────────────────────────────────────
     service_type_code: Optional[str] = Field(None, description="Service type code (e.g. SNOMED or local code).")
     service_type_display: Optional[str] = Field(None, description="Human-readable label for the service type code.")

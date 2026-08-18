@@ -1,16 +1,14 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
-from app.deps.schedule_deps import resolve_schedule
-from app.core.content_negotiation import format_response, format_paginated_response
+from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
+from app.deps.schedule_deps import resolve_schedule
 from app.di.dependencies.schedule import get_schedule_service
 from app.models.schedule.schedule import ScheduleModel
 from app.schemas.schedule import ScheduleCreateSchema, SchedulePatchSchema
 from app.schemas.schedule.response import (
-    FHIRScheduleSchema,
     FHIRScheduleBundle,
+    FHIRScheduleSchema,
     PaginatedScheduleResponse,
     PlainScheduleResponse,
 )
@@ -24,13 +22,19 @@ _CONTENT_NEG = (
 )
 
 _ERR_NOT_FOUND = {404: {"description": "Schedule not found"}}
-_ERR_VALIDATION = {422: {"description": "Validation error — request body failed schema validation"}}
+_ERR_VALIDATION = {
+    422: {"description": "Validation error — request body failed schema validation"}
+}
 
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainScheduleResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRScheduleSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PlainScheduleResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRScheduleSchema.model_json_schema())
+            },
         }
     }
 }
@@ -39,8 +43,12 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of schedules",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedScheduleResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRScheduleBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PaginatedScheduleResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRScheduleBundle.model_json_schema())
+            },
         },
     }
 }
@@ -83,14 +91,12 @@ async def create_schedule(
 # Declared before /{schedule_id} to avoid routing conflicts.
 
 
-
 @router.get(
     "/{schedule_id}",
     operation_id="get_schedule_by_id",
     summary="Retrieve a Schedule resource by public schedule_id",
     description=(
-        "Fetches a single Schedule by its public integer `schedule_id`. "
-        + _CONTENT_NEG
+        "Fetches a single Schedule by its public integer `schedule_id`. " + _CONTENT_NEG
     ),
     response_description="The requested Schedule resource",
     responses={**_SINGLE_200, **_ERR_NOT_FOUND},
@@ -130,9 +136,7 @@ async def patch_schedule(
     sched_service: ScheduleService = Depends(get_schedule_service),
 ):
     updated_by = payload.updated_by
-    updated = await sched_service.patch_schedule(
-        sched.schedule_id, payload, updated_by
-    )
+    updated = await sched_service.patch_schedule(sched.schedule_id, payload, updated_by)
     if not updated:
         raise HTTPException(status_code=404, detail="Schedule not found")
     return format_response(
@@ -152,17 +156,16 @@ async def patch_schedule(
     description=(
         "Returns a paginated list of Schedule resources. "
         "Filter by `active`, `user_id`, or `org_id`. "
-        "Use `limit` and `offset` for pagination. "
-        + _CONTENT_NEG
+        "Use `limit` and `offset` for pagination. " + _CONTENT_NEG
     ),
     response_description="Paginated Schedule resources",
     responses={**_LIST_200},
 )
 async def list_schedules(
     request: Request,
-    active: Optional[bool] = Query(None, description="Filter by active status."),
-    user_id: Optional[str] = Query(None),
-    org_id: Optional[str] = Query(None),
+    active: bool | None = Query(None, description="Filter by active status."),
+    user_id: str | None = Query(None),
+    org_id: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     sched_service: ScheduleService = Depends(get_schedule_service),
@@ -173,7 +176,10 @@ async def list_schedules(
     return format_paginated_response(
         [sched_service._to_fhir(s) for s in items],
         [sched_service._to_plain(s) for s in items],
-        total, limit, offset, request,
+        total,
+        limit,
+        offset,
+        request,
     )
 
 
@@ -197,4 +203,3 @@ async def delete_schedule(
     sched_service: ScheduleService = Depends(get_schedule_service),
 ):
     await sched_service.delete_schedule(sched.schedule_id)
-    return None
