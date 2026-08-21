@@ -228,10 +228,16 @@ class DiagnosticReportPatchSchema(BaseModel):
     """
     Partial update body for a DiagnosticReport.
 
-    Only scalar fields are patchable. Child arrays (identifier, based_on, category,
-    performer, results_interpreter, specimen, result, imaging_study, media,
-    conclusion_code, presented_form) are immutable after creation on the fhir-server —
-    delete and re-create the DiagnosticReport to change those.
+    Most fields here are scalar. `result` is the one child array that's
+    patchable — Observations are typically linked to a report after it's
+    created, as they become available — and it's forwarded to the fhir-server
+    as-is. It REPLACES the full list when sent (read the current value via
+    GET first and merge if you need to append); omit the key to leave it
+    untouched, send `[]` to clear it. Every other child array (identifier,
+    based_on, category, performer, results_interpreter, specimen,
+    imaging_study, media, conclusion_code, presented_form) is still immutable
+    after creation on the fhir-server — delete and re-create the
+    DiagnosticReport to change those.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -249,6 +255,7 @@ class DiagnosticReportPatchSchema(BaseModel):
     issued: Optional[datetime] = None
     conclusion: Optional[str] = None
     updated_by: Optional[str] = None
+    result: Optional[List[DiagnosticReportResultInput]] = None
 
 
 class ListDiagnosticReportsSchema(BaseModel):

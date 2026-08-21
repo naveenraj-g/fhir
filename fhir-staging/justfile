@@ -1,0 +1,143 @@
+# Port 8002 so this can run alongside fhir-server (8001) without a collision.
+PORT := "8002"
+
+# NOTE on comments: `just --list` shows only the LAST comment line above a
+# recipe as its description, so each one gets a single-line summary. Longer
+# explanations go in a separate block with a blank line between, like this one.
+
+# Run the dev server with autoreload
+dev:
+    uv run uvicorn app.main:app --port {{PORT}} --reload
+
+# Run the server with 2 workers, bound to all interfaces
+start:
+    uv run uvicorn app.main:app --host 0.0.0.0 --port {{PORT}} --workers 2
+
+# ── VPS / Production ──────────────────────────────────────────────────────────
+
+IMAGE := "ghcr.io/naveenraj-g/fhir-staging"
+TAG   := "latest"
+
+# Authenticate with ghcr.io (run once per machine — requires GITHUB_TOKEN env var)
+# export GITHUB_TOKEN=<your PAT with write:packages scope>
+vps-login:
+    echo $GITHUB_TOKEN | docker login ghcr.io -u naveenraj-g --password-stdin
+
+# Build the production image locally
+vps-build:
+    docker build -t {{IMAGE}}:{{TAG}} .
+
+# Push the locally-built image to ghcr.io
+vps-push:
+    docker push {{IMAGE}}:{{TAG}}
+
+# Build + push in one step
+vps-release: vps-build vps-push
+
+# Pull latest image and start the stack (app + postgres)
+vps-up:
+    docker compose -f docker-compose.prod.yml pull
+    docker compose -f docker-compose.prod.yml up -d
+
+# Restart the app container only (after a new image push)
+vps-redeploy:
+    docker compose -f docker-compose.prod.yml pull api
+    docker compose -f docker-compose.prod.yml up -d --no-deps api
+
+# Stop the VPS stack
+vps-down:
+    docker compose -f docker-compose.prod.yml down
+
+# Stream logs from all VPS services
+vps-logs:
+    docker compose -f docker-compose.prod.yml logs -f
+
+# Stream logs from the app only
+vps-logs-app:
+    docker compose -f docker-compose.prod.yml logs -f api
+
+# ── Setup ─────────────────────────────────────────────────────────────────────
+
+# Install dependencies and create .env from the example if absent
+setup:
+    uv sync
+    test -f .env || cp .env.example .env
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+
+# Run all tests
+test:
+    uv run pytest tests/ -v
+
+# Run all tests with quiet output
+test-q:
+    uv run pytest tests/ -q
+
+# Run tests matching a keyword, e.g. `just test-k staging_observation`
+test-k K:
+    uv run pytest tests/ -k "{{K}}" -v
+
+# ── Checks ────────────────────────────────────────────────────────────────────
+
+# This also runs the StagingObservationInput -> model-column guard in
+# app/repository/staging_medical_record/_shared.py, which raises at import time if a
+# schema field has no matching column.
+
+# Import the app without starting a server, to catch wiring errors
+check:
+    uv run python -c "import app.main; print('OK')"
+
+# Worth diffing after any schema change: this spec is the contract that
+# generated clients and tool servers read, so a dropped field breaks callers
+# silently.
+
+# Write the OpenAPI spec to openapi.json
+openapi:
+    uv run python -c "import json; from app.main import app, mount_routers; mount_routers(app); print(json.dumps(app.openapi(), indent=2))" > openapi.json
+    @echo "wrote openapi.json"
+
+# ── Migrations ────────────────────────────────────────────────────────────────
+
+# Apply all pending migrations
+migrate:
+    uv run alembic upgrade head
+
+# Roll back the most recent migration
+migrate-down:
+    uv run alembic downgrade -1
+
+# Show current migration state
+migrate-status:
+    uv run alembic current
+
+# Show migration history
+migrate-history:
+    uv run alembic history --verbose
+
+# Autogenerate a migration, e.g. `just migrate-generate "add_confidence"`
+migrate-generate NAME:
+    uv run alembic revision --autogenerate -m "{{NAME}}"
+
+# Useful for reviewing DDL before it runs, and the only verification available
+# when no database is reachable.
+
+# Render pending migrations as SQL without touching a database
+migrate-sql:
+    uv run alembic upgrade head --sql
+
+# Mark an existing DB as up-to-date without running migrations
+migrate-stamp:
+    uv run alembic stamp head
+
+# An EMPTY revision is the proof. The initial migration was generated offline
+# (no database was reachable at the time), so this has NOT been run yet — it is
+# the outstanding check on that file.
+
+# Prove the migration matches the models: apply it, then autogenerate on top
+migrate-verify:
+    uv run alembic upgrade head
+    uv run alembic revision --autogenerate -m "drift_check"
+    @echo ""
+    @echo "Inspect the revision just written to migrations/versions/."
+    @echo "If its upgrade() body is only 'pass', the migration matches the"
+    @echo "models — delete that file. If it contains operations, they drifted."

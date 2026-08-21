@@ -117,9 +117,13 @@ async def get_diagnostic_report(
     summary="Partially update a DiagnosticReport resource",
     description=(
         "Patchable fields: `status`, `code_*`, `subject_display`, `encounter_display`, "
-        "`effective_datetime`, `effective_period_start`, `effective_period_end`, `issued`, `conclusion`. "
-        "Child arrays (identifier, basedOn, category, performer, resultsInterpreter, specimen, result, "
-        "imagingStudy, media, conclusionCode, presentedForm) cannot be changed via PATCH — "
+        "`effective_datetime`, `effective_period_start`, `effective_period_end`, `issued`, `conclusion`, "
+        "and `result`. "
+        "`result` (Reference(Observation)[]) replaces the full list when sent — read the current "
+        "value first and merge if you need to append rather than overwrite; omit the key to leave it "
+        "untouched, send `[]` to clear it. "
+        "Every other child array (identifier, basedOn, category, performer, resultsInterpreter, specimen, "
+        "imagingStudy, media, conclusionCode, presentedForm) still cannot be changed via PATCH — "
         "delete and re-create the DiagnosticReport to correct those. "
         + _CONTENT_NEG
     ),

@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+.venv/
+
+# Git
+.git
+.gitignore
+
+# Secrets — never bake into image
+.env
+.env.*
+!.env.example
+
+# IDE / tooling
+.vscode/
+.idea/
+.claude/
+
+# Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Build artifacts
+dist/
+build/
+
+# Logs / DB
+*.log
+*.sqlite3
+
+# Tests and docs — not needed at runtime
+tests/
+*.md
+
+# Generated, not needed at runtime — regenerable from the code
+openapi.json
+
+justfile
+docker-compose*.yml

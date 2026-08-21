@@ -193,3 +193,10 @@ class DiagnosticReportPatchSchema(BaseModel):
     issued: Optional[datetime] = None
     conclusion: Optional[str] = None
     updated_by: Optional[str] = None
+    # result[] is the one child array that legitimately grows after creation —
+    # Observations are typically added to a report as they become available.
+    # Unlike every other child array here, it IS patchable. Sending the key
+    # replaces the full list (send [] to clear it); omit the key to leave it
+    # untouched — same exclude_unset convention every other field on this
+    # schema already follows.
+    result: Optional[List[DiagnosticReportResultInput]] = None

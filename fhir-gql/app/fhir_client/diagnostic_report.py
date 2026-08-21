@@ -88,10 +88,13 @@ class DiagnosticReportClient:
 
     async def patch(self, resource_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
         """
-        PATCH /diagnostic-reports/{resource_id} — partially update scalar fields.
+        PATCH /diagnostic-reports/{resource_id} — partially update fields.
 
-        Child arrays (based_on, category, performer, presented_form, etc.) are NOT
-        patchable — delete and re-create to change those.
+        Most fields are scalar. `result` (Reference(Observation)[]) is the one
+        child array that's patchable — it replaces the full list, so callers
+        must read-then-merge to append. Every other child array (based_on,
+        category, performer, presented_form, etc.) is NOT patchable — delete
+        and re-create to change those.
 
         Args:
             resource_id: The diagnostic report's integer primary key.

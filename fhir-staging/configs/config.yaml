@@ -1,0 +1,48 @@
+# Application-behavior config for fhir-staging. Checked into git — not a
+# secret, same spirit as alembic.ini. The one true per-environment secret
+# (the database URL) still lives in .env, never here. Precedence, highest
+# first: real env var > .env > this file > field defaults — see
+# app/core/config.py's Settings.settings_customise_sources().
+
+logging:
+  # Root log level. DEBUG turns on the per-layer flow logging that the service
+  # and repository emit; INFO keeps only business outcomes + the access log.
+  level: INFO
+
+  # "json" (one JSON object per line — what log aggregators want) or "console"
+  # (flat, human-readable). Use console locally, json everywhere else.
+  format: console
+
+  # ⚠️  PHI WARNING — LOCAL DEVELOPMENT ONLY, NEVER ENABLE IN PRODUCTION.
+  # Turning this on logs full request payloads at DEBUG. The staged documents
+  # this API holds are medical records: attachment titles, patient ids, and
+  # every extracted Observation value. The `redact` list below is a backstop
+  # for obvious secrets, NOT a PHI safeguard.
+  debug_payloads: false
+
+  # Any SQL statement slower than this emits a `db.slow_query` WARNING.
+  slow_query_ms: 500
+
+  # Log every SQL statement at DEBUG (very noisy — debugging only).
+  sql_echo: false
+
+  # Re-enable Uvicorn's own per-request line. Off because
+  # app/middleware/access_log.py already logs every request with more detail,
+  # and because Uvicorn's logger keeps its own handler — so its line stays
+  # PLAIN TEXT even when format is json, breaking anything parsing the stream.
+  uvicorn_access: false
+
+  # Field names masked by log_payload(), matched case-insensitively at any
+  # nesting depth, even when debug_payloads is on.
+  redact:
+    - authorization
+    - token
+    - password
+    - secret
+
+routes:
+  # Which routers get mounted under /api/v1 at startup. Not listed = not
+  # mounted. Toggling a resource is a one-line edit here plus a restart — no
+  # code change.
+  enabled:
+    - staging_medical_record

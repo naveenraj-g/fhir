@@ -179,12 +179,14 @@ async def list_diagnostic_reports(
     operation_id="update_diagnostic_report",
     summary="Partially update a DiagnosticReport",
     description=(
-        "Update specific scalar fields on a DiagnosticReport. At least one field must be provided. "
+        "Update specific fields on a DiagnosticReport. At least one field must be provided. "
         "Patchable fields: `status`, `code_*`, `subject_display`, `encounter_display`, "
-        "`effective_datetime`, `effective_period_start`, `effective_period_end`, `issued`, `conclusion`. "
-        "Child arrays (identifier, based_on, category, performer, results_interpreter, specimen, "
-        "result, imaging_study, media, conclusion_code, presented_form) are immutable after creation "
-        "— delete and re-create the DiagnosticReport to change those. "
+        "`effective_datetime`, `effective_period_start`, `effective_period_end`, `issued`, `conclusion`, "
+        "and `result`. `result` (Reference(Observation)[]) replaces the full list when sent — "
+        "GET the current value first and merge if you need to append rather than overwrite. "
+        "Every other child array (identifier, based_on, category, performer, results_interpreter, "
+        "specimen, imaging_study, media, conclusion_code, presented_form) is still immutable after "
+        "creation — delete and re-create the DiagnosticReport to change those. "
         "Send `Accept: application/fhir+json` for FHIR R4 format."
     ),
     responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},

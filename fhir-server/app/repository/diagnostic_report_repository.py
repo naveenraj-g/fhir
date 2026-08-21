@@ -370,9 +370,17 @@ class DiagnosticReportRepository:
         updated_by: Optional[str] = None,
     ) -> Optional[DiagnosticReportModel]:
         async with self.session_factory() as session:
+            # Eager-load every relationship (not just results) so that any
+            # future child-array patch support doesn't reintroduce this same
+            # bug — a bare select() here previously caused dr.results.clear()
+            # to attempt an async lazy-load outside a greenlet context
+            # (sqlalchemy.exc.MissingGreenlet), which only surfaced once
+            # result[] became patchable.
             result = await session.execute(
-                select(DiagnosticReportModel).where(
-                    DiagnosticReportModel.diagnostic_report_id == diagnostic_report_id
+                _with_relationships(
+                    select(DiagnosticReportModel).where(
+                        DiagnosticReportModel.diagnostic_report_id == diagnostic_report_id
+                    )
                 )
             )
             dr = result.scalars().first()
@@ -380,10 +388,27 @@ class DiagnosticReportRepository:
                 return None
 
             update_data = payload.model_dump(exclude_unset=True)
+            # result[] is a relationship, not a plain column — setattr() can't
+            # touch it. Pop it out and handle it the same way create() builds
+            # it, replacing whatever rows exist (None means "not provided" and
+            # is left alone; [] means "clear it", per the schema's own
+            # exclude_unset contract).
+            result_refs = update_data.pop("result", None)
             for field, value in update_data.items():
                 setattr(dr, field, value)
             if updated_by is not None:
                 dr.updated_by = updated_by
+
+            if result_refs is not None:
+                dr.results.clear()
+                for r in result_refs:
+                    r_type, r_id = _parse_ref(r["reference"], DiagnosticReportResultReferenceType, "result")
+                    dr.results.append(DiagnosticReportResult(
+                        org_id=dr.org_id,
+                        reference_type=r_type,
+                        reference_id=r_id,
+                        reference_display=r.get("reference_display"),
+                    ))
 
             try:
                 await session.commit()
