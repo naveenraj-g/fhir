@@ -100,15 +100,15 @@ class SlotRepository:
             )
             stmt = stmt.where(SlotModel.schedule_fk_id == sub)
         if practitioner_role_id is not None:
-            sub = (
-                select(ScheduleActor.schedule_id)
-                .where(
-                    ScheduleActor.reference_type == ScheduleActorReferenceType.PractitionerRole,
-                    ScheduleActor.reference_id == practitioner_role_id,
-                )
-                .scalar_subquery()
+            # A PractitionerRole can be linked to more than one Schedule via
+            # ScheduleActor (one row per schedule it's an actor on) — this must
+            # be an IN, not a scalar `==`, or it raises CardinalityViolationError
+            # the moment a role has more than one schedule.
+            sub = select(ScheduleActor.schedule_id).where(
+                ScheduleActor.reference_type == ScheduleActorReferenceType.PractitionerRole,
+                ScheduleActor.reference_id == practitioner_role_id,
             )
-            stmt = stmt.where(SlotModel.schedule_fk_id == sub)
+            stmt = stmt.where(SlotModel.schedule_fk_id.in_(sub))
         if date is not None:
             d = PyDate.fromisoformat(date)
             stmt = stmt.where(cast(SlotModel.start, SADate) == d)

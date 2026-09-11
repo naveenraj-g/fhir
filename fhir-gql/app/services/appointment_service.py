@@ -119,13 +119,18 @@ class AppointmentService:
         """
         return await self._client.list(
             accept=accept,
-            status=filters.status.value if filters.status else None,
+            status=filters.status,
             patient_id=filters.patient_id,
             practitioner_id=filters.practitioner_id,
             start_from=filters.start_from.isoformat() if filters.start_from else None,
             start_to=filters.start_to.isoformat() if filters.start_to else None,
+            patient_search=filters.patient_search,
+            practitioner_search=filters.practitioner_search,
             user_id=filters.user_id,
             org_id=filters.org_id,
+            # fhir-server's query param is named `_sort` (FHIR search convention) —
+            # forward under that literal key, not the Python attribute name `sort`.
+            _sort=filters.sort,
             limit=filters.limit,
             offset=filters.offset,
         )
@@ -551,6 +556,9 @@ class AppointmentService:
             status=filters.status.value if filters.status else None,
             start_from=filters.start_from.isoformat() if filters.start_from else None,
             start_to=filters.start_to.isoformat() if filters.start_to else None,
+            # fhir-server's query param is named `_sort` (FHIR search convention) —
+            # forward under that literal key, not the Python attribute name `sort`.
+            _sort=filters.sort,
             limit=filters.limit,
             offset=filters.offset,
         )

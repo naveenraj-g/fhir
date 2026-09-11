@@ -1,7 +1,6 @@
-from jwt import PyJWKClient
 import jwt
 from app.core.config import settings
-
+from jwt import PyJWKClient
 
 jwks_client = PyJWKClient(settings.IAM_JWKS_URL)
 

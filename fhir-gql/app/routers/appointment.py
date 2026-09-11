@@ -178,6 +178,8 @@ async def create_appointment(
     description=(
         "Returns a paginated list of Appointments linked to the authenticated user's JWT subject. "
         "Filters by `user_id == actor.sub`. Optional filters: `status`, `start_from`, `start_to`. "
+        "Sort with `_sort` (FHIR search convention, e.g. `_sort=status-priority,-date`) — "
+        "see the `/appointments` list endpoint for the full field reference. "
         "Send `Accept: application/fhir+json` to receive a FHIR Bundle searchset."
     ),
     responses={**_LIST_200},
@@ -277,7 +279,15 @@ async def get_appointment(
     description=(
         "Returns a paginated list of Appointment resources. "
         "Filter by `status`, `patient_id`, `practitioner_id`, time range (`start_from`/`start_to`), "
-        "`user_id`, or `org_id`. "
+        "`user_id`, or `org_id`. `status` accepts a comma-separated list to OR multiple "
+        "statuses together, e.g. `status=pending,booked`. `patient_search`/`practitioner_search` "
+        "do a case-insensitive substring match on the respective participant's display name. "
+        "Sort with `_sort` (FHIR search convention): a comma-separated list of fields, "
+        "each optionally prefixed with `-` for descending — e.g. `_sort=-date` or "
+        "`_sort=status-priority,-date`. Supported fields: `date`, `status`, `_id`, and "
+        "`status-priority` (a drgodly addition — buckets status into active/tentative/"
+        "terminal tiers, replacing the client-side re-sort the frontend previously did "
+        "after fetching). Defaults to `-date` (newest first) when omitted. "
         "Send `Accept: application/fhir+json` to receive a FHIR Bundle searchset."
     ),
     responses={**_LIST_200},

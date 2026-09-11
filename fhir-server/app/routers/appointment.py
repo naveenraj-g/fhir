@@ -159,7 +159,23 @@ async def patch_appointment(
     description=(
         "Returns a paginated list of Appointment resources. "
         "Filter by `status`, `patient_id`, `start_from`, `start_to`, `user_id`, or `org_id`. "
+        "`status` accepts a comma-separated list to OR multiple statuses together "
+        "(e.g. `status=pending,booked`) — a single value still works as a plain equality check. "
+        "`patient_search` does a case-insensitive substring match against the appointment's "
+        "denormalised patient display name (no Patient join required). `practitioner_search` "
+        "does the same against the practitioner participant's display name. "
         "Use `limit` and `offset` for pagination. "
+        "Sort with `_sort` (FHIR search convention): a comma-separated list of fields, "
+        "each optionally prefixed with `-` for descending — e.g. `_sort=-date` or "
+        "`_sort=status-priority,-date`. Supported fields: `date` (maps to the full `start` "
+        "timestamp), `status`, `_id`, `patient` (subject_display), `type` "
+        "(appointment_type_display), `duration` (minutes_duration), `status-priority` (a "
+        "drgodly addition — buckets status into active/tentative/terminal tiers, matching "
+        "the priority the client used to apply after the fact), `day` (just the calendar-date "
+        "part of `start`), and `time-of-day` (just the time part of `start`) — combine the "
+        "latter two independently, e.g. `_sort=-day,time-of-day` groups by day (newest first) "
+        "then orders chronologically within each day. Defaults to `-date` (newest first) when "
+        "omitted or empty. "
         + _CONTENT_NEG
     ),
     response_description="Paginated Appointment resources",
@@ -167,13 +183,34 @@ async def patch_appointment(
 )
 async def list_appointments(
     request: Request,
-    appt_status: Optional[str] = Query(None, alias="status"),
+    appt_status: Optional[str] = Query(
+        None,
+        alias="status",
+        description="Filter by status. Comma-separate multiple values to OR them, e.g. 'pending,booked'.",
+    ),
     patient_id: Optional[int] = Query(None, description="Filter by public patient_id."),
     practitioner_id: Optional[int] = Query(None, description="Filter by public practitioner_id — returns appointments where this practitioner is a participant."),
     start_from: Optional[datetime] = Query(None),
     start_to: Optional[datetime] = Query(None),
+    patient_search: Optional[str] = Query(
+        None,
+        description="Case-insensitive substring match on the patient's denormalised display name.",
+    ),
+    practitioner_search: Optional[str] = Query(
+        None,
+        description="Case-insensitive substring match on the practitioner participant's display name.",
+    ),
     user_id: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),
+    sort: Optional[str] = Query(
+        None,
+        alias="_sort",
+        description=(
+            "Comma-separated sort fields, each optionally '-'-prefixed for descending. "
+            "E.g. '_sort=status-priority,-date'. Supported: date, status, _id, patient, "
+            "type, duration, status-priority."
+        ),
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     appointment_service: AppointmentService = Depends(get_appointment_service),
@@ -181,7 +218,10 @@ async def list_appointments(
     appointments, total = await appointment_service.list_appointments(
         user_id=user_id, org_id=org_id, status=appt_status, patient_id=patient_id,
         practitioner_id=practitioner_id,
-        start_from=start_from, start_to=start_to, limit=limit, offset=offset,
+        start_from=start_from, start_to=start_to,
+        patient_search=patient_search, practitioner_search=practitioner_search,
+        sort=sort,
+        limit=limit, offset=offset,
     )
     return format_paginated_response(
         [appointment_service._to_fhir(a) for a in appointments],

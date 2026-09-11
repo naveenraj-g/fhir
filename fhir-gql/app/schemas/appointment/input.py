@@ -609,15 +609,44 @@ class ListAppointmentsSchema(BaseModel):
     Regular callers should use GET /appointments/me instead.
     """
 
-    status: Optional[AppointmentStatus] = Field(None, description="Filter by appointment lifecycle status.")
+    status: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by appointment lifecycle status. Comma-separate multiple values "
+            "to OR them together, e.g. 'pending,booked'. Not validated against the "
+            "AppointmentStatus enum here — an unrecognised value just matches zero rows."
+        ),
+    )
     patient_id: Optional[int] = Field(None, description="Filter appointments that include this patient (integer ID).")
     practitioner_id: Optional[int] = Field(None, description="Filter appointments where this practitioner is a participant (integer ID).")
     start_from: Optional[datetime] = Field(None, description="Return appointments starting at or after this datetime (ISO 8601).")
     start_to: Optional[datetime] = Field(None, description="Return appointments starting at or before this datetime (ISO 8601).")
+    patient_search: Optional[str] = Field(
+        None,
+        description="Case-insensitive substring match on the patient's denormalised display name.",
+    )
+    practitioner_search: Optional[str] = Field(
+        None,
+        description="Case-insensitive substring match on the practitioner participant's display name.",
+    )
     user_id: Optional[str] = Field(None, description="Filter by user_id for tenant scoping.")
     org_id: Optional[str] = Field(None, description="Filter by org_id for tenant scoping.")
+    sort: Optional[str] = Field(
+        None,
+        alias="_sort",
+        description=(
+            "FHIR `_sort`-style ordering: comma-separated fields, each optionally "
+            "'-'-prefixed for descending (e.g. '_sort=status-priority,-date'). "
+            "Supported: date, status, _id, patient, type, duration, and "
+            "status-priority (bucketed active/tentative/terminal ordering — a "
+            "drgodly addition beyond the standard FHIR search params). Defaults "
+            "to -date (newest first) when omitted."
+        ),
+    )
     limit: int = Field(default=50, ge=1, le=200, description="Maximum number of records to return per page.")
     offset: int = Field(default=0, ge=0, description="Number of records to skip before returning results.")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class MeAppointmentsSchema(BaseModel):
@@ -630,8 +659,18 @@ class MeAppointmentsSchema(BaseModel):
     status: Optional[AppointmentStatus] = Field(None, description="Filter by appointment lifecycle status.")
     start_from: Optional[datetime] = Field(None, description="Return appointments starting at or after this datetime.")
     start_to: Optional[datetime] = Field(None, description="Return appointments starting at or before this datetime.")
+    sort: Optional[str] = Field(
+        None,
+        alias="_sort",
+        description=(
+            "FHIR `_sort`-style ordering — see ListAppointmentsSchema.sort for the "
+            "full field list. Defaults to -date (newest first) when omitted."
+        ),
+    )
     limit: int = Field(default=50, ge=1, le=200, description="Maximum number of records to return per page.")
     offset: int = Field(default=0, ge=0, description="Number of records to skip before returning results.")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class RescheduleAppointmentInput(BaseModel):

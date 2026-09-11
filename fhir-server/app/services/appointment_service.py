@@ -42,6 +42,9 @@ class AppointmentService:
         patient_id: Optional[int] = None,
         start_from: Optional[datetime] = None,
         start_to: Optional[datetime] = None,
+        patient_search: Optional[str] = None,
+        practitioner_search: Optional[str] = None,
+        sort: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[AppointmentModel], int]:
@@ -49,7 +52,8 @@ class AppointmentService:
             user_id, org_id,
             status=status, patient_id=patient_id,
             start_from=start_from, start_to=start_to,
-            limit=limit, offset=offset,
+            patient_search=patient_search, practitioner_search=practitioner_search,
+            sort=sort, limit=limit, offset=offset,
         )
 
     async def list_appointments(
@@ -61,13 +65,19 @@ class AppointmentService:
         practitioner_id: Optional[int] = None,
         start_from: Optional[datetime] = None,
         start_to: Optional[datetime] = None,
+        patient_search: Optional[str] = None,
+        practitioner_search: Optional[str] = None,
+        sort: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[AppointmentModel], int]:
         return await self.repository.list(
             user_id=user_id, org_id=org_id, status=status, patient_id=patient_id,
             practitioner_id=practitioner_id,
-            start_from=start_from, start_to=start_to, limit=limit, offset=offset,
+            start_from=start_from, start_to=start_to,
+            patient_search=patient_search, practitioner_search=practitioner_search,
+            sort=sort,
+            limit=limit, offset=offset,
         )
 
     # ── Write ─────────────────────────────────────────────────────────────

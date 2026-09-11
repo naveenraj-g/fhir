@@ -78,7 +78,7 @@ class AppointmentClient:
         Strips None values from **params to avoid sending null query strings.
 
         Supported params: status, patient_id, start_from, start_to,
-        user_id, org_id, limit, offset.
+        user_id, org_id, _sort, limit, offset.
 
         Args:
             accept:   Content-type preference forwarded to the fhir-server.

@@ -1,15 +1,49 @@
-import httpx
-import uvicorn
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
+
+import httpx
+import jwt
+import uvicorn
 from fastapi import FastAPI
 from fastmcp import FastMCP
+from fastmcp.server.providers.openapi import MCPType, RouteMap
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Receive, Scope, Send
-from app.core.config import settings
+
 from app.auth.decode_token import decode_token
-import jwt
+from app.core.config import settings
+
+# ---------------------------------------------------------------------------
+# 0. Only expose read (GET) access, and only for these FHIR resource groups.
+#    Tags must match the `tags=[...]` used in fhir-server's api_router.include_router() calls.
+# ---------------------------------------------------------------------------
+EXPOSED_RESOURCE_TAGS = {
+    "Organizations",
+    "Locations",
+    "HealthcareServices",
+    "Schedules",
+    "Slots",
+    "Practitioners",
+    "PractitionerRoles",
+    "Patients",
+    "Appointments",
+    "Encounters",
+    "ServiceRequests",
+    "MedicationRequests",
+    "Observations",
+    "Conditions",
+    "DiagnosticReports",
+    "DocumentReferences",
+}
+
+route_maps = [
+    RouteMap(methods=["GET"], tags={tag}, mcp_type=MCPType.TOOL)
+    for tag in EXPOSED_RESOURCE_TAGS
+] + [
+    # Everything else (other resources, and any non-GET method) is excluded.
+    RouteMap(mcp_type=MCPType.EXCLUDE),
+]
 
 # ---------------------------------------------------------------------------
 # 1. ContextVar for per-request auth token (concurrency-safe)
@@ -44,6 +78,7 @@ mcp = FastMCP.from_openapi(
     openapi_spec=openapi_spec,
     client=client,
     name="FHIR MCP",
+    route_maps=route_maps,
 )
 
 # ---------------------------------------------------------------------------
@@ -82,7 +117,7 @@ class AuthForwardingMiddleware:
 
         # Set the token for the duration of this request
         extracted_token = auth_header.split(" ")[1]
-
+        print(extracted_token)
         try:
             decode_token(extracted_token)
         except jwt.ExpiredSignatureError:

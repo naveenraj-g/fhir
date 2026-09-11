@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status as http_status
-from sqlalchemy import func
+from sqlalchemy import Time, case, cast, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F401
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -97,6 +97,103 @@ def _cast_ref_type(value: str, enum_cls, field: str):
         )
 
 
+# ── Sorting (FHIR `_sort`-style) ─────────────────────────────────────────────
+
+
+def _status_priority_expr():
+    """
+    Buckets Appointment.status into a 3-tier priority, matching the drgodly
+    frontend's sortAppointmentsByStatusPriority so the same ordering can be
+    produced server-side instead of re-sorted client-side after the fact:
+      0 — active/confirmed (booked, arrived, checked-in, fulfilled)
+      1 — tentative (proposed, pending, waitlist) — also the default bucket
+          for any status not explicitly listed, since an unrecognised code
+          is neither confirmed nor terminal.
+      2 — terminal/negative (cancelled, noshow, entered-in-error)
+    """
+    return case(
+        (
+            AppointmentModel.status.in_(
+                ["booked", "arrived", "checked-in", "fulfilled"]
+            ),
+            0,
+        ),
+        (
+            AppointmentModel.status.in_(
+                ["cancelled", "noshow", "entered-in-error"]
+            ),
+            2,
+        ),
+        else_=1,
+    )
+
+
+# Maps a `_sort` token (FHIR search naming where it exists) to a sortable
+# SQLAlchemy column/expression. `status-priority` is a drgodly addition on
+# top of the standard FHIR Appointment search params — FHIR's `_sort` only
+# sorts by a field's own natural value, it has no notion of a custom bucketed
+# priority like "active before tentative before cancelled". `patient`,
+# `type`, and `duration` sort the denormalised display columns stored
+# directly on the Appointment row (subject_display, appointment_type_display,
+# minutes_duration) — no join required.
+_SORT_FIELDS = {
+    "date": AppointmentModel.start,
+    "_id": AppointmentModel.appointment_id,
+    "status": AppointmentModel.status,
+    "status-priority": _status_priority_expr(),
+    "patient": AppointmentModel.subject_display,
+    "type": AppointmentModel.appointment_type_display,
+    "duration": AppointmentModel.minutes_duration,
+    # Split out of `start` so a caller can combine an independent date-part
+    # direction with an independent time-of-day direction — e.g.
+    # "_sort=-day,time-of-day" groups appointments by calendar day (newest
+    # day first), ordered chronologically within each day. `date` above is
+    # left untouched (still sorts the full timestamp) so every existing
+    # caller relying on plain "date"/"-date" keeps its current behavior.
+    "day": func.date(AppointmentModel.start),
+    "time-of-day": cast(AppointmentModel.start, Time),
+}
+
+
+def _apply_sort(stmt, sort: Optional[str]):
+    """
+    Applies FHIR `_sort`-style ordering to a SELECT statement.
+
+    `sort` is a comma-separated list of field names (see _SORT_FIELDS),
+    each optionally prefixed with '-' for descending — e.g.
+    "status-priority,-date" sorts active-first, then newest-first within
+    each status tier. Unknown tokens are silently ignored so a typo just
+    falls through to the default rather than erroring.
+
+    When `sort` is None/empty or resolves to no valid tokens, falls back to
+    the pre-existing default (start desc) — fully backward compatible with
+    every caller that doesn't pass `_sort` at all.
+
+    @param stmt - The SELECT statement to order.
+    @param sort - Raw `_sort` query string, or None.
+    @returns The statement with `.order_by(...)` applied.
+    """
+    if not sort:
+        return stmt.order_by(AppointmentModel.start.desc())
+
+    order_clauses = []
+    for token in sort.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        descending = token.startswith("-")
+        field = token[1:] if descending else token
+        column = _SORT_FIELDS.get(field)
+        if column is None:
+            continue
+        order_clauses.append(column.desc() if descending else column.asc())
+
+    if not order_clauses:
+        return stmt.order_by(AppointmentModel.start.desc())
+
+    return stmt.order_by(*order_clauses)
+
+
 class AppointmentRepository:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         self.session_factory = session_factory
@@ -120,6 +217,9 @@ class AppointmentRepository:
         practitioner_id: Optional[int] = None,
         start_from: Optional[datetime] = None,
         start_to: Optional[datetime] = None,
+        patient_search: Optional[str] = None,
+        practitioner_search: Optional[str] = None,
+        sort: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[AppointmentModel], int]:
@@ -127,29 +227,39 @@ class AppointmentRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(AppointmentModel)),
                 user_id, org_id, status, patient_id, start_from, start_to,
-                practitioner_id=practitioner_id,
+                practitioner_id=practitioner_id, patient_search=patient_search,
+                practitioner_search=practitioner_search,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(AppointmentModel),
                 user_id, org_id, status, patient_id, start_from, start_to,
-                practitioner_id=practitioner_id,
+                practitioner_id=practitioner_id, patient_search=patient_search,
+                practitioner_search=practitioner_search,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
-                base.order_by(AppointmentModel.start.desc()).offset(offset).limit(limit)
+                _apply_sort(base, sort).offset(offset).limit(limit)
             )).scalars().all())
         return rows, total
 
     def _apply_list_filters(
         self, stmt, user_id, org_id, status, patient_id, start_from, start_to,
-        practitioner_id=None,
+        practitioner_id=None, patient_search=None, practitioner_search=None,
     ):
         if user_id:
             stmt = stmt.where(AppointmentModel.user_id == user_id)
         if org_id:
             stmt = stmt.where(AppointmentModel.org_id == org_id)
         if status:
-            stmt = stmt.where(AppointmentModel.status == status)
+            # FHIR search convention: comma-separated values in a single
+            # param are OR'd together — "pending,booked" means either.
+            # A single value (the common case) still resolves to a plain
+            # equality check, unchanged from before.
+            values = [s.strip() for s in status.split(",") if s.strip()]
+            if len(values) == 1:
+                stmt = stmt.where(AppointmentModel.status == values[0])
+            elif values:
+                stmt = stmt.where(AppointmentModel.status.in_(values))
         if patient_id is not None:
             stmt = stmt.where(
                 AppointmentModel.subject_type == SubjectReferenceType.Patient,
@@ -170,6 +280,26 @@ class AppointmentRepository:
             stmt = stmt.where(AppointmentModel.start >= start_from)
         if start_to is not None:
             stmt = stmt.where(AppointmentModel.start <= start_to)
+        if patient_search:
+            # Case-insensitive substring match on the denormalised display
+            # name stored directly on the Appointment row — no Patient join
+            # needed since subject_display is captured at booking time.
+            stmt = stmt.where(AppointmentModel.subject_display.ilike(f"%{patient_search}%"))
+        if practitioner_search:
+            # Unlike subject_display, the practitioner's display name lives
+            # on the participant row (there's no denormalised column on the
+            # Appointment itself), so this needs the same EXISTS pattern as
+            # the practitioner_id filter above, matched by name instead of id.
+            sub = (
+                select(AppointmentParticipant.id)
+                .where(
+                    AppointmentParticipant.appointment_id == AppointmentModel.id,
+                    AppointmentParticipant.reference_type == AppointmentParticipantActorType.Practitioner,
+                    AppointmentParticipant.reference_display.ilike(f"%{practitioner_search}%"),
+                )
+                .correlate(AppointmentModel)
+            )
+            stmt = stmt.where(sub.exists())
         return stmt
 
     async def list(
@@ -181,6 +311,9 @@ class AppointmentRepository:
         practitioner_id: Optional[int] = None,
         start_from: Optional[datetime] = None,
         start_to: Optional[datetime] = None,
+        patient_search: Optional[str] = None,
+        practitioner_search: Optional[str] = None,
+        sort: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[AppointmentModel], int]:
@@ -188,16 +321,18 @@ class AppointmentRepository:
             base = self._apply_list_filters(
                 _with_relationships(select(AppointmentModel)),
                 user_id, org_id, status, patient_id, start_from, start_to,
-                practitioner_id=practitioner_id,
+                practitioner_id=practitioner_id, patient_search=patient_search,
+                practitioner_search=practitioner_search,
             )
             count_base = self._apply_list_filters(
                 select(func.count()).select_from(AppointmentModel),
                 user_id, org_id, status, patient_id, start_from, start_to,
-                practitioner_id=practitioner_id,
+                practitioner_id=practitioner_id, patient_search=patient_search,
+                practitioner_search=practitioner_search,
             )
             total = (await session.execute(count_base)).scalar_one()
             rows = list((await session.execute(
-                base.order_by(AppointmentModel.start.desc()).offset(offset).limit(limit)
+                _apply_sort(base, sort).offset(offset).limit(limit)
             )).scalars().all())
         return rows, total
 
