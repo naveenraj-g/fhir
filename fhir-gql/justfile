@@ -1,2 +1,23 @@
 dev:
     uv run uvicorn app.main:app --port 8005 --reload
+
+# ── VPS / Production ──────────────────────────────────────────────────────────
+
+IMAGE := "ghcr.io/naveenraj-g/fhir-gql"
+TAG   := "latest"
+
+# Authenticate with ghcr.io (run once per machine — requires GITHUB_TOKEN env var)
+# export GITHUB_TOKEN=<your PAT with write:packages scope>
+vps-login:
+    echo $GITHUB_TOKEN | docker login ghcr.io -u naveenraj-g --password-stdin
+
+# Build the production image locally
+vps-build:
+    docker build -t {{IMAGE}}:{{TAG}} .
+
+# Push the locally-built image to ghcr.io
+vps-push:
+    docker push {{IMAGE}}:{{TAG}}
+
+# Build + push in one step
+vps-release: vps-build vps-push    

@@ -308,10 +308,15 @@ class ListDocumentReferencesSchema(BaseModel):
     """
     Query parameters for GET /document-references.
 
-    The fhir-server list endpoint currently supports only pagination.
+    Mirrors the fhir-server list endpoint: patient_id, encounter_id,
+    user_id, org_id, limit, offset.
     """
 
     model_config = ConfigDict(extra="forbid")
 
+    patient_id: Optional[int] = Field(None, description="Filter by patient subject_id.")
+    encounter_id: Optional[int] = Field(None, description="Filter by public encounter_id — returns document references linked via context.encounter.")
+    user_id: Optional[str] = None
+    org_id: Optional[str] = None
     limit: int = Field(50, ge=1, le=200)
     offset: int = Field(0, ge=0)

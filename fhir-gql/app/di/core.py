@@ -17,6 +17,7 @@ from dependency_injector import containers, providers
 from app.config import settings
 from app.fhir_client.client import FhirClient
 from app.fhir_client.terminology import TerminologyClient
+from app.fhir_client.vitals import VitalsClient
 
 
 class CoreContainer(containers.DeclarativeContainer):
@@ -44,4 +45,14 @@ class CoreContainer(containers.DeclarativeContainer):
     terminology_client = providers.Singleton(
         TerminologyClient,
         base_url=settings.TERMINOLOGY_SERVER_URL,
+    )
+
+    # Singleton provider for the Vitals HTTP client.
+    # Vitals lives at yet another base URL (/api/v1/vitals) distinct from both FHIR
+    # resources (/api/fhir/v1) and terminology (/api/v1/terminology), so it needs
+    # its own httpx client. Singleton keeps the connection pool shared across all
+    # vitals requests.
+    vitals_client = providers.Singleton(
+        VitalsClient,
+        base_url=settings.VITALS_SERVER_URL,
     )

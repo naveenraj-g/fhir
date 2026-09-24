@@ -21,7 +21,6 @@ Design decisions:
 
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -34,33 +33,38 @@ class LocationIdentifierInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    use: Optional[str] = Field(
-        default=None, description="Identifier use: usual | official | temp | secondary | old"
+    use: str | None = Field(
+        default=None,
+        description="Identifier use: usual | official | temp | secondary | old",
     )
-    type_system: Optional[str] = Field(
+    type_system: str | None = Field(
         default=None, description="Coding system URI for the identifier type"
     )
-    type_code: Optional[str] = Field(
+    type_code: str | None = Field(
         default=None, description="Code from the identifier type coding system"
     )
-    type_display: Optional[str] = Field(
+    type_display: str | None = Field(
         default=None, description="Human-readable display for the identifier type code"
     )
-    type_text: Optional[str] = Field(
+    type_text: str | None = Field(
         default=None, description="Plain-text description of the identifier type"
     )
-    system: Optional[str] = Field(
-        default=None, description="URI that defines the namespace for the identifier value"
+    system: str | None = Field(
+        default=None,
+        description="URI that defines the namespace for the identifier value",
     )
-    value: Optional[str] = Field(default=None, description="The identifier value within the system")
-    period_start: Optional[datetime] = Field(
+    value: str | None = Field(
+        default=None, description="The identifier value within the system"
+    )
+    period_start: datetime | None = Field(
         default=None, description="Start of the validity period for this identifier"
     )
-    period_end: Optional[datetime] = Field(
+    period_end: datetime | None = Field(
         default=None, description="End of the validity period for this identifier"
     )
-    assigner: Optional[str] = Field(
-        default=None, description="Display name of the organisation that issued the identifier"
+    assigner: str | None = Field(
+        default=None,
+        description="Display name of the organisation that issued the identifier",
     )
 
 
@@ -72,15 +76,19 @@ class LocationTypeInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    coding_system: Optional[str] = Field(
-        default=None, description="Coding system URI (e.g. http://terminology.hl7.org/CodeSystem/v3-RoleCode)"
+    coding_system: str | None = Field(
+        default=None,
+        description="Coding system URI (e.g. http://terminology.hl7.org/CodeSystem/v3-RoleCode)",
     )
-    coding_code: Optional[str] = Field(default=None, description="Code value within the coding system")
-    coding_display: Optional[str] = Field(
+    coding_code: str | None = Field(
+        default=None, description="Code value within the coding system"
+    )
+    coding_display: str | None = Field(
         default=None, description="Human-readable display text for the code"
     )
-    text: Optional[str] = Field(
-        default=None, description="Plain-text representation of the concept, independent of coding"
+    text: str | None = Field(
+        default=None,
+        description="Plain-text representation of the concept, independent of coding",
     )
 
 
@@ -92,21 +100,24 @@ class LocationTelecomInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    system: Optional[str] = Field(
+    system: str | None = Field(
         default=None,
         description="Contact system: phone | fax | email | pager | url | sms | other",
     )
-    value: Optional[str] = Field(default=None, description="The contact value (phone number, email address, etc.)")
-    use: Optional[str] = Field(
+    value: str | None = Field(
+        default=None,
+        description="The contact value (phone number, email address, etc.)",
+    )
+    use: str | None = Field(
         default=None, description="Contact use: home | work | temp | old | mobile"
     )
-    rank: Optional[int] = Field(
+    rank: int | None = Field(
         default=None, description="Preferred order of use (lower = higher priority)"
     )
-    period_start: Optional[datetime] = Field(
+    period_start: datetime | None = Field(
         default=None, description="Start of the validity period for this contact point"
     )
-    period_end: Optional[datetime] = Field(
+    period_end: datetime | None = Field(
         default=None, description="End of the validity period for this contact point"
     )
 
@@ -119,17 +130,18 @@ class LocationHoursOfOperationInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    days_of_week: Optional[List[str]] = Field(
+    days_of_week: list[str] | None = Field(
         default=None,
         description="Days the location is open: mon | tue | wed | thu | fri | sat | sun",
     )
-    all_day: Optional[bool] = Field(
-        default=None, description="True if the location is open all day on the listed days"
+    all_day: bool | None = Field(
+        default=None,
+        description="True if the location is open all day on the listed days",
     )
-    opening_time: Optional[str] = Field(
+    opening_time: str | None = Field(
         default=None, description="Opening time in HH:mm:ss format (e.g. '08:00:00')"
     )
-    closing_time: Optional[str] = Field(
+    closing_time: str | None = Field(
         default=None, description="Closing time in HH:mm:ss format (e.g. '17:00:00')"
     )
 
@@ -145,8 +157,9 @@ class LocationEndpointInput(BaseModel):
     reference: str = Field(
         description="Relative FHIR Endpoint reference (e.g. 'Endpoint/1')"
     )
-    reference_display: Optional[str] = Field(
-        default=None, description="Human-readable display text for the Endpoint reference"
+    reference_display: str | None = Field(
+        default=None,
+        description="Human-readable display text for the Endpoint reference",
     )
 
 
@@ -203,126 +216,140 @@ class LocationCreateSchema(BaseModel):
     # Required by the fhir-server for multi-tenant data isolation.
     # The caller supplies these explicitly; the middleware does not infer them from
     # the JWT. Only created_by / updated_by are injected from the JWT (by FhirClient).
-    user_id: str = Field(description="User identifier for tenant scoping")
-    org_id: str = Field(description="Organisation identifier for tenant scoping")
+    user_id: str | None = Field(
+        default=None, description="User identifier for tenant scoping"
+    )
+    org_id: str | None = Field(
+        default=None, description="Organisation identifier for tenant scoping"
+    )
 
     # ── Status and operational details ─────────────────────────────────────────
-    status: Optional[str] = Field(
+    status: str | None = Field(
         default=None, description="Location status: active | suspended | inactive"
     )
-    operational_status_system: Optional[str] = Field(
+    operational_status_system: str | None = Field(
         default=None, description="Coding system URI for the operational status code"
     )
-    operational_status_code: Optional[str] = Field(
-        default=None, description="Operational status code (e.g. 'O' for occupied, 'V' for vacant)"
+    operational_status_code: str | None = Field(
+        default=None,
+        description="Operational status code (e.g. 'O' for occupied, 'V' for vacant)",
     )
-    operational_status_display: Optional[str] = Field(
-        default=None, description="Human-readable display for the operational status code"
+    operational_status_display: str | None = Field(
+        default=None,
+        description="Human-readable display for the operational status code",
     )
 
     # ── Identification ─────────────────────────────────────────────────────────
-    name: Optional[str] = Field(default=None, description="Human-readable name of the Location")
-    description: Optional[str] = Field(
+    name: str | None = Field(
+        default=None, description="Human-readable name of the Location"
+    )
+    description: str | None = Field(
         default=None, description="Additional details about the Location beyond name"
     )
-    mode: Optional[str] = Field(
-        default=None, description="Location mode: instance (physical) | kind (type/category)"
+    mode: str | None = Field(
+        default=None,
+        description="Location mode: instance (physical) | kind (type/category)",
     )
 
     # ── Array sub-resources ────────────────────────────────────────────────────
-    identifiers: Optional[List[LocationIdentifierInput]] = Field(
+    identifiers: list[LocationIdentifierInput] | None = Field(
         default=None, description="Business identifiers assigned to this Location"
     )
-    aliases: Optional[List[str]] = Field(
+    aliases: list[str] | None = Field(
         default=None, description="Alternate names the Location is or was known by"
     )
-    types: Optional[List[LocationTypeInput]] = Field(
+    types: list[LocationTypeInput] | None = Field(
         default=None,
         description="Coded concepts indicating the type or function of this Location",
     )
-    telecoms: Optional[List[LocationTelecomInput]] = Field(
+    telecoms: list[LocationTelecomInput] | None = Field(
         default=None, description="Contact details for this Location"
     )
 
     # ── Address ────────────────────────────────────────────────────────────────
-    address_use: Optional[str] = Field(
+    address_use: str | None = Field(
         default=None, description="Address use: home | work | temp | old | billing"
     )
-    address_type: Optional[str] = Field(
+    address_type: str | None = Field(
         default=None, description="Address type: postal | physical | both"
     )
-    address_text: Optional[str] = Field(
+    address_text: str | None = Field(
         default=None, description="Full text representation of the address"
     )
-    address_line: Optional[List[str]] = Field(
-        default=None, description="Street address lines (e.g. ['123 Main St', 'Suite 100'])"
+    address_line: list[str] | None = Field(
+        default=None,
+        description="Street address lines (e.g. ['123 Main St', 'Suite 100'])",
     )
-    address_city: Optional[str] = Field(default=None, description="City or town")
-    address_district: Optional[str] = Field(default=None, description="District or county")
-    address_state: Optional[str] = Field(default=None, description="State or province")
-    address_postal_code: Optional[str] = Field(default=None, description="Postal or ZIP code")
-    address_country: Optional[str] = Field(default=None, description="Country (ISO 3166 code)")
-    address_period_start: Optional[datetime] = Field(
+    address_city: str | None = Field(default=None, description="City or town")
+    address_district: str | None = Field(default=None, description="District or county")
+    address_state: str | None = Field(default=None, description="State or province")
+    address_postal_code: str | None = Field(
+        default=None, description="Postal or ZIP code"
+    )
+    address_country: str | None = Field(
+        default=None, description="Country (ISO 3166 code)"
+    )
+    address_period_start: datetime | None = Field(
         default=None, description="Start of the validity period for this address"
     )
-    address_period_end: Optional[datetime] = Field(
+    address_period_end: datetime | None = Field(
         default=None, description="End of the validity period for this address"
     )
 
     # ── Physical type ──────────────────────────────────────────────────────────
-    physical_type_system: Optional[str] = Field(
+    physical_type_system: str | None = Field(
         default=None,
         description="Coding system URI for physical type (typically http://terminology.hl7.org/CodeSystem/location-physical-type)",
     )
-    physical_type_code: Optional[str] = Field(
+    physical_type_code: str | None = Field(
         default=None,
         description="Physical type code: bu=Building, wi=Wing, wa=Ward, ro=Room, bd=Bed, etc.",
     )
-    physical_type_display: Optional[str] = Field(
+    physical_type_display: str | None = Field(
         default=None, description="Human-readable display for the physical type code"
     )
-    physical_type_text: Optional[str] = Field(
+    physical_type_text: str | None = Field(
         default=None, description="Plain-text description of the physical type"
     )
 
     # ── Relationships ──────────────────────────────────────────────────────────
-    managing_organization: Optional[str] = Field(
+    managing_organization: str | None = Field(
         default=None,
         description="Reference to the managing Organisation (e.g. 'Organization/190001')",
     )
-    managing_organization_display: Optional[str] = Field(
+    managing_organization_display: str | None = Field(
         default=None, description="Display name of the managing Organisation"
     )
-    part_of: Optional[str] = Field(
+    part_of: str | None = Field(
         default=None,
         description="Reference to the parent Location (e.g. 'Location/230001'). Used for hierarchical locations.",
     )
-    part_of_display: Optional[str] = Field(
+    part_of_display: str | None = Field(
         default=None, description="Display name of the parent Location"
     )
 
     # ── Availability ───────────────────────────────────────────────────────────
-    availability_exceptions: Optional[str] = Field(
+    availability_exceptions: str | None = Field(
         default=None,
         description="Description of any exceptions to normal opening hours (e.g. public holidays)",
     )
-    hours_of_operation: Optional[List[LocationHoursOfOperationInput]] = Field(
+    hours_of_operation: list[LocationHoursOfOperationInput] | None = Field(
         default=None, description="Normal operating hours for this Location"
     )
 
     # ── Geographic position ────────────────────────────────────────────────────
-    position_longitude: Optional[Decimal] = Field(
+    position_longitude: Decimal | None = Field(
         default=None, description="WGS84 longitude in decimal degrees"
     )
-    position_latitude: Optional[Decimal] = Field(
+    position_latitude: Decimal | None = Field(
         default=None, description="WGS84 latitude in decimal degrees"
     )
-    position_altitude: Optional[Decimal] = Field(
+    position_altitude: Decimal | None = Field(
         default=None, description="WGS84 altitude in decimal meters (optional)"
     )
 
     # ── Endpoints ──────────────────────────────────────────────────────────────
-    endpoints: Optional[List[LocationEndpointInput]] = Field(
+    endpoints: list[LocationEndpointInput] | None = Field(
         default=None,
         description="Technical endpoints providing access to services at this Location",
     )
@@ -342,42 +369,44 @@ class LocationPatchSchema(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    status: Optional[str] = Field(default=None, description="active | suspended | inactive")
-    operational_status_system: Optional[str] = None
-    operational_status_code: Optional[str] = None
-    operational_status_display: Optional[str] = None
+    status: str | None = Field(
+        default=None, description="active | suspended | inactive"
+    )
+    operational_status_system: str | None = None
+    operational_status_code: str | None = None
+    operational_status_display: str | None = None
 
-    name: Optional[str] = Field(default=None, description="Updated human-readable name")
-    description: Optional[str] = Field(default=None, description="Updated description")
-    mode: Optional[str] = Field(default=None, description="instance | kind")
+    name: str | None = Field(default=None, description="Updated human-readable name")
+    description: str | None = Field(default=None, description="Updated description")
+    mode: str | None = Field(default=None, description="instance | kind")
 
-    address_use: Optional[str] = None
-    address_type: Optional[str] = None
-    address_text: Optional[str] = None
-    address_line: Optional[List[str]] = None
-    address_city: Optional[str] = None
-    address_district: Optional[str] = None
-    address_state: Optional[str] = None
-    address_postal_code: Optional[str] = None
-    address_country: Optional[str] = None
-    address_period_start: Optional[datetime] = None
-    address_period_end: Optional[datetime] = None
+    address_use: str | None = None
+    address_type: str | None = None
+    address_text: str | None = None
+    address_line: list[str] | None = None
+    address_city: str | None = None
+    address_district: str | None = None
+    address_state: str | None = None
+    address_postal_code: str | None = None
+    address_country: str | None = None
+    address_period_start: datetime | None = None
+    address_period_end: datetime | None = None
 
-    physical_type_system: Optional[str] = None
-    physical_type_code: Optional[str] = None
-    physical_type_display: Optional[str] = None
-    physical_type_text: Optional[str] = None
+    physical_type_system: str | None = None
+    physical_type_code: str | None = None
+    physical_type_display: str | None = None
+    physical_type_text: str | None = None
 
-    managing_organization: Optional[str] = None
-    managing_organization_display: Optional[str] = None
-    part_of: Optional[str] = None
-    part_of_display: Optional[str] = None
+    managing_organization: str | None = None
+    managing_organization_display: str | None = None
+    part_of: str | None = None
+    part_of_display: str | None = None
 
-    availability_exceptions: Optional[str] = None
+    availability_exceptions: str | None = None
 
-    position_longitude: Optional[Decimal] = None
-    position_latitude: Optional[Decimal] = None
-    position_altitude: Optional[Decimal] = None
+    position_longitude: Decimal | None = None
+    position_latitude: Decimal | None = None
+    position_altitude: Decimal | None = None
 
 
 class ListLocationsSchema(BaseModel):
@@ -392,11 +421,15 @@ class ListLocationsSchema(BaseModel):
 
     # org_id scopes results to a single tenant organisation — mirrors the fhir-server
     # list_locations router which accepts org_id as a query param.
-    org_id: Optional[str] = Field(
+    org_id: str | None = Field(
         default=None, description="Filter by organisation ID (tenant scoping)."
     )
-    status: Optional[str] = Field(
+    status: str | None = Field(
         default=None, description="Filter by status: active | suspended | inactive"
     )
-    limit: int = Field(default=20, ge=1, le=200, description="Maximum number of records to return")
-    offset: int = Field(default=0, ge=0, description="Number of records to skip for pagination")
+    limit: int = Field(
+        default=20, ge=1, le=200, description="Maximum number of records to return"
+    )
+    offset: int = Field(
+        default=0, ge=0, description="Number of records to skip for pagination"
+    )

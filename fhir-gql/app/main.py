@@ -58,9 +58,10 @@ async def lifespan(app: FastAPI):
         to the in-process store (with a degraded-mode warning on every request).
 
     Teardown:
-      - Closes the FhirClient httpx connection pool to drain in-flight requests.
+      - Closes the FhirClient, TerminologyClient, and VitalsClient httpx connection
+        pools to drain in-flight requests.
       - Closes the Redis connection pool to release socket resources cleanly.
-      Both are closed explicitly rather than relying on garbage collection because
+      All are closed explicitly rather than relying on garbage collection because
       async resources may not be cleaned up promptly by the GC.
     """
     try:
@@ -77,6 +78,8 @@ async def lifespan(app: FastAPI):
     await fhir_client.aclose()
     terminology_client = container.core.terminology_client()
     await terminology_client.aclose()
+    vitals_client = container.core.vitals_client()
+    await vitals_client.aclose()
     await redis_client.aclose()
 
 

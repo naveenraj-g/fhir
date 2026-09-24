@@ -91,11 +91,27 @@ def _with_relationships(stmt):
     )
 
 
-def _apply_list_filters(stmt, user_id=None, org_id=None):
+def _apply_list_filters(stmt, user_id=None, org_id=None, patient_id=None, encounter_id=None):
     if user_id is not None:
         stmt = stmt.where(DocumentReferenceModel.user_id == user_id)
     if org_id is not None:
         stmt = stmt.where(DocumentReferenceModel.org_id == org_id)
+    if patient_id is not None:
+        stmt = stmt.where(
+            DocumentReferenceModel.subject_type == DocumentReferenceSubjectReferenceType.Patient,
+            DocumentReferenceModel.subject_id == patient_id,
+        )
+    if encounter_id is not None:
+        # context.encounter[] is a loosely-typed reference child table — unlike
+        # DiagnosticReport/ServiceRequest's encounter_id FK, _parse_ref never
+        # resolves it to Encounter's internal id at create time, so
+        # reference_id here already holds the *public* encounter_id directly.
+        exists_stmt = select(DocumentReferenceContextEncounter.id).where(
+            DocumentReferenceContextEncounter.document_reference_id == DocumentReferenceModel.id,
+            DocumentReferenceContextEncounter.reference_type == DocumentReferenceContextEncounterType.Encounter,
+            DocumentReferenceContextEncounter.reference_id == encounter_id,
+        ).exists()
+        stmt = stmt.where(exists_stmt)
     return stmt
 
 
@@ -525,12 +541,14 @@ class DocumentReferenceRepository:
         self,
         user_id: Optional[str] = None,
         org_id: Optional[str] = None,
+        patient_id: Optional[int] = None,
+        encounter_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[DocumentReferenceModel], int]:
         async with self.session_factory() as session:
             base = select(DocumentReferenceModel)
-            base = _apply_list_filters(base, user_id, org_id)
+            base = _apply_list_filters(base, user_id, org_id, patient_id, encounter_id)
             count_result = await session.execute(select(func.count()).select_from(base.subquery()))
             total = count_result.scalar_one()
             stmt = _with_relationships(base).order_by(DocumentReferenceModel.id.desc()).limit(limit).offset(offset)

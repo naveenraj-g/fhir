@@ -1,54 +1,59 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class LocationIdentifierInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    use: Optional[str] = None
-    type_system: Optional[str] = None
-    type_code: Optional[str] = None
-    type_display: Optional[str] = None
-    type_text: Optional[str] = None
-    system: Optional[str] = None
-    value: Optional[str] = None
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
-    assigner: Optional[str] = None
+    use: str | None = None
+    type_system: str | None = None
+    type_code: str | None = None
+    type_display: str | None = None
+    type_text: str | None = None
+    system: str | None = None
+    value: str | None = None
+    period_start: datetime | None = None
+    period_end: datetime | None = None
+    assigner: str | None = None
 
 
 class LocationTypeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    coding_system: Optional[str] = None
-    coding_code: Optional[str] = None
-    coding_display: Optional[str] = None
-    text: Optional[str] = None
+    coding_system: str | None = None
+    coding_code: str | None = None
+    coding_display: str | None = None
+    text: str | None = None
 
 
 class LocationTelecomInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    system: Optional[str] = Field(None, description="phone | fax | email | pager | url | sms | other")
-    value: Optional[str] = None
-    use: Optional[str] = Field(None, description="home | work | temp | old | mobile")
-    rank: Optional[int] = None
-    period_start: Optional[datetime] = None
-    period_end: Optional[datetime] = None
+    system: str | None = Field(
+        None, description="phone | fax | email | pager | url | sms | other"
+    )
+    value: str | None = None
+    use: str | None = Field(None, description="home | work | temp | old | mobile")
+    rank: int | None = None
+    period_start: datetime | None = None
+    period_end: datetime | None = None
 
 
 class LocationHoursOfOperationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    days_of_week: Optional[List[str]] = Field(None, description="Days available, e.g. ['mon', 'wed', 'fri']")
-    all_day: Optional[bool] = None
-    opening_time: Optional[str] = Field(None, description="HH:mm:ss opening time")
-    closing_time: Optional[str] = Field(None, description="HH:mm:ss closing time")
+    days_of_week: list[str] | None = Field(
+        None, description="Days available, e.g. ['mon', 'wed', 'fri']"
+    )
+    all_day: bool | None = None
+    opening_time: str | None = Field(None, description="HH:mm:ss opening time")
+    closing_time: str | None = Field(None, description="HH:mm:ss closing time")
 
 
 class LocationEndpointInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    reference: str = Field(..., description="FHIR Endpoint reference, e.g. 'Endpoint/1'.")
-    reference_display: Optional[str] = None
+    reference: str = Field(
+        ..., description="FHIR Endpoint reference, e.g. 'Endpoint/1'."
+    )
+    reference_display: str | None = None
 
 
 class LocationCreateSchema(BaseModel):
@@ -88,91 +93,97 @@ class LocationCreateSchema(BaseModel):
         },
     )
 
-    user_id: str
-    org_id: str
-    created_by: Optional[str] = None
+    user_id: str | None = None
+    org_id: str | None = None
+    created_by: str | None = None
 
-    status: Optional[str] = Field(None, description="active | suspended | inactive")
-    operational_status_system: Optional[str] = None
-    operational_status_code: Optional[str] = None
-    operational_status_display: Optional[str] = None
-    name: Optional[str] = None
-    description: Optional[str] = None
-    mode: Optional[str] = Field(None, description="instance | kind")
+    status: str | None = Field(None, description="active | suspended | inactive")
+    operational_status_system: str | None = None
+    operational_status_code: str | None = None
+    operational_status_display: str | None = None
+    name: str | None = None
+    description: str | None = None
+    mode: str | None = Field(None, description="instance | kind")
 
-    identifiers: Optional[List[LocationIdentifierInput]] = None
-    aliases: Optional[List[str]] = Field(None, description="Alternate names for the location.")
-    types: Optional[List[LocationTypeInput]] = None
-    telecoms: Optional[List[LocationTelecomInput]] = None
+    identifiers: list[LocationIdentifierInput] | None = None
+    aliases: list[str] | None = Field(
+        None, description="Alternate names for the location."
+    )
+    types: list[LocationTypeInput] | None = None
+    telecoms: list[LocationTelecomInput] | None = None
 
-    address_use: Optional[str] = None
-    address_type: Optional[str] = None
-    address_text: Optional[str] = None
-    address_line: Optional[List[str]] = Field(None, description="Street address lines.")
-    address_city: Optional[str] = None
-    address_district: Optional[str] = None
-    address_state: Optional[str] = None
-    address_postal_code: Optional[str] = None
-    address_country: Optional[str] = None
-    address_period_start: Optional[datetime] = None
-    address_period_end: Optional[datetime] = None
+    address_use: str | None = None
+    address_type: str | None = None
+    address_text: str | None = None
+    address_line: list[str] | None = Field(None, description="Street address lines.")
+    address_city: str | None = None
+    address_district: str | None = None
+    address_state: str | None = None
+    address_postal_code: str | None = None
+    address_country: str | None = None
+    address_period_start: datetime | None = None
+    address_period_end: datetime | None = None
 
-    physical_type_system: Optional[str] = None
-    physical_type_code: Optional[str] = None
-    physical_type_display: Optional[str] = None
-    physical_type_text: Optional[str] = None
+    physical_type_system: str | None = None
+    physical_type_code: str | None = None
+    physical_type_display: str | None = None
+    physical_type_text: str | None = None
 
-    managing_organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/190001'.")
-    managing_organization_display: Optional[str] = None
-    part_of: Optional[str] = Field(None, description="Parent location reference, e.g. 'Location/230001'.")
-    part_of_display: Optional[str] = None
+    managing_organization: str | None = Field(
+        None, description="FHIR reference, e.g. 'Organization/190001'."
+    )
+    managing_organization_display: str | None = None
+    part_of: str | None = Field(
+        None, description="Parent location reference, e.g. 'Location/230001'."
+    )
+    part_of_display: str | None = None
 
-    availability_exceptions: Optional[str] = None
+    availability_exceptions: str | None = None
 
-    position_longitude: Optional[Decimal] = None
-    position_latitude: Optional[Decimal] = None
-    position_altitude: Optional[Decimal] = None
+    position_longitude: Decimal | None = None
+    position_latitude: Decimal | None = None
+    position_altitude: Decimal | None = None
 
-    hours_of_operation: Optional[List[LocationHoursOfOperationInput]] = None
-    endpoints: Optional[List[LocationEndpointInput]] = None
+    hours_of_operation: list[LocationHoursOfOperationInput] | None = None
+    endpoints: list[LocationEndpointInput] | None = None
 
 
 class LocationPatchSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    status: Optional[str] = None
-    operational_status_system: Optional[str] = None
-    operational_status_code: Optional[str] = None
-    operational_status_display: Optional[str] = None
-    name: Optional[str] = None
-    description: Optional[str] = None
-    mode: Optional[str] = None
+    status: str | None = None
+    operational_status_system: str | None = None
+    operational_status_code: str | None = None
+    operational_status_display: str | None = None
+    name: str | None = None
+    description: str | None = None
+    mode: str | None = None
 
-    address_use: Optional[str] = None
-    address_type: Optional[str] = None
-    address_text: Optional[str] = None
-    address_line: Optional[List[str]] = None
-    address_city: Optional[str] = None
-    address_district: Optional[str] = None
-    address_state: Optional[str] = None
-    address_postal_code: Optional[str] = None
-    address_country: Optional[str] = None
-    address_period_start: Optional[datetime] = None
-    address_period_end: Optional[datetime] = None
+    address_use: str | None = None
+    address_type: str | None = None
+    address_text: str | None = None
+    address_line: list[str] | None = None
+    address_city: str | None = None
+    address_district: str | None = None
+    address_state: str | None = None
+    address_postal_code: str | None = None
+    address_country: str | None = None
+    address_period_start: datetime | None = None
+    address_period_end: datetime | None = None
 
-    physical_type_system: Optional[str] = None
-    physical_type_code: Optional[str] = None
-    physical_type_display: Optional[str] = None
-    physical_type_text: Optional[str] = None
+    physical_type_system: str | None = None
+    physical_type_code: str | None = None
+    physical_type_display: str | None = None
+    physical_type_text: str | None = None
 
-    managing_organization: Optional[str] = None
-    managing_organization_display: Optional[str] = None
-    part_of: Optional[str] = None
-    part_of_display: Optional[str] = None
+    managing_organization: str | None = None
+    managing_organization_display: str | None = None
+    part_of: str | None = None
+    part_of_display: str | None = None
 
-    availability_exceptions: Optional[str] = None
+    availability_exceptions: str | None = None
 
-    position_longitude: Optional[Decimal] = None
-    position_latitude: Optional[Decimal] = None
-    position_altitude: Optional[Decimal] = None
-    updated_by: Optional[str] = None
+    position_longitude: Decimal | None = None
+    position_latitude: Decimal | None = None
+    position_altitude: Decimal | None = None
+    updated_by: str | None = None

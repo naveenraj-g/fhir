@@ -248,5 +248,9 @@ class ListSchedulesSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     active: Optional[bool] = Field(default=None, description="Filter by active status")
+    # Tenant-scoping filters — mirrors the fhir-server's GET /schedules, which
+    # accepts both. Optional so admin callers can query across users/orgs.
+    user_id: Optional[str] = Field(default=None, description="Filter by owning user (JWT subject).")
+    org_id: Optional[str] = Field(default=None, description="Filter by tenant organization ID.")
     limit: int = Field(default=20, ge=1, le=200, description="Maximum number of records to return")
     offset: int = Field(default=0, ge=0, description="Number of records to skip for pagination")

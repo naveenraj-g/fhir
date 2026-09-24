@@ -89,7 +89,7 @@ class VitalsRepository:
         org_id: Optional[str] = None,
         created_by: Optional[str] = None,
     ) -> VitalsModel:
-        data = payload.model_dump(exclude_unset=False, exclude={"user_id", "org_id"})
+        data = payload.model_dump(exclude_unset=False, exclude={"user_id", "org_id", "created_by"})
         vitals = VitalsModel(
             user_id=user_id,
             org_id=org_id,

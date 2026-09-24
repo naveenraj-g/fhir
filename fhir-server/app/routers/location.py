@@ -1,11 +1,9 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 
-from app.deps.location_deps import resolve_location
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
+from app.deps.location_deps import resolve_location
 from app.di.dependencies.location import get_location_service
 from app.models.location.location import LocationModel
 from app.schemas.location.input import LocationCreateSchema, LocationPatchSchema
@@ -30,8 +28,12 @@ _ERR_VALIDATION = {422: {"description": "Validation error"}}
 _SINGLE_200 = {
     200: {
         "content": {
-            "application/json": {"schema": inline_schema(PlainLocationResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRLocationSchema.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PlainLocationResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRLocationSchema.model_json_schema())
+            },
         }
     }
 }
@@ -40,8 +42,12 @@ _LIST_200 = {
     200: {
         "description": "Paginated list of locations",
         "content": {
-            "application/json": {"schema": inline_schema(PaginatedLocationResponse.model_json_schema())},
-            "application/fhir+json": {"schema": inline_schema(FHIRLocationBundle.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(PaginatedLocationResponse.model_json_schema())
+            },
+            "application/fhir+json": {
+                "schema": inline_schema(FHIRLocationBundle.model_json_schema())
+            },
         },
     }
 }
@@ -57,8 +63,7 @@ _LIST_200 = {
     summary="Create a new Location resource",
     description=(
         "Creates a FHIR R4 Location resource. "
-        "Optional field: `status` (active | suspended | inactive). "
-        + _CONTENT_NEG
+        "Optional field: `status` (active | suspended | inactive). " + _CONTENT_NEG
     ),
     response_description="The newly created Location resource",
     responses={**_SINGLE_201, **_ERR_VALIDATION},
@@ -82,12 +87,12 @@ async def create_location(
 # ── Get my locations ───────────────────────────────────────────────────────────
 
 
-
 @router.get(
     "/{location_id}",
     operation_id="get_location",
     summary="Retrieve a single Location by public ID",
-    description="Fetches a single Location resource by its public location_id. " + _CONTENT_NEG,
+    description="Fetches a single Location resource by its public location_id. "
+    + _CONTENT_NEG,
     responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_location(
@@ -119,9 +124,13 @@ async def patch_location(
     location_service: LocationService = Depends(get_location_service),
 ):
     updated_by = payload.updated_by
-    updated = await location_service.patch_location(location.location_id, payload, updated_by)
+    updated = await location_service.patch_location(
+        location.location_id, payload, updated_by
+    )
     if not updated:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Location not found"
+        )
     return format_response(
         location_service._to_fhir(updated),
         location_service._to_plain(updated),
@@ -141,8 +150,10 @@ async def patch_location(
 )
 async def list_locations(
     request: Request,
-    org_id: Optional[str] = Query(None, description="Filter by organization ID."),
-    location_status: Optional[str] = Query(None, alias="status", description="Filter by status."),
+    org_id: str | None = Query(None, description="Filter by organization ID."),
+    location_status: str | None = Query(
+        None, alias="status", description="Filter by status."
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     location_service: LocationService = Depends(get_location_service),
@@ -153,7 +164,10 @@ async def list_locations(
     return format_paginated_response(
         [location_service._to_fhir(r) for r in rows],
         [location_service._to_plain(r) for r in rows],
-        total, limit, offset, request,
+        total,
+        limit,
+        offset,
+        request,
     )
 
 

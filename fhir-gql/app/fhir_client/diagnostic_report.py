@@ -73,7 +73,7 @@ class DiagnosticReportClient:
 
         Strips None values from **params before forwarding.
 
-        Supported params: status, patient_id, issued_from, issued_to,
+        Supported params: status, patient_id, encounter_id, issued_from, issued_to,
         user_id, org_id, limit, offset.
 
         Args:

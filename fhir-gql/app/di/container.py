@@ -28,7 +28,8 @@ Container hierarchy:
     ├── practitioner_role  →  PractitionerRoleContainer   (PractitionerRole CRUD service + client)
     ├── patient            →  PatientContainer            (Patient CRUD + 9 sub-resource clients)
     ├── diagnostic_report  →  DiagnosticReportContainer   (DiagnosticReport CRUD service + client)
-    └── document_reference →  DocumentReferenceContainer  (DocumentReference CRUD service + client)
+    ├── document_reference →  DocumentReferenceContainer  (DocumentReference CRUD service + client)
+    └── vitals             →  VitalsContainer             (Vitals CRUD service; client lives in CoreContainer)
 """
 
 from dependency_injector import containers, providers
@@ -51,6 +52,7 @@ from app.di.modules import (
     ScheduleContainer,
     ServiceRequestContainer,
     SlotContainer,
+    VitalsContainer,
 )
 
 
@@ -203,5 +205,15 @@ class Container(containers.DeclarativeContainer):
     # external system (e.g. FilNest). Linked to clinical resources via context.related.
     document_reference = providers.Container(
         DocumentReferenceContainer,
+        core=core,
+    )
+
+    # Domain container for Vitals resources.
+    # Vitals is a custom, non-FHIR resource capturing wearable/manual health and
+    # activity metrics (steps, heart rate, blood pressure, sleep, biometrics).
+    # Depends on core.vitals_client (a dedicated Singleton, not the shared
+    # FhirClient) because it lives at its own base URL (/api/v1/vitals).
+    vitals = providers.Container(
+        VitalsContainer,
         core=core,
     )

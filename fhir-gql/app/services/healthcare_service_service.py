@@ -105,7 +105,7 @@ class HealthcareServiceService:
         query string, so unset filters are simply not applied.
 
         Args:
-            filters: Validated query parameters (name, active, limit, offset).
+            filters: Validated query parameters (name, active, user_id, org_id, limit, offset).
             actor:   Authenticated user (accepted for interface consistency).
             accept:  Optional Accept header forwarded from the client. When
                      "application/fhir+json", the fhir-server wraps results in a
@@ -118,6 +118,8 @@ class HealthcareServiceService:
             accept=accept,
             name=filters.name,
             active=filters.active,
+            user_id=filters.user_id,
+            org_id=filters.org_id,
             limit=filters.limit,
             offset=filters.offset,
         )

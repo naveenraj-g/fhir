@@ -152,6 +152,7 @@ async def get_document_reference(
     summary="List DocumentReferences",
     description=(
         "Returns a paginated list of DocumentReference resources. "
+        "Filter by `patient_id`, `encounter_id`, `user_id`, or `org_id`. "
         "Use `limit` and `offset` for pagination. "
         "Send `Accept: application/fhir+json` to receive a FHIR Bundle searchset."
     ),

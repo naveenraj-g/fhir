@@ -83,9 +83,7 @@ class DocumentReferenceService:
         accept: str | None = None,
     ) -> dict:
         """
-        List DocumentReferences with pagination.
-
-        The fhir-server list endpoint supports only `limit` and `offset` at present.
+        List DocumentReferences with optional filters.
 
         Args:
             filters: Validated query parameters from the router.
@@ -97,6 +95,10 @@ class DocumentReferenceService:
         """
         return await self._client.list(
             accept=accept,
+            patient_id=filters.patient_id,
+            encounter_id=filters.encounter_id,
+            user_id=filters.user_id,
+            org_id=filters.org_id,
             limit=filters.limit,
             offset=filters.offset,
         )

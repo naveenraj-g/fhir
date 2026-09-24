@@ -262,14 +262,15 @@ class ListDiagnosticReportsSchema(BaseModel):
     """
     Query parameters for GET /diagnostic-reports.
 
-    Mirrors the fhir-server list endpoint: status, patient_id, issued_from,
-    issued_to, user_id, org_id, limit, offset.
+    Mirrors the fhir-server list endpoint: status, patient_id, encounter_id,
+    issued_from, issued_to, user_id, org_id, limit, offset.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     status: Optional[str] = Field(None, description="Filter by status e.g. 'final'.")
     patient_id: Optional[int] = Field(None, description="Filter by patient subject_id.")
+    encounter_id: Optional[int] = Field(None, description="Filter by public encounter_id.")
     issued_from: Optional[datetime] = Field(None, description="Return reports issued on or after this datetime.")
     issued_to: Optional[datetime] = Field(None, description="Return reports issued on or before this datetime.")
     user_id: Optional[str] = None

@@ -32,10 +32,19 @@ class DocumentReferenceService:
         self,
         user_id: Optional[str] = None,
         org_id: Optional[str] = None,
+        patient_id: Optional[int] = None,
+        encounter_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[DocumentReferenceModel], int]:
-        return await self.repository.list(user_id, org_id, limit, offset)
+        return await self.repository.list(
+            user_id=user_id,
+            org_id=org_id,
+            patient_id=patient_id,
+            encounter_id=encounter_id,
+            limit=limit,
+            offset=offset,
+        )
 
     async def create_document_reference(
         self,

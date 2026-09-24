@@ -149,7 +149,7 @@ async def get_schedule(
     summary="List Schedules",
     description=(
         "Returns a paginated list of Schedules. "
-        "Filter by `active` status. "
+        "Filter by `active` status, `user_id`, or `org_id`. "
         "Use `limit` and `offset` for pagination. "
         "Send `Accept: application/fhir+json` to receive results as a FHIR Bundle searchset."
     ),

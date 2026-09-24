@@ -179,7 +179,7 @@ async def get_healthcare_service(
     summary="List HealthcareServices",
     description=(
         "Returns a paginated list of HealthcareServices. "
-        "Filter by `name` (case-insensitive substring) and `active` status. "
+        "Filter by `name` (case-insensitive substring), `active` status, `user_id`, or `org_id`. "
         "Use `limit` and `offset` for pagination. "
         "Send `Accept: application/fhir+json` to receive results as a FHIR Bundle searchset."
     ),

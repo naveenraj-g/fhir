@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     # /api/fhir/v1/...) so it needs its own base URL separate from FHIR_SERVER_URL.
     TERMINOLOGY_SERVER_URL: str = "http://localhost:8001/api/v1/terminology"
 
+    # Base URL for the vitals service on the FHIR Server.
+    # Vitals (wearable/activity/sleep/biometric data) is a custom, non-FHIR resource
+    # mounted at /api/v1/vitals — outside both the FHIR namespace (/api/fhir/v1) and
+    # the terminology namespace — so it needs its own base URL.
+    VITALS_SERVER_URL: str = "http://localhost:8001/api/v1/vitals"
+
     # BetterAuth / IAM — JWT validation endpoints.
     # IAM_JWKS_URL: the JSON Web Key Set endpoint used to fetch the public key
     #               for verifying incoming JWT signatures without storing secrets here.

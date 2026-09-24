@@ -14,6 +14,7 @@ from app.di.modules.practitioner_role import PractitionerRoleContainer
 from app.di.modules.schedule import ScheduleContainer
 from app.di.modules.service_request import ServiceRequestContainer
 from app.di.modules.slot import SlotContainer
+from app.di.modules.vitals import VitalsContainer
 
 __all__ = [
     "OrganizationContainer",
@@ -32,4 +33,5 @@ __all__ = [
     "ConditionContainer",
     "DiagnosticReportContainer",
     "DocumentReferenceContainer",
+    "VitalsContainer",
 ]

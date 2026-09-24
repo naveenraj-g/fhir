@@ -69,13 +69,16 @@ class DocumentReferenceClient:
 
     async def list(self, accept: str | None = None, **params) -> dict:
         """
-        GET /document-references — list DocumentReferences with optional pagination.
+        GET /document-references — list DocumentReferences with optional filter parameters.
 
-        The fhir-server list endpoint currently supports only `limit` and `offset`.
+        Strips None values from **params before forwarding to avoid sending
+        empty query-string keys to the fhir-server.
+
+        Supported params: patient_id, encounter_id, user_id, org_id, limit, offset.
 
         Args:
             accept:   Content-type preference forwarded to the fhir-server.
-            **params: limit, offset; None values are dropped.
+            **params: Arbitrary keyword filters; None values are dropped.
 
         Returns:
             Paginated plain JSON or FHIR Bundle depending on `accept`.

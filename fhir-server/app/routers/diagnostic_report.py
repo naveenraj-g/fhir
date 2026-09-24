@@ -158,7 +158,7 @@ async def patch_diagnostic_report(
     summary="List all DiagnosticReport resources",
     description=(
         "Returns a paginated list of DiagnosticReport resources. "
-        "Filter by `status`, `patient_id`, `issued_from`, `issued_to`, `user_id`, or `org_id`. "
+        "Filter by `status`, `patient_id`, `encounter_id`, `issued_from`, `issued_to`, `user_id`, or `org_id`. "
         "Use `limit` and `offset` for pagination. "
         + _CONTENT_NEG
     ),
@@ -169,6 +169,7 @@ async def list_diagnostic_reports(
     request: Request,
     dr_status: Optional[str] = Query(None, alias="status", description="Filter by status e.g. 'final'."),
     patient_id: Optional[int] = Query(None, description="Filter by patient subject_id."),
+    encounter_id: Optional[int] = Query(None, description="Filter by public encounter_id — returns diagnostic reports linked to that encounter."),
     issued_from: Optional[datetime] = Query(None),
     issued_to: Optional[datetime] = Query(None),
     user_id: Optional[str] = Query(None),
@@ -182,6 +183,7 @@ async def list_diagnostic_reports(
         org_id=org_id,
         dr_status=dr_status,
         patient_id=patient_id,
+        encounter_id=encounter_id,
         issued_from=issued_from,
         issued_to=issued_to,
         limit=limit,

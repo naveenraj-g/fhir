@@ -101,6 +101,7 @@ class DiagnosticReportService:
             # fhir-server aliases `dr_status` query param as `status`
             status=filters.status,
             patient_id=filters.patient_id,
+            encounter_id=filters.encounter_id,
             issued_from=(
                 filters.issued_from.isoformat() if filters.issued_from else None
             ),

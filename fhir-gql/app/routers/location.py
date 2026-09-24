@@ -70,7 +70,9 @@ _SINGLE_201 = {
         "description": "Location created successfully",
         "content": {
             # Default plain JSON shape — returned when no Accept header is sent.
-            "application/json": {"schema": inline_schema(LocationResponse.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(LocationResponse.model_json_schema())
+            },
             # FHIR R4 shape — returned when Accept: application/fhir+json is sent.
             "application/fhir+json": {
                 "schema": inline_schema(FhirLocationResponse.model_json_schema())
@@ -83,7 +85,9 @@ _SINGLE_200 = {
     200: {
         "description": "Location retrieved/updated successfully",
         "content": {
-            "application/json": {"schema": inline_schema(LocationResponse.model_json_schema())},
+            "application/json": {
+                "schema": inline_schema(LocationResponse.model_json_schema())
+            },
             "application/fhir+json": {
                 "schema": inline_schema(FhirLocationResponse.model_json_schema())
             },

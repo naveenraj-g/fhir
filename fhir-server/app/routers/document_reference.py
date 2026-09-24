@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.deps.document_reference_deps import resolve_document_reference
@@ -133,18 +135,31 @@ async def patch_document_reference(
     operation_id="list_document_references",
     summary="List all DocumentReference resources",
     description=(
-        "Returns a paginated list of all DocumentReference resources accessible to the caller. "
+        "Returns a paginated list of DocumentReference resources. "
+        "Filter by `patient_id`, `encounter_id`, `user_id`, or `org_id`. "
+        "Use `limit` and `offset` for pagination. "
         + _CONTENT_NEG
     ),
     responses={**_LIST_200},
 )
 async def list_document_references(
     request: Request,
+    patient_id: Optional[int] = Query(None, description="Filter by patient subject_id."),
+    encounter_id: Optional[int] = Query(None, description="Filter by public encounter_id — returns document references linked to that encounter via context.encounter."),
+    user_id: Optional[str] = Query(None),
+    org_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     service: DocumentReferenceService = Depends(get_document_reference_service),
 ):
-    rows, total = await service.list_document_references(limit=limit, offset=offset)
+    rows, total = await service.list_document_references(
+        user_id=user_id,
+        org_id=org_id,
+        patient_id=patient_id,
+        encounter_id=encounter_id,
+        limit=limit,
+        offset=offset,
+    )
     return format_paginated_response(
         [service._to_fhir(dr) for dr in rows],
         [service._to_plain(dr) for dr in rows],

@@ -154,7 +154,7 @@ async def get_diagnostic_report(
     summary="List DiagnosticReports",
     description=(
         "Returns a paginated list of DiagnosticReport resources. "
-        "Filter by `status`, `patient_id`, `issued_from`, `issued_to`, `user_id`, or `org_id`. "
+        "Filter by `status`, `patient_id`, `encounter_id`, `issued_from`, `issued_to`, `user_id`, or `org_id`. "
         "Send `Accept: application/fhir+json` to receive a FHIR Bundle searchset."
     ),
     responses={**_LIST_200},

@@ -17,6 +17,7 @@ from app.routers.schedule import router as schedules_router
 from app.routers.service_request import router as service_requests_router
 from app.routers.slot import router as slots_router
 from app.routers.terminology import router as terminology_router
+from app.routers.vitals import router as vitals_router
 
 api_router = APIRouter()
 
@@ -37,3 +38,4 @@ api_router.include_router(conditions_router)
 api_router.include_router(diagnostic_reports_router)
 api_router.include_router(document_references_router)
 api_router.include_router(terminology_router)
+api_router.include_router(vitals_router)
