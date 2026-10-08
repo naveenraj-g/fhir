@@ -93,9 +93,17 @@ class TerminologyRepository:
         self, q: str, system: str | None, limit: int, offset: int
     ) -> tuple[int, list[tuple]]:
         async with self.session_factory() as session:
+            # Match word-by-word (AND each token) instead of requiring the whole
+            # query to appear as one contiguous substring. This also covers a
+            # full-sentence match for free: if the whole phrase is present in
+            # `display`, every individual word is trivially present too.
+            words = q.split() or [q]
+            word_binds = {f"w{i}": f"%{word}%" for i, word in enumerate(words)}
             trgm_where = text(
-                "terminology_concept.display ILIKE :pat"
-            ).bindparams(pat=f"%{q}%")
+                " AND ".join(
+                    f"terminology_concept.display ILIKE :{key}" for key in word_binds
+                )
+            ).bindparams(**word_binds)
             trgm_rank = text(
                 "similarity(terminology_concept.display, :q) DESC"
             ).bindparams(q=q)
