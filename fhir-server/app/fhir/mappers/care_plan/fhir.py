@@ -137,6 +137,26 @@ def _fhir_timing(a: "CarePlanActivity") -> dict | None:
         if a.detail_scheduled_timing_repeat_bounds_end:
             b["end"] = a.detail_scheduled_timing_repeat_bounds_end.isoformat()
         repeat["boundsPeriod"] = b
+    dur_value = a.detail_scheduled_timing_repeat_bounds_duration_value
+    if dur_value is not None:
+        bd: dict = {"value": float(dur_value)}
+        for key, attr in (("comparator", "comparator"), ("unit", "unit"), ("system", "system"), ("code", "code")):
+            v = getattr(a, f"detail_scheduled_timing_repeat_bounds_duration_{attr}")
+            if v:
+                bd[key] = v
+        repeat["boundsDuration"] = bd
+    rng: dict = {}
+    for side in ("low", "high"):
+        sv = getattr(a, f"detail_scheduled_timing_repeat_bounds_range_{side}_value")
+        if sv is not None:
+            q: dict = {"value": float(sv)}
+            for attr in ("unit", "system", "code"):
+                v = getattr(a, f"detail_scheduled_timing_repeat_bounds_range_{side}_{attr}")
+                if v:
+                    q[attr] = v
+            rng[side] = q
+    if rng:
+        repeat["boundsRange"] = rng
     if a.detail_scheduled_timing_repeat_count is not None:
         repeat["count"] = a.detail_scheduled_timing_repeat_count
     if a.detail_scheduled_timing_repeat_count_max is not None:

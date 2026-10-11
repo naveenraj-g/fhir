@@ -127,8 +127,8 @@ def to_fhir_episode_of_care(model) -> dict:
     if patient_ref:
         out["patient"] = patient_ref
 
-    if model.managing_organization and model.managing_organization.organization_id:
-        mo = {"reference": f"Organization/{model.managing_organization.organization_id}"}
+    if model.managing_organization_id is not None:
+        mo = {"reference": f"Organization/{model.managing_organization_id}"}
         if model.managing_organization_display:
             mo["display"] = model.managing_organization_display
         out["managingOrganization"] = mo

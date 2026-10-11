@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.deps.coverage_deps import resolve_coverage
 from app.core.content_negotiation import format_paginated_response, format_response
@@ -172,4 +172,4 @@ async def delete_coverage(
     coverage_service: CoverageService = Depends(get_coverage_service),
 ):
     await coverage_service.delete_coverage(coverage.coverage_id)
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

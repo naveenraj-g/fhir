@@ -409,42 +409,6 @@ async def test_list_pagination(client):
 # ── /me endpoint ───────────────────────────────────────────────────────────────
 
 
-async def test_me_returns_own_records(client):
-    await _create(client)
-    await _create(client)
-    resp = await client.get(BASE + "/me")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total"] == 2
-    assert all(r["user_id"] == "u-test" for r in data["data"])
-
-
-async def test_me_does_not_return_other_users(client, other_client):
-    from app.auth.dependencies import get_current_user as _gcu
-    from tests.conftest import make_test_user
-
-    perms = ["provenance:create", "provenance:read", "provenance:update", "provenance:delete"]
-    # Restore u-test with provenance permissions (other_client fixture may have overridden this)
-    client._transport.app.dependency_overrides[_gcu] = make_test_user(permissions=perms)
-    await _create(client)
-    # Switch to u-other — should see zero records
-    other_client._transport.app.dependency_overrides[_gcu] = make_test_user(
-        sub="u-other", org_id="org-other", permissions=["provenance:read"]
-    )
-    resp = await other_client.get(BASE + "/me")
-    assert resp.status_code == 200
-    assert resp.json()["total"] == 0
-
-
-async def test_me_fhir(client):
-    await _create(client)
-    resp = await client.get(BASE + "/me", headers=FHIR_ACCEPT)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["resourceType"] == "Bundle"
-    assert data["total"] >= 1
-
-
 # ── Patch ──────────────────────────────────────────────────────────────────────
 
 

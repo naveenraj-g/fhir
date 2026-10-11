@@ -1,10 +1,10 @@
-from datetime import datetime
 from typing import Optional, List, Tuple
 
 from app.models.questionnaire_response.questionnaire_response import (
     QuestionnaireResponseModel,
 )
 from app.repository.questionnaire_response_repository import (
+    QRSearch,
     QuestionnaireResponseRepository,
 )
 from app.schemas.questionnaire_response import (
@@ -46,37 +46,22 @@ class QuestionnaireResponseService:
         self,
         user_id: str,
         org_id: str,
-        status: Optional[str] = None,
-        patient_id: Optional[int] = None,
-        questionnaire: Optional[str] = None,
-        authored_from: Optional[datetime] = None,
-        authored_to: Optional[datetime] = None,
+        search: Optional[QRSearch] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[QuestionnaireResponseModel], int]:
-        return await self.repository.get_me(
-            user_id, org_id,
-            status=status, patient_id=patient_id, questionnaire=questionnaire,
-            authored_from=authored_from, authored_to=authored_to,
-            limit=limit, offset=offset,
-        )
+        return await self.repository.get_me(user_id, org_id, search=search, limit=limit, offset=offset)
 
     async def list_questionnaire_responses(
         self,
         user_id: Optional[str] = None,
         org_id: Optional[str] = None,
-        status: Optional[str] = None,
-        patient_id: Optional[int] = None,
-        questionnaire: Optional[str] = None,
-        authored_from: Optional[datetime] = None,
-        authored_to: Optional[datetime] = None,
+        search: Optional[QRSearch] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[QuestionnaireResponseModel], int]:
         return await self.repository.list(
-            user_id=user_id, org_id=org_id, status=status, patient_id=patient_id,
-            questionnaire=questionnaire, authored_from=authored_from,
-            authored_to=authored_to, limit=limit, offset=offset,
+            user_id=user_id, org_id=org_id, search=search, limit=limit, offset=offset
         )
 
     # ── Write ─────────────────────────────────────────────────────────────

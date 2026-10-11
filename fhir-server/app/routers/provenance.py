@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.deps.provenance_deps import resolve_provenance
 from app.core.content_negotiation import format_paginated_response, format_response
@@ -175,4 +175,4 @@ async def delete_provenance(
     provenance_service: ProvenanceService = Depends(get_provenance_service),
 ):
     await provenance_service.delete_provenance(prov.provenance_id)
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

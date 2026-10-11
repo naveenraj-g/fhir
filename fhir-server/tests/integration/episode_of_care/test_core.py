@@ -1,12 +1,14 @@
 """Integration tests for /api/fhir/v1/episode-of-cares endpoints."""
-import pytest
-
-from app.auth.dependencies import get_current_user
-from app.main import app
-from tests.conftest import make_test_user
 
 BASE = "/api/fhir/v1/episode-of-cares"
 FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+
+
+def _with_org(query: str) -> str:
+    """Every search requires org_id (tenant scope) — add the default test org unless the query sets one."""
+    if "org_id=" in query:
+        return query
+    return f"org_id=org-test&{query}" if query else "org_id=org-test"
 
 MINIMAL = {
     "user_id": "u-test",
@@ -231,7 +233,7 @@ async def test_get_not_found(client):
 
 async def test_list_episode_of_cares(client):
     await _create(client)
-    r = await client.get(BASE + "/")
+    r = await client.get(BASE + "/?org_id=org-test")
     assert r.status_code == 200
     data = r.json()
     assert "total" in data
@@ -241,7 +243,7 @@ async def test_list_episode_of_cares(client):
 
 async def test_list_fhir_format(client):
     await _create(client)
-    r = await client.get(BASE + "/", headers=FHIR_ACCEPT)
+    r = await client.get(BASE + "/?org_id=org-test", headers=FHIR_ACCEPT)
     assert r.status_code == 200
     data = r.json()
     assert data["resourceType"] == "Bundle"
@@ -251,7 +253,7 @@ async def test_list_fhir_format(client):
 async def test_list_pagination(client):
     for _ in range(3):
         await _create(client)
-    r = await client.get(f"{BASE}/?limit=2&offset=0")
+    r = await client.get(f"{BASE}/?org_id=org-test&limit=2&offset=0")
     assert r.status_code == 200
     data = r.json()
     assert len(data["data"]) <= 2
@@ -262,7 +264,7 @@ async def test_list_pagination(client):
 async def test_list_filter_by_status(client):
     await _create(client, {**MINIMAL, "status": "active"})
     await _create(client, {**MINIMAL, "status": "finished"})
-    r = await client.get(f"{BASE}/?status=active")
+    r = await client.get(f"{BASE}/?org_id=org-test&status=active")
     assert r.status_code == 200
     data = r.json()
     for item in data["data"]:
@@ -272,33 +274,11 @@ async def test_list_filter_by_status(client):
 async def test_list_filter_by_patient_id(client):
     await _create(client, {**MINIMAL, "patient": "Patient/10001"})
     await _create(client, {**MINIMAL, "patient": "Patient/10002"})
-    r = await client.get(f"{BASE}/?patient_id=10001")
+    r = await client.get(f"{BASE}/?org_id=org-test&patient_id=10001")
     assert r.status_code == 200
     data = r.json()
     for item in data["data"]:
         assert item["patient_id"] == 10001
-
-
-# ── /me ───────────────────────────────────────────────────────────────────────
-
-
-async def test_me_returns_only_user_records(client):
-    user_a = {**MINIMAL, "user_id": "user-a", "org_id": "org-a"}
-    user_b = {**MINIMAL, "user_id": "user-b", "org_id": "org-b"}
-
-    await client.post(BASE + "/", json=user_a)
-    await client.post(BASE + "/", json=user_b)
-
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="user-a",
-        org_id="org-a",
-        permissions=["episode_of_care:read"],
-    )
-    r = await client.get(f"{BASE}/me")
-    assert r.status_code == 200
-    data = r.json()
-    for item in data["data"]:
-        assert item["user_id"] == "user-a"
 
 
 # ── Patch ─────────────────────────────────────────────────────────────────────
@@ -385,32 +365,126 @@ async def test_delete_not_found(client):
     assert r.status_code == 404
 
 
-# ── Auth / Permissions ────────────────────────────────────────────────────────
+# ── R4 required elements / validation ─────────────────────────────────────────
 
 
-async def test_create_requires_auth(client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=[])
-    r = await client.post(BASE + "/", json=MINIMAL)
-    assert r.status_code in (401, 403)
+async def test_required_and_validated_fields(client):
+    assert (await client.post(BASE + "/", json={k: v for k, v in MINIMAL.items() if k != "patient"})).status_code == 400
+    assert (await client.post(BASE + "/", json={k: v for k, v in MINIMAL.items() if k != "status"})).status_code == 400
+    assert (await client.post(BASE + "/", json={**MINIMAL, "status": "bogus"})).status_code == 400
+    assert (await client.post(BASE + "/", json={**MINIMAL, "bogus": 1})).status_code == 400
+    backwards = {**MINIMAL, "period_start": "2024-02-01T00:00:00Z", "period_end": "2024-01-01T00:00:00Z"}
+    assert (await client.post(BASE + "/", json=backwards)).status_code == 400
+    bad_history = [{"status": "bogus", "period_start": "2024-01-01T00:00:00Z"}]
+    assert (await client.post(BASE + "/", json={**MINIMAL, "status_history": bad_history})).status_code == 400
+    no_period = [{"status": "planned"}]
+    assert (await client.post(BASE + "/", json={**MINIMAL, "status_history": no_period})).status_code == 400
+    assert (await client.post(BASE + "/", json={**MINIMAL, "diagnoses": [{"rank": 1}]})).status_code == 400   # condition 1..1
 
 
-async def test_read_requires_auth(client):
-    app.dependency_overrides[get_current_user] = make_test_user(
-        permissions=["episode_of_care:create", "episode_of_care:read", "episode_of_care:delete"]
-    )
-    r_create = await client.post(BASE + "/", json=MINIMAL)
-    eoc_id = r_create.json()["id"]
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=[])
-    r = await client.get(f"{BASE}/{eoc_id}")
-    assert r.status_code in (401, 403)
+# ── PATCH: null clears, lists replace ─────────────────────────────────────────
 
 
-async def test_delete_requires_auth(client):
-    app.dependency_overrides[get_current_user] = make_test_user(
-        permissions=["episode_of_care:create", "episode_of_care:read", "episode_of_care:delete"]
-    )
-    r_create = await client.post(BASE + "/", json=MINIMAL)
-    eoc_id = r_create.json()["id"]
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=[])
-    r = await client.delete(f"{BASE}/{eoc_id}")
-    assert r.status_code in (401, 403)
+async def test_patch_clears_and_validates(client):
+    created = await _create(client, {**FULL})
+    eid = created["id"]
+    r = await client.patch(f"{BASE}/{eid}", json={"care_manager": None})
+    assert r.status_code == 200, r.text
+    assert r.json().get("care_manager_id") is None and r.json().get("care_manager_display") is None
+    for body in ({"status": None}, {"patient": None}, {"status": "bogus"}, {"bogus": 1}):
+        assert (await client.patch(f"{BASE}/{eid}", json=body)).status_code == 400
+    assert (await client.patch(f"{BASE}/{eid}", json={"patient": "Practitioner/1"})).status_code == 422
+    assert (await client.patch(f"{BASE}/{eid}", json={"care_manager": "Patient/1"})).status_code == 422
+    assert (await client.patch(f"{BASE}/{eid}", json={"diagnoses": [{"condition": "Patient/1"}]})).status_code == 422
+
+
+async def test_patch_replaces_and_clears_child_lists(client):
+    created = await _create(client, {**FULL})
+    eid = created["id"]
+    r = await client.patch(f"{BASE}/{eid}", json={
+        "types": [{"coding_code": "new-type"}],
+        "identifiers": [{"system": "urn:e", "value": "E-2"}, {"value": "E-3"}],
+        "diagnoses": None,
+        "status_history": [],
+    })
+    assert r.status_code == 200, r.text
+    b = r.json()
+    assert [t["coding_code"] for t in b["types"]] == ["new-type"]
+    assert [i["value"] for i in b["identifiers"]] == ["E-2", "E-3"]
+    assert not b.get("diagnoses") and not b.get("status_history")                # null / [] cleared them
+    assert len(b["referral_requests"]) == 1                                      # omitted list untouched
+
+
+# ── FHIR R4 search parameters ─────────────────────────────────────────────────
+
+
+async def _ids(client, query: str) -> set:
+    r = await client.get(f"{BASE}/?{_with_org(query)}")
+    assert r.status_code == 200, r.text
+    return {d["id"] for d in r.json()["data"]}
+
+
+async def test_search_params(client):
+    a = await _create(client, {**FULL, "identifiers": [{"system": "urn:e", "value": "EOC-1"}]})
+    b = await _create(client, {**MINIMAL, "status": "finished", "patient": "Patient/10002",
+                               "period_start": "2022-01-01T00:00:00Z", "period_end": "2022-06-01T00:00:00Z"})
+    assert await _ids(client, f"_id={a['id']}") == {a["id"]}
+    assert await _ids(client, "status=finished") == {b["id"]}
+    assert await _ids(client, "status=finished,active") == {a["id"], b["id"]}
+    assert (await client.get(f"{BASE}/?org_id=org-test&status=bogus")).status_code == 422
+    assert await _ids(client, "identifier=urn:e|EOC-1") == {a["id"]}
+    assert await _ids(client, "type=http://snomed.info/sct|394602003") == {a["id"]}
+    assert await _ids(client, "type=394602003") == {a["id"]}
+    assert await _ids(client, "patient=Patient/10001") == {a["id"]}
+    assert await _ids(client, "patient=10002") == {b["id"]}
+    assert await _ids(client, "patient_id=10001") == {a["id"]}
+    assert await _ids(client, "care-manager=Practitioner/30001") == {a["id"]}
+    assert await _ids(client, "condition=Condition/120001") == {a["id"]}
+    assert await _ids(client, "incoming-referral=ServiceRequest/80001") == {a["id"]}
+    assert await _ids(client, "date=ap2024-06-01") == {a["id"]}      # overlap; plain eq needs the period inside the day
+    assert await _ids(client, "date=lt2023-01-01") == {b["id"]}
+    assert await _ids(client, "date=ge2024-01-01&date=lt2025-01-01") == {a["id"]}
+    assert a["id"] in await _ids(client, "_lastUpdated=ge2000-01-01")
+    for bad in ("patient=Group/1", "care-manager=Patient/1", "condition=Patient/1", "date=notadate", "_id=x"):
+        assert (await client.get(f"{BASE}/?{_with_org(bad)}")).status_code == 422, bad
+
+
+async def test_managing_organization_is_stored_not_looked_up(client):
+    """managingOrganization is type/id/display only — the Organization does not have to exist."""
+    with_org = await _create(client, {**MINIMAL, "managing_organization": "Organization/190777",
+                                      "managing_organization_display": "Gen Hospital"})
+    without = await _create(client)
+    fhir = (await client.get(f"{BASE}/{with_org['id']}", headers=FHIR_ACCEPT)).json()
+    assert fhir["managingOrganization"] == {"reference": "Organization/190777", "display": "Gen Hospital"}
+    assert with_org["managing_organization_id"] == 190777
+    assert await _ids(client, "organization=Organization/190777") == {with_org["id"]}
+    assert await _ids(client, "organization=190777") == {with_org["id"]}
+    assert without["id"] not in await _ids(client, "organization=190777")
+    assert (await client.get(f"{BASE}/?org_id=org-test&organization=Patient/1")).status_code == 422
+    assert (await client.post(BASE + "/", json={**MINIMAL, "managing_organization": "Patient/1"})).status_code == 422
+    cleared = (await client.patch(f"{BASE}/{with_org['id']}", json={"managing_organization": None})).json()
+    assert cleared.get("managing_organization_id") is None
+
+
+async def test_search_scoped_by_org_and_optional_user(client):
+    a = await _create(client, {**MINIMAL, "user_id": "user-a", "org_id": "org-a"})
+    b = await _create(client, {**MINIMAL, "user_id": "user-b", "org_id": "org-b"})
+    assert await _ids(client, "org_id=org-a") == {a["id"]}
+    assert await _ids(client, "org_id=org-b") == {b["id"]}
+    assert await _ids(client, "org_id=org-a&user_id=user-a") == {a["id"]}
+    assert await _ids(client, "org_id=org-a&user_id=user-b") == set()
+
+
+async def test_search_requires_org_id(client):
+    await _create(client)
+    for url in (BASE + "/", f"{BASE}/?limit=5", BASE + "/?user_id=u-test", BASE + "/?status=active"):
+        assert (await client.get(url)).status_code == 400, url
+    assert (await client.get(f"{BASE}/?org_id=")).status_code == 400
+    assert (await client.get(f"{BASE}/?org_id=org-test")).status_code == 200
+
+
+async def test_list_ordering_nulls_last(client):
+    undated = await _create(client)
+    dated = await _create(client, {**MINIMAL, "period_start": "2024-01-01T00:00:00Z"})
+    ids = [d["id"] for d in (await client.get(f"{BASE}/?org_id=org-test")).json()["data"]]
+    assert ids.index(dated["id"]) < ids.index(undated["id"])

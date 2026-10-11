@@ -1,7 +1,14 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.models.care_plan.enums import (
+    CarePlanActivityKind,
+    CarePlanDetailActivityStatus,
+    CarePlanIntent,
+    CarePlanStatus,
+)
 
 
 class CarePlanIdentifierInput(BaseModel):
@@ -164,16 +171,21 @@ class CarePlanActivityInput(BaseModel):
     reference_display: Optional[str] = None
 
     # detail scalar fields
-    detail_kind: Optional[str] = None
+    detail_kind: Optional[CarePlanActivityKind] = Field(
+        None, description="Appointment|CommunicationRequest|DeviceRequest|MedicationRequest|NutritionOrder|Task|ServiceRequest|VisionPrescription"
+    )
     detail_instantiates_canonical: Optional[str] = Field(None, description="Comma-separated canonical URIs.")
     detail_instantiates_uri: Optional[str] = Field(None, description="Comma-separated URIs.")
     detail_code_system: Optional[str] = None
     detail_code_code: Optional[str] = None
     detail_code_display: Optional[str] = None
     detail_code_text: Optional[str] = None
-    detail_status: Optional[str] = Field(
+    detail_status: Optional[CarePlanDetailActivityStatus] = Field(
         None,
-        description="not-started | scheduled | in-progress | on-hold | completed | cancelled | stopped | unknown | entered-in-error",
+        description=(
+            "not-started | scheduled | in-progress | on-hold | completed | cancelled | stopped | unknown | "
+            "entered-in-error. Required (1..1) whenever any activity.detail field is supplied."
+        ),
     )
     detail_status_reason_system: Optional[str] = None
     detail_status_reason_code: Optional[str] = None
@@ -203,6 +215,21 @@ class CarePlanActivityInput(BaseModel):
     detail_scheduled_timing_repeat_offset: Optional[int] = None
     detail_scheduled_timing_repeat_bounds_start: Optional[datetime] = None
     detail_scheduled_timing_repeat_bounds_end: Optional[datetime] = None
+    # timing.repeat.bounds[x] — Duration variant
+    detail_scheduled_timing_repeat_bounds_duration_value: Optional[float] = None
+    detail_scheduled_timing_repeat_bounds_duration_comparator: Optional[str] = Field(None, description="< | <= | >= | >")
+    detail_scheduled_timing_repeat_bounds_duration_unit: Optional[str] = None
+    detail_scheduled_timing_repeat_bounds_duration_system: Optional[str] = None
+    detail_scheduled_timing_repeat_bounds_duration_code: Optional[str] = None
+    # timing.repeat.bounds[x] — Range variant
+    detail_scheduled_timing_repeat_bounds_range_low_value: Optional[float] = None
+    detail_scheduled_timing_repeat_bounds_range_low_unit: Optional[str] = None
+    detail_scheduled_timing_repeat_bounds_range_low_system: Optional[str] = None
+    detail_scheduled_timing_repeat_bounds_range_low_code: Optional[str] = None
+    detail_scheduled_timing_repeat_bounds_range_high_value: Optional[float] = None
+    detail_scheduled_timing_repeat_bounds_range_high_unit: Optional[str] = None
+    detail_scheduled_timing_repeat_bounds_range_high_system: Optional[str] = None
+    detail_scheduled_timing_repeat_bounds_range_high_code: Optional[str] = None
 
     # scheduled[x] — Period variant
     detail_scheduled_period_start: Optional[datetime] = None
@@ -251,6 +278,44 @@ class CarePlanActivityInput(BaseModel):
     detail_goals: Optional[List[CarePlanActivityDetailGoalInput]] = None
     detail_performers: Optional[List[CarePlanActivityDetailPerformerInput]] = None
 
+    @model_validator(mode="after")
+    def _activity_rules(self):
+        fields = type(self).model_fields
+        has = lambda v: v is not None and v != [] and v != ""  # noqa: E731
+        detail_fields = [
+            n for n in fields if n.startswith("detail_") and n != "detail_status" and has(getattr(self, n))
+        ]
+        has_detail = bool(detail_fields) or self.detail_status is not None
+        # cpl-3: Provide a reference or detail, not both
+        if self.reference and has_detail:
+            raise ValueError("cpl-3: provide an activity reference or activity detail, not both.")
+        if has_detail and self.detail_status is None:
+            raise ValueError("activity.detail.status is required (1..1) when activity.detail is supplied.")
+        # scheduled[x]: at most one of Timing | Period | string
+        timing_set = any(has(getattr(self, n)) for n in fields if n.startswith("detail_scheduled_timing_"))
+        period_set = self.detail_scheduled_period_start is not None or self.detail_scheduled_period_end is not None
+        used = [n for n, v in (("Timing", timing_set), ("Period", period_set), ("string", self.detail_scheduled_string is not None)) if v]
+        if len(used) > 1:
+            raise ValueError(f"activity.detail.scheduled[x]: supply at most one variant; got {used}.")
+        # product[x]: CodeableConcept | Reference
+        cc_set = any([self.detail_product_codeable_concept_system, self.detail_product_codeable_concept_code,
+                      self.detail_product_codeable_concept_display, self.detail_product_codeable_concept_text])
+        if cc_set and self.detail_product_reference:
+            raise ValueError("activity.detail.product[x]: supply a CodeableConcept or a Reference, not both.")
+        # timing.repeat.bounds[x]: at most one of Duration | Range | Period
+        pre = "detail_scheduled_timing_repeat_bounds_"
+        bounds = [n for n, present in (
+            ("Duration", any(has(getattr(self, k)) for k in fields if k.startswith(pre + "duration_"))),
+            ("Range", any(has(getattr(self, k)) for k in fields if k.startswith(pre + "range_"))),
+            ("Period", self.detail_scheduled_timing_repeat_bounds_start is not None or self.detail_scheduled_timing_repeat_bounds_end is not None),
+        ) if present]
+        if len(bounds) > 1:
+            raise ValueError(f"Timing.repeat.bounds[x]: supply at most one variant; got {bounds}.")
+        if (self.detail_scheduled_period_start and self.detail_scheduled_period_end
+                and self.detail_scheduled_period_end < self.detail_scheduled_period_start):
+            raise ValueError("detail_scheduled_period_end must not be before detail_scheduled_period_start.")
+        return self
+
 
 class CarePlanCreateSchema(BaseModel):
     model_config = ConfigDict(
@@ -274,10 +339,10 @@ class CarePlanCreateSchema(BaseModel):
     org_id: str
     created_by: Optional[str] = None
 
-    status: str = Field(..., description="draft | active | on-hold | revoked | completed | entered-in-error | unknown")
-    intent: str = Field(..., description="proposal | plan | order | option")
+    status: CarePlanStatus = Field(..., description="draft | active | on-hold | revoked | completed | entered-in-error | unknown")
+    intent: CarePlanIntent = Field(..., description="proposal | plan | order | option")
 
-    subject: Optional[str] = Field(None, description="Reference to Patient/<id> or Group/<id>.")
+    subject: str = Field(..., description="Required (1..1). Reference to Patient/<id> or Group/<id>.")
     subject_display: Optional[str] = None
 
     title: Optional[str] = None
@@ -311,15 +376,21 @@ class CarePlanCreateSchema(BaseModel):
     activities: Optional[List[CarePlanActivityInput]] = None
     notes: Optional[List[CarePlanNoteInput]] = None
 
+    @model_validator(mode="after")
+    def _period_order(self):
+        if self.period_start and self.period_end and self.period_end < self.period_start:
+            raise ValueError("period_end must not be before period_start.")
+        return self
+
 
 class CarePlanPatchSchema(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    status: Optional[str] = None
-    intent: Optional[str] = None
+    status: Optional[CarePlanStatus] = Field(None, description="Cannot be null.")
+    intent: Optional[CarePlanIntent] = Field(None, description="Cannot be null.")
     title: Optional[str] = None
     description: Optional[str] = None
-    subject: Optional[str] = None
+    subject: Optional[str] = Field(None, description="Cannot be null. Reference to Patient/<id> or Group/<id>.")
     subject_display: Optional[str] = None
     encounter: Optional[str] = None
     encounter_display: Optional[str] = None
@@ -344,3 +415,16 @@ class CarePlanPatchSchema(BaseModel):
     activities: Optional[List[CarePlanActivityInput]] = None
     notes: Optional[List[CarePlanNoteInput]] = None
     updated_by: Optional[str] = None
+
+    @field_validator("status", "intent", "subject")
+    @classmethod
+    def _required_not_null(cls, v):
+        if v is None:
+            raise ValueError("must not be null")
+        return v
+
+    @model_validator(mode="after")
+    def _period_order(self):
+        if self.period_start and self.period_end and self.period_end < self.period_start:
+            raise ValueError("period_end must not be before period_start.")
+        return self

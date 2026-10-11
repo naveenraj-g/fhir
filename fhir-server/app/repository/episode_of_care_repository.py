@@ -1,4 +1,6 @@
+from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from typing import List, Optional, Tuple
 
 from fastapi import HTTPException, status as http_status
@@ -7,6 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker  # noqa: F40
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
+from app.core.search_params import (
+    enum_token_values,
+    instant_clause,
+    parse_date_param,
+    parse_reference_param,
+    period_date_clause,
+    reference_clause,
+    split_or,
+    token_clause,
+)
 from app.models.enums import OrganizationReferenceType
 from app.models.episode_of_care.enums import (
     EpisodeOfCareAccountReferenceType,
@@ -14,6 +26,7 @@ from app.models.episode_of_care.enums import (
     EpisodeOfCareDiagnosisReferenceType,
     EpisodeOfCarePatientReferenceType,
     EpisodeOfCareReferralRequestReferenceType,
+    EpisodeOfCareStatus,
     EpisodeOfCareTeamReferenceType,
 )
 from app.models.episode_of_care.episode_of_care import (
@@ -26,7 +39,6 @@ from app.models.episode_of_care.episode_of_care import (
     EpisodeOfCareTeam,
     EpisodeOfCareType,
 )
-from app.models.organization.organization import OrganizationModel
 from app.schemas.episode_of_care.input import (
     EpisodeOfCareCreateSchema,
     EpisodeOfCarePatchSchema,
@@ -75,51 +87,102 @@ def _with_relationships(stmt):
         selectinload(EpisodeOfCareModel.referral_requests),
         selectinload(EpisodeOfCareModel.team),
         selectinload(EpisodeOfCareModel.accounts),
-        selectinload(EpisodeOfCareModel.managing_organization),
     )
 
 
-def _apply_list_filters(stmt, user_id=None, org_id=None, episode_status=None, patient_id=None):
-    if user_id is not None:
+@dataclass
+class EpisodeOfCareSearch:
+    """FHIR R4 EpisodeOfCare search parameters (https://www.hl7.org/fhir/R4/episodeofcare.html#search)."""
+
+    id: Optional[str] = None                      # _id
+    identifier: Optional[str] = None
+    eoc_status: Optional[str] = None
+    type: Optional[str] = None
+    patient: Optional[str] = None
+    organization: Optional[str] = None
+    care_manager: Optional[str] = None
+    condition: Optional[str] = None
+    incoming_referral: Optional[str] = None
+    date: List[str] = field(default_factory=list)
+    last_updated: List[str] = field(default_factory=list)   # _lastUpdated
+
+
+class _OrganizationOnly(str, Enum):
+    Organization = "Organization"
+
+
+def _unprocessable(detail: str) -> HTTPException:
+    return HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+
+
+def _apply_list_filters(stmt, user_id=None, org_id=None, search: Optional[EpisodeOfCareSearch] = None):
+    """user_id/org_id are tenant filters; `search` carries the FHIR R4 search parameters."""
+    if user_id:
         stmt = stmt.where(EpisodeOfCareModel.user_id == user_id)
-    if org_id is not None:
+    if org_id:
         stmt = stmt.where(EpisodeOfCareModel.org_id == org_id)
-    if episode_status is not None:
-        stmt = stmt.where(EpisodeOfCareModel.status == episode_status)
-    if patient_id is not None:
-        stmt = stmt.where(EpisodeOfCareModel.patient_id == patient_id)
+    if search is None:
+        return stmt
+    M = EpisodeOfCareModel
+
+    if search.id:
+        ids = []
+        for v in split_or(search.id):
+            try:
+                ids.append(int(v))
+            except ValueError:
+                raise _unprocessable(f"Invalid _id '{v}'. Must be an integer.")
+        stmt = stmt.where(M.episode_of_care_id.in_(ids))
+
+    clause = token_clause(EpisodeOfCareIdentifier.system, EpisodeOfCareIdentifier.value, search.identifier)
+    if clause is not None:
+        stmt = stmt.where(select(EpisodeOfCareIdentifier.id).where(
+            EpisodeOfCareIdentifier.episode_of_care_id == M.id, clause).exists())
+
+    statuses = enum_token_values(search.eoc_status, EpisodeOfCareStatus, "status")
+    if statuses:
+        stmt = stmt.where(M.status.in_(statuses))
+
+    clause = token_clause(EpisodeOfCareType.coding_system, EpisodeOfCareType.coding_code, search.type)
+    if clause is not None:
+        stmt = stmt.where(select(EpisodeOfCareType.id).where(
+            EpisodeOfCareType.episode_of_care_id == M.id, clause).exists())
+
+    if search.patient:
+        stmt = stmt.where(reference_clause(
+            M.patient_type, M.patient_id,
+            parse_reference_param(search.patient, EpisodeOfCarePatientReferenceType, "patient")))
+    if search.care_manager:
+        stmt = stmt.where(reference_clause(
+            M.care_manager_type, M.care_manager_id,
+            parse_reference_param(search.care_manager, EpisodeOfCareCareManagerReferenceType, "care-manager")))
+
+    # organization — managing_organization_type / _id store the reference (public organization_id).
+    if search.organization:
+        stmt = stmt.where(reference_clause(
+            M.managing_organization_type, M.managing_organization_id,
+            parse_reference_param(search.organization, _OrganizationOnly, "organization")))
+
+    if search.condition:
+        clause = reference_clause(
+            EpisodeOfCareDiagnosis.reference_type, EpisodeOfCareDiagnosis.reference_id,
+            parse_reference_param(search.condition, EpisodeOfCareDiagnosisReferenceType, "condition"))
+        stmt = stmt.where(select(EpisodeOfCareDiagnosis.id).where(
+            EpisodeOfCareDiagnosis.episode_of_care_id == M.id, clause).exists())
+    if search.incoming_referral:
+        clause = reference_clause(
+            EpisodeOfCareReferralRequest.reference_type, EpisodeOfCareReferralRequest.reference_id,
+            parse_reference_param(search.incoming_referral, EpisodeOfCareReferralRequestReferenceType, "incoming-referral"))
+        stmt = stmt.where(select(EpisodeOfCareReferralRequest.id).where(
+            EpisodeOfCareReferralRequest.episode_of_care_id == M.id, clause).exists())
+
+    for value in search.date or []:
+        prefix, s_lo, s_hi = parse_date_param(value, "date")
+        stmt = stmt.where(period_date_clause(M.period_start, M.period_end, prefix, s_lo, s_hi))
+    for value in search.last_updated or []:
+        prefix, s_lo, s_hi = parse_date_param(value, "_lastUpdated")
+        stmt = stmt.where(instant_clause(func.coalesce(M.updated_at, M.created_at), prefix, s_lo, s_hi))
     return stmt
-
-
-async def _resolve_managing_org_pk(session: AsyncSession, ref: str) -> int:
-    parts = ref.split("/", 1)
-    if len(parts) != 2:
-        raise HTTPException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid reference format for 'managing_organization': '{ref}'. Expected 'Organization/<id>'.",
-        )
-    if parts[0] != "Organization":
-        raise HTTPException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid reference type '{parts[0]}' for 'managing_organization'. Allowed: ['Organization'].",
-        )
-    try:
-        org_public_id = int(parts[1])
-    except ValueError:
-        raise HTTPException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid id in reference '{ref}' for 'managing_organization'.",
-        )
-    result = await session.execute(
-        select(OrganizationModel.id).where(OrganizationModel.organization_id == org_public_id)
-    )
-    pk = result.scalar_one_or_none()
-    if pk is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Organization/{org_public_id} not found.",
-        )
-    return pk
 
 
 def _build_children(data, org_id: Optional[str]) -> dict:
@@ -246,11 +309,11 @@ class EpisodeOfCareRepository:
                     data.care_manager, EpisodeOfCareCareManagerReferenceType, "careManager"
                 )
 
-            managing_org_pk = None
-            managing_org_type = None
+            managing_org_type, managing_org_pk = None, None
             if data.managing_organization:
-                managing_org_pk = await _resolve_managing_org_pk(session, data.managing_organization)
-                managing_org_type = OrganizationReferenceType.Organization
+                managing_org_type, managing_org_pk = _parse_ref(
+                    data.managing_organization, OrganizationReferenceType, "managingOrganization"
+                )
 
             children = _build_children(data, data.org_id)
 
@@ -296,19 +359,19 @@ class EpisodeOfCareRepository:
         self,
         user_id: Optional[str] = None,
         org_id: Optional[str] = None,
-        episode_status=None,
-        patient_id: Optional[int] = None,
+        search: Optional[EpisodeOfCareSearch] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[int, List[EpisodeOfCareModel]]:
         async with self.session_factory() as session:
-            base = select(EpisodeOfCareModel)
-            base = _apply_list_filters(base, user_id, org_id, episode_status, patient_id)
+            base = _apply_list_filters(select(EpisodeOfCareModel), user_id, org_id, search)
 
             count_stmt = select(func.count()).select_from(base.subquery())
             total = (await session.execute(count_stmt)).scalar_one()
 
-            data_stmt = _with_relationships(base).offset(offset).limit(limit)
+            data_stmt = _with_relationships(base).order_by(
+                EpisodeOfCareModel.period_start.desc().nulls_last(), EpisodeOfCareModel.id.desc()
+            ).offset(offset).limit(limit)
             rows = (await session.execute(data_stmt)).scalars().all()
             return total, list(rows)
 
@@ -333,16 +396,20 @@ class EpisodeOfCareRepository:
                     else:
                         db_model.patient_type = None
                         db_model.patient_id = None
+                        if "patient_display" not in updates:
+                            db_model.patient_display = None
                 elif field == "patient_display":
                     db_model.patient_display = value
                 elif field == "managing_organization":
                     if value is not None:
-                        pk = await _resolve_managing_org_pk(session, value)
-                        db_model.managing_organization_id = pk
-                        db_model.managing_organization_type = OrganizationReferenceType.Organization
+                        mt, mid = _parse_ref(value, OrganizationReferenceType, "managingOrganization")
+                        db_model.managing_organization_id = mid
+                        db_model.managing_organization_type = mt
                     else:
                         db_model.managing_organization_id = None
                         db_model.managing_organization_type = None
+                        if "managing_organization_display" not in updates:
+                            db_model.managing_organization_display = None
                 elif field == "managing_organization_display":
                     db_model.managing_organization_display = value
                 elif field == "care_manager":
@@ -353,6 +420,8 @@ class EpisodeOfCareRepository:
                     else:
                         db_model.care_manager_type = None
                         db_model.care_manager_id = None
+                        if "care_manager_display" not in updates:
+                            db_model.care_manager_display = None
                 elif field == "care_manager_display":
                     db_model.care_manager_display = value
                 elif field in ("period_start", "period_end"):
@@ -361,9 +430,9 @@ class EpisodeOfCareRepository:
                     "identifiers", "status_history", "types", "diagnoses",
                     "referral_requests", "team", "accounts",
                 ):
+                    # A list that is present REPLACES the stored one; null / [] clears it.
                     children = _build_children(data, db_model.org_id)
-                    if field in children:
-                        setattr(db_model, field, children[field])
+                    setattr(db_model, field, children.get(field, []))
                 else:
                     setattr(db_model, field, value)
 

@@ -34,6 +34,12 @@ from .immunization import router as immunization_router
 from .audit_event import router as audit_event_router
 from .episode_of_care import router as episode_of_care_router
 from .insurance_plan import router as insurance_plan_router
+from .questionnaire import router as questionnaire_router
+from .risk_assessment import router as risk_assessment_router
+from .flag import router as flag_router
+from .plan_definition import router as plan_definition_router
+from .activity_definition import router as activity_definition_router
+from .care_team import router as care_team_router
 api_router = APIRouter()
 
 api_router.include_router(patient_router, prefix="/patients", tags=["Patients"])
@@ -129,3 +135,9 @@ api_router.include_router(immunization_router, prefix="/immunizations", tags=["I
 api_router.include_router(audit_event_router, prefix="/audit-events", tags=["AuditEvents"])
 api_router.include_router(episode_of_care_router, prefix="/episode-of-cares", tags=["EpisodeOfCares"])
 api_router.include_router(insurance_plan_router, prefix="/insurance-plans", tags=["InsurancePlans"])
+api_router.include_router(questionnaire_router, prefix="/questionnaires", tags=["Questionnaires"])
+api_router.include_router(risk_assessment_router, prefix="/risk-assessments", tags=["RiskAssessments"])
+api_router.include_router(flag_router, prefix="/flags", tags=["Flags"])
+api_router.include_router(plan_definition_router, prefix="/plan-definitions", tags=["PlanDefinitions"])
+api_router.include_router(activity_definition_router, prefix="/activity-definitions", tags=["ActivityDefinitions"])
+api_router.include_router(care_team_router, prefix="/care-teams", tags=["CareTeams"])

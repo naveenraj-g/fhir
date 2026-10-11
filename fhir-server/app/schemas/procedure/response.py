@@ -246,13 +246,18 @@ class PlainProcedureResponse(BaseModel):
     performed_period_end: Optional[str] = None
     performed_string: Optional[str] = None
     performed_age_value: Optional[float] = None
+    performed_age_comparator: Optional[str] = None
     performed_age_unit: Optional[str] = None
     performed_age_system: Optional[str] = None
     performed_age_code: Optional[str] = None
     performed_range_low_value: Optional[float] = None
     performed_range_low_unit: Optional[str] = None
+    performed_range_low_system: Optional[str] = None
+    performed_range_low_code: Optional[str] = None
     performed_range_high_value: Optional[float] = None
     performed_range_high_unit: Optional[str] = None
+    performed_range_high_system: Optional[str] = None
+    performed_range_high_code: Optional[str] = None
     recorder_type: Optional[str] = None
     recorder_id: Optional[int] = None
     recorder_display: Optional[str] = None
@@ -260,7 +265,7 @@ class PlainProcedureResponse(BaseModel):
     asserter_id: Optional[int] = None
     asserter_display: Optional[str] = None
     location_type: Optional[str] = None
-    location_reference_id: Optional[int] = None
+    location_id: Optional[int] = None
     location_display: Optional[str] = None
     outcome_system: Optional[str] = None
     outcome_code: Optional[str] = None

@@ -60,16 +60,13 @@ class EpisodeOfCareModel(Base):
     patient_id = Column(Integer, nullable=True)
     patient_display = Column(String, nullable=True)
 
-    # managingOrganization (0..1 Reference(Organization)) — shared enum + FK
+    # managingOrganization (0..1 Reference(Organization)) — shared enum, type/id/display only
     managing_organization_type = Column(
         Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
         nullable=True,
     )
-    managing_organization_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
+    managing_organization_id = Column(Integer, nullable=True, index=True)  # public organization_id (no FK to other resources)
     managing_organization_display = Column(String, nullable=True)
-    managing_organization = relationship(
-        "OrganizationModel", foreign_keys=[managing_organization_id], lazy="selectin"
-    )
 
     # period (0..1 Period)
     period_start = Column(DateTime(timezone=True), nullable=True)

@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 
 from app.fhir.mappers.care_plan import to_fhir_care_plan, to_plain_care_plan
 from app.models.care_plan.care_plan import CarePlanModel
-from app.repository.care_plan_repository import CarePlanRepository
+from app.repository.care_plan_repository import CarePlanRepository, CarePlanSearch
 from app.schemas.care_plan.input import CarePlanCreateSchema, CarePlanPatchSchema
 
 
@@ -23,19 +23,21 @@ class CarePlanService:
         self,
         user_id: str,
         org_id: str,
+        search: Optional[CarePlanSearch] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[CarePlanModel], int]:
-        return await self.repository.get_me(user_id, org_id, limit, offset)
+        return await self.repository.get_me(user_id, org_id, search=search, limit=limit, offset=offset)
 
     async def list_care_plans(
         self,
         user_id: Optional[str] = None,
         org_id: Optional[str] = None,
+        search: Optional[CarePlanSearch] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[CarePlanModel], int]:
-        return await self.repository.list(user_id, org_id, limit, offset)
+        return await self.repository.list(user_id=user_id, org_id=org_id, search=search, limit=limit, offset=offset)
 
     async def create_care_plan(
         self,

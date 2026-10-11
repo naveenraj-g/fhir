@@ -32,6 +32,53 @@ OPENAPI_TAGS: list[dict] = [
         ),
     },
     {
+        "name": "Flags",
+        "description": (
+            "FHIR R4 Flag resources — prospective warnings about potential issues when providing care "
+            "(e.g. allergy alerts, safety or administrative flags) attached to a patient, location, group, "
+            "organization, practitioner, medication or procedure, with an active period."
+        ),
+    },
+    {
+        "name": "PlanDefinitions",
+        "description": (
+            "FHIR R4 PlanDefinition resources — protocols, order sets and clinical decision-support rules: "
+            "goals plus a recursive tree of actions with triggers, conditions, inputs/outputs, related actions, "
+            "participants and dynamic values."
+        ),
+    },
+    {
+        "name": "CareTeams",
+        "description": (
+            "FHIR R4 CareTeam resources — the people and organizations planned to participate in coordinating a "
+            "patient's care: participants with roles, reasons, managing organizations and contact details."
+        ),
+    },
+    {
+        "name": "ActivityDefinitions",
+        "description": (
+            "FHIR R4 ActivityDefinition resources — definitions of an action to be performed (a request template): "
+            "the kind of request it produces, intent, priority, timing, product/quantity, dosage, participants and "
+            "dynamic values."
+        ),
+    },
+    {
+        "name": "RiskAssessments",
+        "description": (
+            "FHIR R4 RiskAssessment resources — assessments of the likely outcome(s) for a patient or group, "
+            "with predictions (outcome, probability, qualitative risk, timeframe, rationale), basis and mitigation. "
+            "Searchable by patient/subject/condition/performer/date/probability/risk and more."
+        ),
+    },
+    {
+        "name": "Questionnaires",
+        "description": (
+            "FHIR R4 Questionnaire resources — structured forms: a recursive tree of questions, groups and "
+            "display items with answer options, initial values and enableWhen logic. Searchable by "
+            "name/title/status/url/code/subject-type and more."
+        ),
+    },
+    {
         "name": "Procedures",
         "description": (
             "FHIR R4 Procedure resources — clinical actions performed on or for a patient, "

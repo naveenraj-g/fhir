@@ -120,3 +120,16 @@ class CarePlanDetailGoalReferenceType(str, Enum):
 class CarePlanDetailProductReferenceType(str, Enum):
     Medication = "Medication"
     Substance = "Substance"
+
+
+class CarePlanActivityKind(str, Enum):
+    """FHIR R4 CarePlanActivityKind (activity.detail.kind, required binding)."""
+
+    Appointment = "Appointment"
+    CommunicationRequest = "CommunicationRequest"
+    DeviceRequest = "DeviceRequest"
+    MedicationRequest = "MedicationRequest"
+    NutritionOrder = "NutritionOrder"
+    Task = "Task"
+    ServiceRequest = "ServiceRequest"
+    VisionPrescription = "VisionPrescription"

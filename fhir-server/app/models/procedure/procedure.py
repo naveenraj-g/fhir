@@ -93,7 +93,7 @@ class ProcedureModel(Base):
         Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
         nullable=True,
     )
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
+    encounter_id = Column(Integer, nullable=True, index=True)  # public encounter_id (no FK to other resources)
     encounter_display = Column(String, nullable=True)
 
     # ── performed[x] (0..1 — dateTime | Period | string | Age | Range) ────────
@@ -106,6 +106,7 @@ class ProcedureModel(Base):
 
     # performedAge (Age datatype)
     performed_age_value = Column(Float, nullable=True)
+    performed_age_comparator = Column(String, nullable=True)  # < | <= | >= | >
     performed_age_unit = Column(String, nullable=True)
     performed_age_system = Column(String, nullable=True)
     performed_age_code = Column(String, nullable=True)
@@ -113,8 +114,12 @@ class ProcedureModel(Base):
     # performedRange (low/high SimpleQuantity)
     performed_range_low_value = Column(Float, nullable=True)
     performed_range_low_unit = Column(String, nullable=True)
+    performed_range_low_system = Column(String, nullable=True)
+    performed_range_low_code = Column(String, nullable=True)
     performed_range_high_value = Column(Float, nullable=True)
     performed_range_high_unit = Column(String, nullable=True)
+    performed_range_high_system = Column(String, nullable=True)
+    performed_range_high_code = Column(String, nullable=True)
 
     # ── recorder (0..1 Reference) ─────────────────────────────────────────────
 
@@ -138,7 +143,7 @@ class ProcedureModel(Base):
         Enum(ProcedureLocationReferenceType, name="procedure_location_ref_type"),
         nullable=True,
     )
-    location_reference_id = Column(Integer, nullable=True)
+    location_id = Column(Integer, nullable=True)
     location_display = Column(String, nullable=True)
 
     # ── outcome (0..1 CodeableConcept) ────────────────────────────────────────
@@ -162,7 +167,6 @@ class ProcedureModel(Base):
 
     # ── Relationships ─────────────────────────────────────────────────────────
 
-    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
 
     identifiers = relationship(
         "ProcedureIdentifier",

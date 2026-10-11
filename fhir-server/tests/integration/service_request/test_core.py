@@ -1,8 +1,6 @@
 """Integration tests for /api/fhir/v1/service-requests endpoints."""
 import pytest
-from app.auth.dependencies import get_current_user
 from app.main import app
-from tests.conftest import make_test_user
 
 BASE = "/api/fhir/v1/service-requests"
 FHIR_ACCEPT = {"Accept": "application/fhir+json"}
@@ -99,17 +97,6 @@ async def test_list_pagination(client):
     assert len(r.json()["data"]) <= 2
 
 
-async def test_me_filters(client):
-    await client.post(BASE + "/", json={**MINIMAL, "user_id": "user-a", "org_id": "org-a"})
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="user-a", org_id="org-a", permissions=["service_request:read"]
-    )
-    r = await client.get(f"{BASE}/me")
-    assert r.status_code == 200
-    for item in r.json()["data"]:
-        assert item["user_id"] == "user-a"
-
-
 async def test_patch_status(client):
     data = await _create(client)
     r = await client.patch(f"{BASE}/{data['id']}", json={"status": "completed"})
@@ -131,6 +118,3 @@ async def test_delete_not_found(client):
     assert (await client.delete(f"{BASE}/9999999")).status_code == 404
 
 
-async def test_create_requires_permission(client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=[])
-    assert (await client.post(BASE + "/", json=MINIMAL)).status_code in (401, 403)

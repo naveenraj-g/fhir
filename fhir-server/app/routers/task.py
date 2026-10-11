@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from app.deps.task_deps import resolve_task
 from app.core.content_negotiation import format_paginated_response, format_response
@@ -13,6 +14,7 @@ from app.schemas.task.response import (
     PaginatedTaskResponse,
     PlainTaskResponse,
 )
+from app.repository.task_repository import TaskSearch
 from app.services.task_service import TaskService
 
 router = APIRouter()
@@ -108,12 +110,14 @@ async def get_task(
     operation_id="patch_task",
     summary="Partially update a Task resource",
     description=(
-        "Updates fields on a Task. Provide only the fields to change. "
-        "Child arrays (identifiers, basedOn, partOf, performerType, insurance, note, "
-        "relevantHistory, restriction recipients, input, output) are fully replaced when supplied. "
+        "Updates fields on a Task. Provide only the fields to change. `status` and `intent` cannot be null. "
+        "References (`focus`, `for`, `encounter`, `requester`, `owner`, `location`, `reason_reference`) are `Type/id` "
+        "strings; send null to clear one. Child lists (identifiers, based_on, part_of, performer_types, insurance, "
+        "notes, relevant_history, restriction_recipients, inputs, outputs) use REPLACE semantics: a list that is "
+        "sent replaces the stored list in full, `[]` clears it, an omitted list is left untouched. "
         + _CONTENT_NEG
     ),
-    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
 )
 async def patch_task(
     request: Request,
@@ -138,17 +142,63 @@ async def patch_task(
 @router.get(
     "/",
     operation_id="list_tasks",
-    summary="List Task resources",
-    description="Returns a paginated list of Task resources. " + _CONTENT_NEG,
-    responses={**_LIST_200},
+    summary="Search Task resources",
+    description=(
+        "Searches Tasks using the FHIR R4 Task search parameters (https://www.hl7.org/fhir/R4/task.html#search). "
+        "Token params (`status`, `intent`, `priority`, `code`, `business-status`, `identifier`, `group-identifier`, "
+        "`performer`) accept `code`, `system|code`, `|code` or `system|`; comma = OR. Reference params "
+        "(`subject`, `patient`, `focus`, `encounter`, `owner`, `requester`, `based-on`, `part-of`) accept `Type/id` "
+        "or a bare numeric id. Date params (`authored-on`, `modified`, `period`, `_lastUpdated`) take an optional "
+        "prefix eq|ne|gt|lt|ge|le|sa|eb|ap; repeat for AND (e.g. `authored-on=ge2024-01-01&authored-on=lt2024-02-01`). "
+        "`period` matches the executionPeriod. `org_id` is mandatory on every search (tenant scope) and `user_id` is optional; paginate with `limit` / "
+        "`offset`. " + _CONTENT_NEG
+    ),
+    responses={**_LIST_200, **_ERR_VALIDATION},
 )
 async def list_tasks(
     request: Request,
+    id_: Optional[str] = Query(None, alias="_id", description="Public task_id(s), comma-separated."),
+    identifier: Optional[str] = Query(None, description="Token `[system|]value` of Task.identifier."),
+    group_identifier: Optional[str] = Query(None, alias="group-identifier", description="Token `[system|]value` of Task.groupIdentifier."),
+    task_status: Optional[str] = Query(
+        None, alias="status",
+        description="Token: draft|requested|received|accepted|rejected|ready|cancelled|in-progress|on-hold|failed|completed|entered-in-error (comma = OR).",
+    ),
+    intent: Optional[str] = Query(
+        None, description="Token: unknown|proposal|plan|order|original-order|reflex-order|filler-order|instance-order|option."
+    ),
+    priority: Optional[str] = Query(None, description="Token: routine|urgent|asap|stat."),
+    code: Optional[str] = Query(None, description="Token `[system|]code` of Task.code."),
+    business_status: Optional[str] = Query(None, alias="business-status", description="Token `[system|]code` of Task.businessStatus."),
+    subject: Optional[str] = Query(None, description="Task.for reference (any type), e.g. `Patient/10001`."),
+    patient: Optional[str] = Query(None, description="Task.for as a Patient: `Patient/10001` or `10001`."),
+    focus: Optional[str] = Query(None, description="Task.focus reference (any type), e.g. `ServiceRequest/80001`."),
+    encounter: Optional[str] = Query(None, description="Encounter reference: `Encounter/20001` or `20001`."),
+    owner: Optional[str] = Query(None, description="Owner reference: Practitioner|PractitionerRole|Organization|CareTeam|HealthcareService|Patient|Device|RelatedPerson."),
+    requester: Optional[str] = Query(None, description="Requester reference: Device|Organization|Patient|Practitioner|PractitionerRole|RelatedPerson."),
+    performer: Optional[str] = Query(None, description="Token `[system|]code` of Task.performerType."),
+    based_on: Optional[str] = Query(None, alias="based-on", description="basedOn reference (any type), e.g. `ServiceRequest/80001`."),
+    part_of: Optional[str] = Query(None, alias="part-of", description="partOf reference: `Task/280001`."),
+    authored_on: Optional[List[str]] = Query(None, alias="authored-on", description="authoredOn with optional prefix, e.g. `ge2024-01-01`. Repeat for AND."),
+    modified: Optional[List[str]] = Query(None, description="lastModified with optional prefix. Repeat for AND."),
+    period: Optional[List[str]] = Query(None, description="executionPeriod with optional prefix. Repeat for AND."),
+    last_updated: Optional[List[str]] = Query(None, alias="_lastUpdated", description="Last-updated instant with optional prefix."),
+    user_id: Optional[str] = Query(None, description="Optional: restrict to records owned by this user."),
+    org_id: str = Query(..., min_length=1, description="Tenant organization id — mandatory scope of every search."),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     task_service: TaskService = Depends(get_task_service),
 ):
-    rows, total = await task_service.list_tasks(limit=limit, offset=offset)
+    search = TaskSearch(
+        id=id_, identifier=identifier, group_identifier=group_identifier, task_status=task_status,
+        intent=intent, priority=priority, code=code, business_status=business_status, subject=subject,
+        patient=patient, focus=focus, encounter=encounter, owner=owner, requester=requester,
+        performer=performer, based_on=based_on, part_of=part_of, authored_on=authored_on or [],
+        modified=modified or [], period=period or [], last_updated=last_updated or [],
+    )
+    rows, total = await task_service.list_tasks(
+        user_id=user_id, org_id=org_id, search=search, limit=limit, offset=offset,
+    )
     return format_paginated_response(
         [task_service._to_fhir(r) for r in rows],
         [task_service._to_plain(r) for r in rows],
@@ -172,4 +222,4 @@ async def delete_task(
     task_service: TaskService = Depends(get_task_service),
 ):
     await task_service.delete_task(task.task_id)
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

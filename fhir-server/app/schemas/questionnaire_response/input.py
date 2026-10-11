@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date as Date, datetime
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.questionnaire_response.enums import QuestionnaireResponseStatus
 from app.models.enums import IdentifierUse
@@ -66,7 +66,7 @@ class AnswerInput(BaseModel):
     value_boolean: Optional[bool] = None
     value_decimal: Optional[float] = None
     value_integer: Optional[int] = None
-    value_date: Optional[str] = Field(None, description="Date answer (YYYY-MM-DD).", examples=["2024-06-01"])
+    value_date: Optional[Date] = Field(None, description="Date answer (YYYY-MM-DD).", examples=["2024-06-01"])
     value_datetime: Optional[datetime] = None
     value_time: Optional[str] = Field(None, description="Time answer (HH:MM:SS).", examples=["09:00:00"])
     value_string: Optional[str] = None
@@ -80,6 +80,27 @@ class AnswerInput(BaseModel):
     value_reference_display: Optional[str] = None
     value_attachment: Optional[AnswerAttachmentInput] = None
     item: Optional[List["ItemInput"]] = None
+
+    @model_validator(mode="after")
+    def _at_most_one_value(self):
+        """answer.value[x] is 0..1 — reject answers that carry more than one value variant."""
+        used = [name for name, present in {
+            "boolean": self.value_boolean is not None,
+            "decimal": self.value_decimal is not None,
+            "integer": self.value_integer is not None,
+            "date": self.value_date is not None,
+            "dateTime": self.value_datetime is not None,
+            "time": self.value_time is not None,
+            "string": self.value_string is not None,
+            "uri": self.value_uri is not None,
+            "Coding": self.value_coding is not None,
+            "Quantity": self.value_quantity is not None,
+            "Reference": self.value_reference is not None,
+            "Attachment": self.value_attachment is not None,
+        }.items() if present]
+        if len(used) > 1:
+            raise ValueError(f"answer allows at most one value[x] variant; got {used}.")
+        return self
 
 
 # ── Item input (recursive) ─────────────────────────────────────────────────────
@@ -144,9 +165,9 @@ class QuestionnaireResponseCreateSchema(BaseModel):
     user_id: Optional[str] = None
     org_id: Optional[str] = None
     created_by: Optional[str] = None
-    questionnaire: str = Field(
-        ...,
-        description="Canonical URL or id of the Questionnaire this response answers.",
+    questionnaire: Optional[str] = Field(
+        None,
+        description="Canonical URL (or 'Questionnaire/<id>') of the Questionnaire this response answers.",
         examples=["http://example.org/fhir/Questionnaire/phq-9"],
     )
     status: QuestionnaireResponseStatus
@@ -179,13 +200,14 @@ class QuestionnaireResponseCreateSchema(BaseModel):
 
     subject: Optional[str] = Field(
         None,
-        description="Subject reference, e.g. 'Patient/10001'.",
+        description="Subject reference (any resource type), e.g. 'Patient/10001'.",
     )
     subject_display: Optional[str] = None
     encounter: Optional[str] = Field(
         None,
         description="Encounter reference, e.g. 'Encounter/20001'.",
     )
+    encounter_display: Optional[str] = None
     authored: Optional[datetime] = Field(None, description="Date/time the answers were gathered.")
     author: Optional[str] = Field(
         None,
@@ -201,8 +223,39 @@ class QuestionnaireResponseCreateSchema(BaseModel):
 
 
 class QuestionnaireResponsePatchSchema(BaseModel):
+    """
+    PATCH body — scalar and reference fields plus the child lists (basedOn, partOf and the
+    item/answer tree, with REPLACE semantics). To correct answers, send the corrected `item`
+    tree and set status to 'amended'. References are 'Type/id' strings; send null to clear
+    an optional one. `status` cannot be null.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
-    status: Optional[QuestionnaireResponseStatus] = None
+    status: Optional[QuestionnaireResponseStatus] = Field(
+        None, description="in-progress | completed | amended | entered-in-error | stopped (cannot be null)."
+    )
+    questionnaire: Optional[str] = None
     authored: Optional[datetime] = None
+    subject: Optional[str] = Field(None, description="Subject reference (any resource type), e.g. 'Patient/10001'.")
+    subject_display: Optional[str] = None
+    encounter: Optional[str] = Field(None, description="Encounter reference, e.g. 'Encounter/20001'.")
+    author: Optional[str] = Field(None, description="Device|Practitioner|PractitionerRole|Patient|RelatedPerson|Organization.")
+    author_display: Optional[str] = None
+    source: Optional[str] = Field(None, description="Patient|Practitioner|PractitionerRole|RelatedPerson.")
+    source_display: Optional[str] = None
     updated_by: Optional[str] = None
+
+    # Child lists — REPLACE semantics: a list that is sent replaces the stored one in full
+    # ([] / null clears it); an omitted list is left untouched. Sending `item` replaces the
+    # ENTIRE item/answer tree.
+    based_on: Optional[List[QRBasedOnInput]] = None
+    part_of: Optional[List[QRPartOfInput]] = None
+    item: Optional[List[ItemInput]] = None
+
+    @field_validator("status")
+    @classmethod
+    def _status_not_null(cls, v):
+        if v is None:
+            raise ValueError("must not be null")
+        return v

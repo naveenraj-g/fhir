@@ -1,9 +1,8 @@
-from datetime import datetime
 from typing import List, Optional, Tuple
 
 from app.fhir.mappers.procedure import to_fhir_procedure, to_plain_procedure
 from app.models.procedure.procedure import ProcedureModel
-from app.repository.procedure_repository import ProcedureRepository
+from app.repository.procedure_repository import ProcedureRepository, ProcedureSearch
 from app.schemas.procedure import ProcedureCreateSchema, ProcedurePatchSchema
 
 
@@ -24,43 +23,22 @@ class ProcedureService:
         self,
         user_id: str,
         org_id: str,
-        proc_status: Optional[str] = None,
-        patient_id: Optional[int] = None,
-        performed_from: Optional[datetime] = None,
-        performed_to: Optional[datetime] = None,
+        search: Optional[ProcedureSearch] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[ProcedureModel], int]:
-        return await self.repository.get_me(
-            user_id, org_id,
-            proc_status=proc_status,
-            patient_id=patient_id,
-            performed_from=performed_from,
-            performed_to=performed_to,
-            limit=limit,
-            offset=offset,
-        )
+        return await self.repository.get_me(user_id, org_id, search=search, limit=limit, offset=offset)
 
     async def list_procedures(
         self,
         user_id: Optional[str] = None,
         org_id: Optional[str] = None,
-        proc_status: Optional[str] = None,
-        patient_id: Optional[int] = None,
-        performed_from: Optional[datetime] = None,
-        performed_to: Optional[datetime] = None,
+        search: Optional[ProcedureSearch] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[ProcedureModel], int]:
         return await self.repository.list(
-            user_id=user_id,
-            org_id=org_id,
-            proc_status=proc_status,
-            patient_id=patient_id,
-            performed_from=performed_from,
-            performed_to=performed_to,
-            limit=limit,
-            offset=offset,
+            user_id=user_id, org_id=org_id, search=search, limit=limit, offset=offset
         )
 
     async def create_procedure(

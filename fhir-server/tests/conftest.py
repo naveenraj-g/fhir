@@ -18,7 +18,6 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import FHIRBase
 from app.main import app, container  # triggers all model & router imports
-from app.auth.dependencies import get_current_user
 from app.middleware.rate_limit import RateLimitMiddleware
 
 # ── Disable rate limiting for tests ───────────────────────────────────────────
@@ -149,7 +148,9 @@ async def _engine():
         echo=False,
     )
     async with eng.begin() as conn:
-        await conn.run_sync(FHIRBase.metadata.create_all)
+        # terminology_* tables use Postgres-only types (TSVECTOR/JSONB) that SQLite can't render.
+        tables = [t for t in FHIRBase.metadata.sorted_tables if not t.name.startswith("terminology")]
+        await conn.run_sync(lambda c: FHIRBase.metadata.create_all(c, tables=tables))
     yield eng
     await eng.dispose()
 
@@ -161,7 +162,6 @@ async def client(_engine):
     """AsyncClient authenticated as u-test / org-test with full patient permissions."""
     test_db = TestDatabase(_engine)
     container.core.database.override(test_db)
-    app.dependency_overrides[get_current_user] = make_test_user()
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -169,7 +169,6 @@ async def client(_engine):
     ) as ac:
         yield ac
 
-    app.dependency_overrides.pop(get_current_user, None)
     container.core.database.reset_override()
 
 
@@ -180,10 +179,6 @@ async def other_client(_engine):
     """AsyncClient authenticated as u-other / org-other, sharing the same database."""
     test_db = TestDatabase(_engine)
     container.core.database.override(test_db)
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="u-other",
-        org_id="org-other",
-    )
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -191,5 +186,4 @@ async def other_client(_engine):
     ) as ac:
         yield ac
 
-    app.dependency_overrides.pop(get_current_user, None)
     container.core.database.reset_override()

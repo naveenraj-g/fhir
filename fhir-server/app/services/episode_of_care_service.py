@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 
 from app.fhir.mappers.episode_of_care import to_fhir_episode_of_care, to_plain_episode_of_care
 from app.models.episode_of_care.episode_of_care import EpisodeOfCareModel
-from app.repository.episode_of_care_repository import EpisodeOfCareRepository
+from app.repository.episode_of_care_repository import EpisodeOfCareRepository, EpisodeOfCareSearch
 from app.schemas.episode_of_care.input import EpisodeOfCareCreateSchema, EpisodeOfCarePatchSchema
 
 
@@ -23,12 +23,11 @@ class EpisodeOfCareService:
         self,
         user_id: Optional[str],
         org_id: Optional[str],
-        episode_status=None,
-        patient_id: Optional[int] = None,
+        search: Optional[EpisodeOfCareSearch] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[int, List[EpisodeOfCareModel]]:
-        return await self.repository.list(user_id, org_id, episode_status, patient_id, limit, offset)
+        return await self.repository.list(user_id, org_id, search, limit, offset)
 
     async def create_episode_of_care(
         self,

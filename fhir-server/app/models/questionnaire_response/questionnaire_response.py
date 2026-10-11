@@ -6,6 +6,7 @@ from sqlalchemy import (
     ForeignKey,
     Text,
     Boolean,
+    Date,
     Float,
     Sequence,
     Enum,
@@ -20,7 +21,7 @@ from app.models.questionnaire_response.enums import (
     QRBasedOnReferenceType,
     QRPartOfReferenceType,
 )
-from app.models.enums import EncounterReferenceType, SubjectReferenceType, IdentifierUse
+from app.models.enums import EncounterReferenceType, IdentifierUse
 
 questionnaire_response_id_seq = Sequence(
     "questionnaire_response_pub_seq", start=60000, increment=1, metadata=Base.metadata
@@ -46,8 +47,9 @@ class QuestionnaireResponseModel(Base):
     user_id = Column(String, nullable=True, index=True)
     org_id = Column(String, nullable=True, index=True)
 
-    # Required
-    questionnaire = Column(String, nullable=False)  # canonical URL
+    # questionnaire (0..1 canonical(Questionnaire)) — canonical URL or 'Questionnaire/<id>'
+    questionnaire = Column(String, nullable=True, index=True)
+    # status (1..1 code)
     status = Column(Enum(QuestionnaireResponseStatus), nullable=False)
 
     # identifier (0..1 in R4 — flat columns)
@@ -62,11 +64,8 @@ class QuestionnaireResponseModel(Base):
     identifier_period_end = Column(DateTime(timezone=True), nullable=True)
     identifier_assigner = Column(String, nullable=True)
 
-    # Subject reference — stored as type enum + integer ID
-    subject_type = Column(
-        Enum(SubjectReferenceType, name="subject_reference_type"),
-        nullable=True,
-    )
+    # subject (0..1 Reference(Any)) — open reference, so the resource type is a free string
+    subject_type = Column(String, nullable=True)
     subject_id = Column(Integer, nullable=True)
     subject_display = Column(String, nullable=True)
 
@@ -76,7 +75,7 @@ class QuestionnaireResponseModel(Base):
         Enum(EncounterReferenceType, name="encounter_reference_type", create_type=False),
         nullable=True,
     )
-    encounter_id = Column(Integer, ForeignKey("encounter.id"), nullable=True, index=True)
+    encounter_id = Column(Integer, nullable=True, index=True)  # public encounter_id (no FK to other resources)
     encounter_display = Column(String, nullable=True)
 
     # Authored / Author / Source
@@ -117,7 +116,6 @@ class QuestionnaireResponseModel(Base):
         back_populates="response",
         cascade="all, delete-orphan",
     )
-    encounter = relationship("EncounterModel", foreign_keys=[encounter_id], lazy="selectin")
 
 
 class QuestionnaireResponseBasedOn(Base):
@@ -174,6 +172,9 @@ class QuestionnaireResponseItemModel(Base):
     )
     org_id = Column(String, nullable=True)
 
+    # Global creation order (depth-first) — preserves sibling order when the flat rows are re-nested.
+    position = Column(Integer, nullable=False, default=0)
+
     link_id = Column(String, nullable=False)
     text = Column(String, nullable=True)
     definition = Column(String, nullable=True)
@@ -212,7 +213,10 @@ class QuestionnaireResponseAnswerModel(Base):
     value_type = Column(String, nullable=True)
 
     # Scalar values
-    value_string = Column(Text, nullable=True)  # valueString, valueUri, valueTime, valueDate
+    value_string = Column(Text, nullable=True)  # valueString only
+    value_date = Column(Date, nullable=True)
+    value_time = Column(String, nullable=True)  # HH:MM:SS
+    value_uri = Column(String, nullable=True)
     value_boolean = Column(Boolean, nullable=True)
     value_integer = Column(Integer, nullable=True)
     value_decimal = Column(Float, nullable=True)

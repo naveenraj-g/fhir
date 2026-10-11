@@ -4,6 +4,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Integer,
     Numeric,
@@ -417,7 +418,81 @@ class TaskRestrictionRecipient(Base):
 # ---------------------------------------------------------------------------
 
 
-class TaskInput(Base):
+class _TaskValueExtras:
+    """
+    Additional value[x] variants shared by Task.input and Task.output (R4 allows ~50 types).
+
+    These columns sit next to the original value_boolean / value_code / value_date /
+    value_date_time / value_decimal / value_integer / value_string / value_uri / value_reference_*
+    columns that TaskInput and TaskOutput already declare. At most one variant is populated per row.
+    Rarely used complex types (Address, HumanName, Timing, Dosage, ...) are not stored.
+    """
+
+    # primitives
+    value_time = Column(String, nullable=True)
+    value_instant = Column(DateTime(timezone=True), nullable=True)
+    value_markdown = Column(Text, nullable=True)
+    value_canonical = Column(String, nullable=True)
+    value_url = Column(String, nullable=True)
+    value_positive_int = Column(Integer, nullable=True)
+    value_unsigned_int = Column(Integer, nullable=True)
+    value_base64_binary = Column(Text, nullable=True)
+    value_id = Column(String, nullable=True)
+
+    # Coding
+    value_coding_system = Column(String, nullable=True)
+    value_coding_code = Column(String, nullable=True)
+    value_coding_display = Column(String, nullable=True)
+
+    # CodeableConcept
+    value_codeable_concept_system = Column(String, nullable=True)
+    value_codeable_concept_code = Column(String, nullable=True)
+    value_codeable_concept_display = Column(String, nullable=True)
+    value_codeable_concept_text = Column(String, nullable=True)
+
+    # Quantity
+    value_quantity_value = Column(Float, nullable=True)
+    value_quantity_unit = Column(String, nullable=True)
+    value_quantity_system = Column(String, nullable=True)
+    value_quantity_code = Column(String, nullable=True)
+
+    # Period
+    value_period_start = Column(DateTime(timezone=True), nullable=True)
+    value_period_end = Column(DateTime(timezone=True), nullable=True)
+
+    # Range
+    value_range_low_value = Column(Float, nullable=True)
+    value_range_low_unit = Column(String, nullable=True)
+    value_range_high_value = Column(Float, nullable=True)
+    value_range_high_unit = Column(String, nullable=True)
+
+    # Attachment
+    value_attachment_content_type = Column(String, nullable=True)
+    value_attachment_language = Column(String, nullable=True)
+    value_attachment_data = Column(Text, nullable=True)  # base64Binary
+    value_attachment_url = Column(String, nullable=True)
+    value_attachment_size = Column(Integer, nullable=True)
+    value_attachment_hash = Column(String, nullable=True)
+    value_attachment_title = Column(String, nullable=True)
+    value_attachment_creation = Column(DateTime(timezone=True), nullable=True)
+
+    # Identifier
+    value_identifier_use = Column(String, nullable=True)
+    value_identifier_system = Column(String, nullable=True)
+    value_identifier_value = Column(String, nullable=True)
+
+    # Money
+    value_money_value = Column(Float, nullable=True)
+    value_money_currency = Column(String, nullable=True)
+
+    # Ratio
+    value_ratio_numerator_value = Column(Float, nullable=True)
+    value_ratio_numerator_unit = Column(String, nullable=True)
+    value_ratio_denominator_value = Column(Float, nullable=True)
+    value_ratio_denominator_unit = Column(String, nullable=True)
+
+
+class TaskInput(_TaskValueExtras, Base):
     __tablename__ = "task_input"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -451,7 +526,7 @@ class TaskInput(Base):
 # ---------------------------------------------------------------------------
 
 
-class TaskOutput(Base):
+class TaskOutput(_TaskValueExtras, Base):
     __tablename__ = "task_output"
 
     id = Column(Integer, primary_key=True, autoincrement=True)

@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.deps.allergy_intolerance_deps import resolve_allergy_intolerance
 from app.core.content_negotiation import format_paginated_response, format_response
@@ -188,4 +188,4 @@ async def delete_allergy_intolerance(
     allergy_intolerance_service: AllergyIntoleranceService = Depends(get_allergy_intolerance_service),
 ):
     await allergy_intolerance_service.delete_allergy_intolerance(ai.allergy_intolerance_id)
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

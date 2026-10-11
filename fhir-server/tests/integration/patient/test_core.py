@@ -10,8 +10,6 @@ This file holds the top-level patient contract:
 - permission and content negotiation checks
 """
 
-from app.auth.dependencies import get_current_user
-from tests.conftest import make_test_user
 from tests.helpers.assertions import (
     assert_fhir_bundle,
     assert_fhir_patient,
@@ -212,34 +210,6 @@ async def test_list_patients_empty(client):
     data = resp.json()
     assert data["total"] == 0
     assert data["data"] == []
-
-
-async def test_get_my_patient_profile_found(client):
-    await client.post(BASE + "/", json=MINIMAL)
-    resp = await client.get(BASE + "/me")
-    assert resp.status_code == 200
-    assert_plain_patient(resp.json(), gender="male")
-
-
-async def test_get_my_patient_profile_not_found(client):
-    resp = await client.get(BASE + "/me")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-
-
-async def test_get_my_patient_profile_org_isolation(client, other_client):
-    await client.post(BASE + "/", json=MINIMAL)
-    resp = await other_client.get(BASE + "/me")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-
-
-async def test_create_patient_no_permission(client):
-    app = client._transport.app
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=["patient:read"])
-    try:
-        resp = await client.post(BASE + "/", json=MINIMAL)
-        assert_operation_outcome(resp.json(), expected_status=403, response_status=resp.status_code)
-    finally:
-        app.dependency_overrides[get_current_user] = make_test_user()
 
 
 async def test_content_negotiation_defaults_to_plain(client):

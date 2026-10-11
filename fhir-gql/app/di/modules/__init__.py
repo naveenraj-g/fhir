@@ -11,6 +11,17 @@ from app.di.modules.organization import OrganizationContainer
 from app.di.modules.patient import PatientContainer
 from app.di.modules.practitioner import PractitionerContainer
 from app.di.modules.practitioner_role import PractitionerRoleContainer
+from app.di.modules.procedure import ProcedureContainer
+from app.di.modules.questionnaire import QuestionnaireContainer
+from app.di.modules.questionnaire_response import QuestionnaireResponseContainer
+from app.di.modules.risk_assessment import RiskAssessmentContainer
+from app.di.modules.flag import FlagContainer
+from app.di.modules.plan_definition import PlanDefinitionContainer
+from app.di.modules.care_plan import CarePlanContainer
+from app.di.modules.care_team import CareTeamContainer
+from app.di.modules.activity_definition import ActivityDefinitionContainer
+from app.di.modules.task import TaskContainer
+from app.di.modules.episode_of_care import EpisodeOfCareContainer
 from app.di.modules.schedule import ScheduleContainer
 from app.di.modules.service_request import ServiceRequestContainer
 from app.di.modules.slot import SlotContainer
@@ -34,4 +45,15 @@ __all__ = [
     "DiagnosticReportContainer",
     "DocumentReferenceContainer",
     "VitalsContainer",
+    "ProcedureContainer",
+    "QuestionnaireContainer",
+    "QuestionnaireResponseContainer",
+    "RiskAssessmentContainer",
+    "FlagContainer",
+    "PlanDefinitionContainer",
+    "CarePlanContainer",
+    "CareTeamContainer",
+    "ActivityDefinitionContainer",
+    "TaskContainer",
+    "EpisodeOfCareContainer",
 ]

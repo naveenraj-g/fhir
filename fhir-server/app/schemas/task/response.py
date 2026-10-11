@@ -34,6 +34,24 @@ class FHIRTaskInputItem(BaseModel):
     valueString: Optional[str] = None
     valueUri: Optional[str] = None
     valueReference: Optional[FHIRReference] = None
+    valueTime: Optional[str] = None
+    valueInstant: Optional[str] = None
+    valueMarkdown: Optional[str] = None
+    valueCanonical: Optional[str] = None
+    valueUrl: Optional[str] = None
+    valuePositiveInt: Optional[int] = None
+    valueUnsignedInt: Optional[int] = None
+    valueBase64Binary: Optional[str] = None
+    valueId: Optional[str] = None
+    valueCoding: Optional[Dict[str, Any]] = None
+    valueCodeableConcept: Optional[FHIRCodeableConcept] = None
+    valueQuantity: Optional[Dict[str, Any]] = None
+    valuePeriod: Optional[Dict[str, Any]] = None
+    valueRange: Optional[Dict[str, Any]] = None
+    valueAttachment: Optional[Dict[str, Any]] = None
+    valueIdentifier: Optional[Dict[str, Any]] = None
+    valueMoney: Optional[Dict[str, Any]] = None
+    valueRatio: Optional[Dict[str, Any]] = None
 
 
 class FHIRTaskOutputItem(BaseModel):
@@ -47,6 +65,24 @@ class FHIRTaskOutputItem(BaseModel):
     valueString: Optional[str] = None
     valueUri: Optional[str] = None
     valueReference: Optional[FHIRReference] = None
+    valueTime: Optional[str] = None
+    valueInstant: Optional[str] = None
+    valueMarkdown: Optional[str] = None
+    valueCanonical: Optional[str] = None
+    valueUrl: Optional[str] = None
+    valuePositiveInt: Optional[int] = None
+    valueUnsignedInt: Optional[int] = None
+    valueBase64Binary: Optional[str] = None
+    valueId: Optional[str] = None
+    valueCoding: Optional[Dict[str, Any]] = None
+    valueCodeableConcept: Optional[FHIRCodeableConcept] = None
+    valueQuantity: Optional[Dict[str, Any]] = None
+    valuePeriod: Optional[Dict[str, Any]] = None
+    valueRange: Optional[Dict[str, Any]] = None
+    valueAttachment: Optional[Dict[str, Any]] = None
+    valueIdentifier: Optional[Dict[str, Any]] = None
+    valueMoney: Optional[Dict[str, Any]] = None
+    valueRatio: Optional[Dict[str, Any]] = None
 
 
 class FHIRTaskSchema(BaseModel):
@@ -193,6 +229,49 @@ class PlainTaskInputItem(BaseModel):
     value_reference_type: Optional[str] = None
     value_reference_id: Optional[int] = None
     value_reference_display: Optional[str] = None
+    value_time: Optional[str] = None
+    value_instant: Optional[str] = None
+    value_markdown: Optional[str] = None
+    value_canonical: Optional[str] = None
+    value_url: Optional[str] = None
+    value_positive_int: Optional[int] = None
+    value_unsigned_int: Optional[int] = None
+    value_base64_binary: Optional[str] = None
+    value_id: Optional[str] = None
+    value_coding_system: Optional[str] = None
+    value_coding_code: Optional[str] = None
+    value_coding_display: Optional[str] = None
+    value_codeable_concept_system: Optional[str] = None
+    value_codeable_concept_code: Optional[str] = None
+    value_codeable_concept_display: Optional[str] = None
+    value_codeable_concept_text: Optional[str] = None
+    value_quantity_value: Optional[float] = None
+    value_quantity_unit: Optional[str] = None
+    value_quantity_system: Optional[str] = None
+    value_quantity_code: Optional[str] = None
+    value_period_start: Optional[str] = None
+    value_period_end: Optional[str] = None
+    value_range_low_value: Optional[float] = None
+    value_range_low_unit: Optional[str] = None
+    value_range_high_value: Optional[float] = None
+    value_range_high_unit: Optional[str] = None
+    value_attachment_content_type: Optional[str] = None
+    value_attachment_language: Optional[str] = None
+    value_attachment_data: Optional[str] = None
+    value_attachment_url: Optional[str] = None
+    value_attachment_size: Optional[int] = None
+    value_attachment_hash: Optional[str] = None
+    value_attachment_title: Optional[str] = None
+    value_attachment_creation: Optional[str] = None
+    value_identifier_use: Optional[str] = None
+    value_identifier_system: Optional[str] = None
+    value_identifier_value: Optional[str] = None
+    value_money_value: Optional[float] = None
+    value_money_currency: Optional[str] = None
+    value_ratio_numerator_value: Optional[float] = None
+    value_ratio_numerator_unit: Optional[str] = None
+    value_ratio_denominator_value: Optional[float] = None
+    value_ratio_denominator_unit: Optional[str] = None
 
 
 class PlainTaskOutputItem(BaseModel):
@@ -213,6 +292,49 @@ class PlainTaskOutputItem(BaseModel):
     value_reference_type: Optional[str] = None
     value_reference_id: Optional[int] = None
     value_reference_display: Optional[str] = None
+    value_time: Optional[str] = None
+    value_instant: Optional[str] = None
+    value_markdown: Optional[str] = None
+    value_canonical: Optional[str] = None
+    value_url: Optional[str] = None
+    value_positive_int: Optional[int] = None
+    value_unsigned_int: Optional[int] = None
+    value_base64_binary: Optional[str] = None
+    value_id: Optional[str] = None
+    value_coding_system: Optional[str] = None
+    value_coding_code: Optional[str] = None
+    value_coding_display: Optional[str] = None
+    value_codeable_concept_system: Optional[str] = None
+    value_codeable_concept_code: Optional[str] = None
+    value_codeable_concept_display: Optional[str] = None
+    value_codeable_concept_text: Optional[str] = None
+    value_quantity_value: Optional[float] = None
+    value_quantity_unit: Optional[str] = None
+    value_quantity_system: Optional[str] = None
+    value_quantity_code: Optional[str] = None
+    value_period_start: Optional[str] = None
+    value_period_end: Optional[str] = None
+    value_range_low_value: Optional[float] = None
+    value_range_low_unit: Optional[str] = None
+    value_range_high_value: Optional[float] = None
+    value_range_high_unit: Optional[str] = None
+    value_attachment_content_type: Optional[str] = None
+    value_attachment_language: Optional[str] = None
+    value_attachment_data: Optional[str] = None
+    value_attachment_url: Optional[str] = None
+    value_attachment_size: Optional[int] = None
+    value_attachment_hash: Optional[str] = None
+    value_attachment_title: Optional[str] = None
+    value_attachment_creation: Optional[str] = None
+    value_identifier_use: Optional[str] = None
+    value_identifier_system: Optional[str] = None
+    value_identifier_value: Optional[str] = None
+    value_money_value: Optional[float] = None
+    value_money_currency: Optional[str] = None
+    value_ratio_numerator_value: Optional[float] = None
+    value_ratio_numerator_unit: Optional[str] = None
+    value_ratio_denominator_value: Optional[float] = None
+    value_ratio_denominator_unit: Optional[str] = None
 
 
 class PlainTaskResponse(BaseModel):

@@ -1,3 +1,5 @@
+> **NOT USED BY DEFAULT.** The current standing rule is **no sub-resource endpoints**: child lists are managed through the parent's `POST` and `PATCH` (replace semantics — see `/new-fhir-resource`). Only follow this pattern if the user explicitly asks for `GET /{id}/<sub>` / `DELETE /{id}/<sub>/{sub_id}` routes for a resource. Existing resources (Patient, Practitioner, ...) still have them.
+
 # Sub-Resource Endpoints
 
 Complete pattern for adding GET and DELETE endpoints to any `0..*` child table (names, identifiers, telecom, addresses, photos, contacts, qualifications, communications, etc.).

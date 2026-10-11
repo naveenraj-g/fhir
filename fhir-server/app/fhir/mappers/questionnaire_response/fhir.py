@@ -1,16 +1,54 @@
+"""FHIR R4 (camelCase) builders for QuestionnaireResponse."""
+
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import TYPE_CHECKING
+
+from app.fhir.datatypes import fhir_enum, fhir_identifier
 
 if TYPE_CHECKING:
     from app.models.questionnaire_response.questionnaire_response import (
-        QuestionnaireResponseModel,
-        QuestionnaireResponseItemModel,
         QuestionnaireResponseAnswerModel,
+        QuestionnaireResponseItemModel,
+        QuestionnaireResponseModel,
     )
 
 
-def fhir_qr_answer(answer: "QuestionnaireResponseAnswerModel") -> dict:
+def _strip(d: dict) -> dict:
+    """Drop None values (keeps False / 0)."""
+    return {k: v for k, v in d.items() if v is not None}
+
+
+def _ref(ref_type, ref_id, display) -> dict | None:
+    entry: dict = {}
+    if ref_type is not None and ref_id is not None:
+        entry["reference"] = f"{fhir_enum(ref_type)}/{ref_id}"
+    if display:
+        entry["display"] = display
+    return entry or None
+
+
+def build_item_index(items) -> tuple[dict, dict]:
+    """
+    Re-nest the flat item rows.
+
+    Returns (by_parent_item, by_parent_answer): each maps a parent id to its
+    children sorted by creation position. Top-level items are
+    by_parent_item[None]. Items nested under an answer have parent_answer_id set
+    (and no parent_item_id), so they must NOT be treated as top-level.
+    """
+    by_item: dict = defaultdict(list)
+    by_answer: dict = defaultdict(list)
+    for it in sorted(items or [], key=lambda x: (x.position or 0, x.id)):
+        if it.parent_answer_id is not None:
+            by_answer[it.parent_answer_id].append(it)
+        else:
+            by_item[it.parent_item_id].append(it)
+    return by_item, by_answer
+
+
+def fhir_qr_answer(answer: "QuestionnaireResponseAnswerModel", by_item: dict, by_answer: dict) -> dict:
     vt = answer.value_type
     data: dict = {}
 
@@ -21,78 +59,73 @@ def fhir_qr_answer(answer: "QuestionnaireResponseAnswerModel") -> dict:
     elif vt == "integer":
         data["valueInteger"] = answer.value_integer
     elif vt == "date":
-        data["valueDate"] = answer.value_string
+        data["valueDate"] = answer.value_date.isoformat() if answer.value_date else None
     elif vt == "dateTime":
         data["valueDateTime"] = answer.value_datetime.isoformat() if answer.value_datetime else None
     elif vt == "time":
-        data["valueTime"] = answer.value_string
+        data["valueTime"] = answer.value_time
     elif vt == "string":
         data["valueString"] = answer.value_string
     elif vt == "uri":
-        data["valueUri"] = answer.value_string
+        data["valueUri"] = answer.value_uri
     elif vt == "coding":
-        coding = {k: v for k, v in {
+        coding = _strip({
             "system": answer.value_coding_system,
             "code": answer.value_coding_code,
             "display": answer.value_coding_display,
-        }.items() if v is not None}
+        })
         if coding:
             data["valueCoding"] = coding
     elif vt == "quantity":
-        qty = {k: v for k, v in {
+        qty = _strip({
             "value": answer.value_quantity_value,
             "unit": answer.value_quantity_unit,
             "system": answer.value_quantity_system,
             "code": answer.value_quantity_code,
-        }.items() if v is not None}
+        })
         if qty:
             data["valueQuantity"] = qty
     elif vt == "reference":
-        ref: dict = {}
-        if answer.value_reference:
-            ref["reference"] = answer.value_reference
-        if answer.value_reference_display:
-            ref["display"] = answer.value_reference_display
+        ref = _strip({"reference": answer.value_reference, "display": answer.value_reference_display})
         if ref:
             data["valueReference"] = ref
     elif vt == "attachment":
-        att: dict = {}
-        if answer.value_attachment_content_type:
-            att["contentType"] = answer.value_attachment_content_type
-        if answer.value_attachment_language:
-            att["language"] = answer.value_attachment_language
-        if answer.value_attachment_data:
-            att["data"] = answer.value_attachment_data
-        if answer.value_attachment_url:
-            att["url"] = answer.value_attachment_url
-        if answer.value_attachment_size is not None:
-            att["size"] = answer.value_attachment_size
-        if answer.value_attachment_hash:
-            att["hash"] = answer.value_attachment_hash
-        if answer.value_attachment_title:
-            att["title"] = answer.value_attachment_title
-        if answer.value_attachment_creation:
-            att["creation"] = answer.value_attachment_creation.isoformat()
+        att = _strip({
+            "contentType": answer.value_attachment_content_type,
+            "language": answer.value_attachment_language,
+            "data": answer.value_attachment_data,
+            "url": answer.value_attachment_url,
+            "size": answer.value_attachment_size,
+            "hash": answer.value_attachment_hash,
+            "title": answer.value_attachment_title,
+            "creation": answer.value_attachment_creation.isoformat() if answer.value_attachment_creation else None,
+        })
         if att:
             data["valueAttachment"] = att
 
-    if answer.answer_items:
-        data["item"] = [fhir_qr_item(sub) for sub in answer.answer_items]
+    subs = by_answer.get(answer.id)
+    if subs:
+        data["item"] = [fhir_qr_item(sub, by_item, by_answer) for sub in subs]
+    return {k: v for k, v in data.items() if v is not None}
 
-    return data
 
-
-def fhir_qr_item(item: "QuestionnaireResponseItemModel") -> dict:
+def fhir_qr_item(item: "QuestionnaireResponseItemModel", by_item: dict, by_answer: dict) -> dict:
     data: dict = {"linkId": item.link_id}
     if item.text:
         data["text"] = item.text
     if item.definition:
         data["definition"] = item.definition
     if item.answers:
-        data["answer"] = [fhir_qr_answer(a) for a in item.answers]
-    if item.sub_items:
-        data["item"] = [fhir_qr_item(sub) for sub in item.sub_items]
+        data["answer"] = [fhir_qr_answer(a, by_item, by_answer) for a in item.answers]
+    subs = by_item.get(item.id)
+    if subs:
+        data["item"] = [fhir_qr_item(sub, by_item, by_answer) for sub in subs]
     return data
+
+
+def fhir_qr_reference(r) -> dict:
+    """basedOn / partOf child row -> Reference."""
+    return _ref(r.reference_type, r.reference_id, r.reference_display) or {}
 
 
 def to_fhir_questionnaire_response(qr: "QuestionnaireResponseModel") -> dict:
@@ -100,80 +133,49 @@ def to_fhir_questionnaire_response(qr: "QuestionnaireResponseModel") -> dict:
         "resourceType": "QuestionnaireResponse",
         "id": str(qr.questionnaire_response_id),
         "questionnaire": qr.questionnaire,
-        "status": qr.status.value if qr.status else None,
+        "status": fhir_enum(qr.status),
+        "authored": qr.authored.isoformat() if qr.authored else None,
     }
 
+    # identifier is 0..1 in R4 and stored flat; reuse the shared Identifier builder.
     if qr.identifier_value or qr.identifier_system:
-        ident: dict = {}
-        if qr.identifier_use:
-            ident["use"] = qr.identifier_use.value
-        if qr.identifier_system:
-            ident["system"] = qr.identifier_system
-        if qr.identifier_value:
-            ident["value"] = qr.identifier_value
-        if qr.identifier_type_code or qr.identifier_type_system:
-            coding: dict = {k: v for k, v in {
-                "system": qr.identifier_type_system,
-                "code": qr.identifier_type_code,
-                "display": qr.identifier_type_display,
-            }.items() if v is not None}
-            ident["type"] = {k: v for k, v in {
-                "coding": [coding] if coding else None,
-                "text": qr.identifier_type_text,
-            }.items() if v is not None}
-        if qr.identifier_period_start or qr.identifier_period_end:
-            ident["period"] = {k: v for k, v in {
-                "start": qr.identifier_period_start.isoformat() if qr.identifier_period_start else None,
-                "end": qr.identifier_period_end.isoformat() if qr.identifier_period_end else None,
-            }.items() if v is not None}
-        if qr.identifier_assigner:
-            ident["assigner"] = {"display": qr.identifier_assigner}
-        result["identifier"] = ident
+        class _Ident:  # adapter exposing the flat columns under the shared helper's attribute names
+            use = qr.identifier_use
+            type_system = qr.identifier_type_system
+            type_code = qr.identifier_type_code
+            type_display = qr.identifier_type_display
+            type_text = qr.identifier_type_text
+            system = qr.identifier_system
+            value = qr.identifier_value
+            period_start = qr.identifier_period_start
+            period_end = qr.identifier_period_end
+            assigner = qr.identifier_assigner
+
+        result["identifier"] = fhir_identifier(_Ident)
 
     if qr.based_ons:
-        result["basedOn"] = [
-            {k: v for k, v in {
-                "reference": f"{b.reference_type.value}/{b.reference_id}" if b.reference_type and b.reference_id else None,
-                "display": b.reference_display,
-            }.items() if v is not None}
-            for b in qr.based_ons
-        ]
-
+        result["basedOn"] = [fhir_qr_reference(b) for b in qr.based_ons]
     if qr.part_ofs:
-        result["partOf"] = [
-            {k: v for k, v in {
-                "reference": f"{p.reference_type.value}/{p.reference_id}" if p.reference_type and p.reference_id else None,
-                "display": p.reference_display,
-            }.items() if v is not None}
-            for p in qr.part_ofs
-        ]
+        result["partOf"] = [fhir_qr_reference(p) for p in qr.part_ofs]
 
-    if qr.subject_type and qr.subject_id:
-        subject: dict = {"reference": f"{qr.subject_type.value}/{qr.subject_id}"}
-        if qr.subject_display:
-            subject["display"] = qr.subject_display
+    subject = _ref(qr.subject_type, qr.subject_id, qr.subject_display)
+    if subject:
         result["subject"] = subject
-
-    if qr.encounter and qr.encounter.encounter_id:
-        result["encounter"] = {"reference": f"Encounter/{qr.encounter.encounter_id}"}
-
-    if qr.authored:
-        result["authored"] = qr.authored.isoformat()
-
-    if qr.author_type and qr.author_id:
-        author: dict = {"reference": f"{qr.author_type.value}/{qr.author_id}"}
-        if qr.author_display:
-            author["display"] = qr.author_display
+    if qr.encounter_id is not None:
+        enc = {"reference": f"Encounter/{qr.encounter_id}"}
+        if qr.encounter_display:
+            enc["display"] = qr.encounter_display
+        result["encounter"] = enc
+    author = _ref(qr.author_type, qr.author_id, qr.author_display)
+    if author:
         result["author"] = author
-
-    if qr.source_type and qr.source_id:
-        source: dict = {"reference": f"{qr.source_type.value}/{qr.source_id}"}
-        if qr.source_display:
-            source["display"] = qr.source_display
+    source = _ref(qr.source_type, qr.source_id, qr.source_display)
+    if source:
         result["source"] = source
 
-    top_level = [i for i in qr.items if i.parent_item_id is None]
-    if top_level:
-        result["item"] = [fhir_qr_item(i) for i in top_level]
+    by_item, by_answer = build_item_index(qr.items)
+    top = by_item.get(None)
+    if top:
+        result["item"] = [fhir_qr_item(i, by_item, by_answer) for i in top]
 
     return {k: v for k, v in result.items() if v is not None}

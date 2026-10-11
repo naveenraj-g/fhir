@@ -153,7 +153,7 @@ def plain_proc_used_code(u) -> dict:
 
 
 def to_plain_procedure(proc) -> dict:
-    enc_id = proc.encounter.encounter_id if proc.encounter else None
+    enc_id = proc.encounter_id
     return {
         "id": proc.procedure_id,
         "status": fhir_enum(proc.status),
@@ -180,13 +180,18 @@ def to_plain_procedure(proc) -> dict:
         "performed_period_end": proc.performed_period_end.isoformat() if proc.performed_period_end else None,
         "performed_string": proc.performed_string,
         "performed_age_value": proc.performed_age_value,
+        "performed_age_comparator": proc.performed_age_comparator,
         "performed_age_unit": proc.performed_age_unit,
         "performed_age_system": proc.performed_age_system,
         "performed_age_code": proc.performed_age_code,
         "performed_range_low_value": proc.performed_range_low_value,
         "performed_range_low_unit": proc.performed_range_low_unit,
+        "performed_range_low_system": proc.performed_range_low_system,
+        "performed_range_low_code": proc.performed_range_low_code,
         "performed_range_high_value": proc.performed_range_high_value,
         "performed_range_high_unit": proc.performed_range_high_unit,
+        "performed_range_high_system": proc.performed_range_high_system,
+        "performed_range_high_code": proc.performed_range_high_code,
         "recorder_type": fhir_enum(proc.recorder_type),
         "recorder_id": proc.recorder_id,
         "recorder_display": proc.recorder_display,
@@ -194,7 +199,7 @@ def to_plain_procedure(proc) -> dict:
         "asserter_id": proc.asserter_id,
         "asserter_display": proc.asserter_display,
         "location_type": fhir_enum(proc.location_type),
-        "location_reference_id": proc.location_reference_id,
+        "location_id": proc.location_id,
         "location_display": proc.location_display,
         "outcome_system": proc.outcome_system,
         "outcome_code": proc.outcome_code,

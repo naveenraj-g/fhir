@@ -109,8 +109,15 @@ Router → Service → Repository → ORM Model
 | Immunization | 330000 |
 | AuditEvent | 340000 |
 | EpisodeOfCare | 350000 |
+| InsurancePlan | 360000 |
+| Questionnaire | 370000 |
+| RiskAssessment | 380000 |
+| Flag | 390000 |
+| PlanDefinition | 400000 |
+| ActivityDefinition | 410000 |
+| CareTeam | 420000 |
 
-**Next available block: 360000.** Pick the next unused 10000-block for any new resource.
+**Next available block: 430000.** Pick the next unused 10000-block for any new resource.
 
 ---
 
@@ -303,7 +310,7 @@ Use the `/fhir-db-model` skill (`.claude/commands/fhir-db-model.md`) for detaile
 - `CodeableReference` does not exist in R4
 - `organization_reference_type` PG type is shared — always `create_type=False`, never create/drop it again
 - `encounter_reference_type` PG type is shared — always `create_type=False`, never create/drop it again
-- All reference `_id` columns store the **internal `resource.id` PK**, never the public sequence ID. Add `ForeignKey("resource.id")`, `index=True`, and `lazy="selectin"` relationship. Mapper reads the public ID through the relationship.
+- **References to OTHER resources are plain `<field>_type` / `<field>_id` / `<field>_display` columns holding the PUBLIC id** (e.g. `Encounter/20001` → `encounter_type="Encounter"`, `encounter_id=20001`). **No `ForeignKey`, no `relationship`, no existence lookup** — only the `Type/id` format (and allowed type) is validated. A real `ForeignKey` exists ONLY between a parent resource and its own child tables (`<child>.<parent>_id → <parent>.id`).
 - Alembic autogenerate enum values are correct (key = value convention); still replace `sa.Enum` with `postgresql.ENUM` pattern in migrations for proper create/drop handling
 
 ---

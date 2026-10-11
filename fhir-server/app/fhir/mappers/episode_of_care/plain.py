@@ -98,9 +98,7 @@ def plain_episode_of_care_account(a):
 
 
 def to_plain_episode_of_care(model) -> dict:
-    mo_id = None
-    if model.managing_organization and model.managing_organization.organization_id:
-        mo_id = model.managing_organization.organization_id
+    mo_id = model.managing_organization_id
 
     return {
         "id": model.episode_of_care_id,

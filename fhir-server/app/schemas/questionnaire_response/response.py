@@ -72,7 +72,7 @@ class FHIRQuestionnaireResponseSchema(BaseModel):
     identifier: Optional[FHIRIdentifier] = None
     basedOn: Optional[List[FHIRReference]] = None
     partOf: Optional[List[FHIRReference]] = None
-    questionnaire: str = Field(..., description="Canonical URL of the answered Questionnaire.")
+    questionnaire: Optional[str] = Field(None, description="Canonical URL of the answered Questionnaire.")
     status: str = Field(..., description="in-progress | completed | amended | entered-in-error | stopped")
     subject: Optional[FHIRReference] = None
     encounter: Optional[FHIRReference] = None
@@ -125,8 +125,11 @@ class PlainQRAnswer(BaseModel):
     value_boolean: Optional[bool] = None
     value_decimal: Optional[float] = None
     value_integer: Optional[int] = None
-    value_string: Optional[str] = Field(None, description="Used for string, date, time, and uri value types.")
+    value_date: Optional[str] = Field(None, description="Date answer, YYYY-MM-DD.")
     value_datetime: Optional[str] = Field(None, description="ISO 8601 datetime string.")
+    value_time: Optional[str] = Field(None, description="Time answer, HH:MM:SS.")
+    value_string: Optional[str] = None
+    value_uri: Optional[str] = None
     value_coding: Optional[PlainAnswerCoding] = None
     value_quantity: Optional[PlainAnswerQuantity] = None
     value_reference: Optional[str] = None
@@ -185,10 +188,12 @@ class PlainQuestionnaireResponse(BaseModel):
     based_on: Optional[List[PlainQRBasedOn]] = None
     part_of: Optional[List[PlainQRPartOf]] = None
 
-    subject_type: Optional[str] = Field(None, description="e.g. 'Patient'")
+    subject_type: Optional[str] = Field(None, description="Any resource type, e.g. 'Patient'")
     subject_id: Optional[int] = None
     subject_display: Optional[str] = None
+    encounter_type: Optional[str] = Field(None, description="Always 'Encounter' when set.")
     encounter_id: Optional[int] = Field(None, description="Public encounter_id of the linked Encounter.")
+    encounter_display: Optional[str] = None
     authored: Optional[str] = Field(None, description="ISO 8601 datetime string.")
     author_type: Optional[str] = Field(None, description="e.g. 'Practitioner' | 'Patient'")
     author_id: Optional[int] = None

@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.models.procedure.enums import ProcedureStatus
 
 
 # ── Reference sub-inputs ──────────────────────────────────────────────────────
@@ -142,7 +144,7 @@ class ProcedureCreateSchema(BaseModel):
     created_by: Optional[str] = None
 
     # Required
-    status: str = Field(..., description="preparation|in-progress|not-done|on-hold|stopped|completed|entered-in-error|unknown")
+    status: ProcedureStatus = Field(..., description="preparation|in-progress|not-done|on-hold|stopped|completed|entered-in-error|unknown")
 
     # statusReason (0..1 CodeableConcept)
     status_reason_system: Optional[str] = None
@@ -162,8 +164,8 @@ class ProcedureCreateSchema(BaseModel):
     code_display: Optional[str] = None
     code_text: Optional[str] = None
 
-    # subject (1..1 Reference)
-    subject: Optional[str] = Field(None, description="FHIR reference e.g. 'Patient/10001'.")
+    # subject (1..1 Reference — Patient | Group)
+    subject: str = Field(..., description="FHIR reference e.g. 'Patient/10001' or 'Group/1'.")
     subject_display: Optional[str] = None
 
     # encounter (0..1)
@@ -176,13 +178,18 @@ class ProcedureCreateSchema(BaseModel):
     performed_period_end: Optional[datetime] = None
     performed_string: Optional[str] = None
     performed_age_value: Optional[float] = None
+    performed_age_comparator: Optional[str] = Field(None, description="Age comparator: '<' | '<=' | '>=' | '>'.")
     performed_age_unit: Optional[str] = None
     performed_age_system: Optional[str] = None
     performed_age_code: Optional[str] = None
     performed_range_low_value: Optional[float] = None
     performed_range_low_unit: Optional[str] = None
+    performed_range_low_system: Optional[str] = None
+    performed_range_low_code: Optional[str] = None
     performed_range_high_value: Optional[float] = None
     performed_range_high_unit: Optional[str] = None
+    performed_range_high_system: Optional[str] = None
+    performed_range_high_code: Optional[str] = None
 
     # recorder (0..1 Reference)
     recorder: Optional[str] = Field(None, description="FHIR reference e.g. 'Practitioner/30001'.")
@@ -253,7 +260,9 @@ class ProcedureCreateSchema(BaseModel):
 class ProcedurePatchSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    status: Optional[str] = None
+    status: Optional[ProcedureStatus] = Field(
+        None, description="preparation|in-progress|not-done|on-hold|stopped|completed|entered-in-error|unknown (cannot be null)."
+    )
     status_reason_system: Optional[str] = None
     status_reason_code: Optional[str] = None
     status_reason_display: Optional[str] = None
@@ -266,22 +275,32 @@ class ProcedurePatchSchema(BaseModel):
     code_code: Optional[str] = None
     code_display: Optional[str] = None
     code_text: Optional[str] = None
+    subject: Optional[str] = Field(None, description="FHIR reference e.g. 'Patient/10001' or 'Group/1' (cannot be null).")
     subject_display: Optional[str] = None
+    encounter_id: Optional[int] = Field(None, description="Public encounter_id; send null to unlink the Encounter.")
     encounter_display: Optional[str] = None
     performed_datetime: Optional[datetime] = None
     performed_period_start: Optional[datetime] = None
     performed_period_end: Optional[datetime] = None
     performed_string: Optional[str] = None
     performed_age_value: Optional[float] = None
+    performed_age_comparator: Optional[str] = Field(None, description="Age comparator: '<' | '<=' | '>=' | '>'.")
     performed_age_unit: Optional[str] = None
     performed_age_system: Optional[str] = None
     performed_age_code: Optional[str] = None
     performed_range_low_value: Optional[float] = None
     performed_range_low_unit: Optional[str] = None
+    performed_range_low_system: Optional[str] = None
+    performed_range_low_code: Optional[str] = None
     performed_range_high_value: Optional[float] = None
     performed_range_high_unit: Optional[str] = None
+    performed_range_high_system: Optional[str] = None
+    performed_range_high_code: Optional[str] = None
+    recorder: Optional[str] = Field(None, description="FHIR reference e.g. 'Practitioner/30001'; send null to clear.")
     recorder_display: Optional[str] = None
+    asserter: Optional[str] = Field(None, description="FHIR reference e.g. 'Practitioner/30001'; send null to clear.")
     asserter_display: Optional[str] = None
+    location: Optional[str] = Field(None, description="FHIR reference e.g. 'Location/230001'; send null to clear.")
     location_display: Optional[str] = None
     outcome_system: Optional[str] = None
     outcome_code: Optional[str] = None
@@ -290,3 +309,28 @@ class ProcedurePatchSchema(BaseModel):
     instantiates_canonical: Optional[List[str]] = None
     instantiates_uri: Optional[List[str]] = None
     updated_by: Optional[str] = None
+
+    # Child lists — REPLACE semantics: a list that is sent replaces the stored one,
+    # [] (or null) clears it, an omitted list is left untouched.
+    identifier: Optional[List[ProcedureIdentifierInput]] = None
+    based_on: Optional[List[ProcedureBasedOnInput]] = None
+    part_of: Optional[List[ProcedurePartOfInput]] = None
+    performer: Optional[List[ProcedurePerformerInput]] = None
+    reason_code: Optional[List[ProcedureReasonCodeInput]] = None
+    reason_reference: Optional[List[ProcedureReasonReferenceInput]] = None
+    body_site: Optional[List[ProcedureBodySiteInput]] = None
+    report: Optional[List[ProcedureReportInput]] = None
+    complication: Optional[List[ProcedureComplicationInput]] = None
+    complication_detail: Optional[List[ProcedureComplicationDetailInput]] = None
+    follow_up: Optional[List[ProcedureFollowUpInput]] = None
+    note: Optional[List[ProcedureNoteInput]] = None
+    focal_device: Optional[List[ProcedureFocalDeviceInput]] = None
+    used_reference: Optional[List[ProcedureUsedReferenceInput]] = None
+    used_code: Optional[List[ProcedureUsedCodeInput]] = None
+
+    @field_validator("status", "subject")
+    @classmethod
+    def _not_null(cls, v):
+        if v is None:
+            raise ValueError("must not be null")
+        return v

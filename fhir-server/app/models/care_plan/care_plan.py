@@ -443,6 +443,21 @@ class CarePlanActivity(Base):
     detail_scheduled_timing_repeat_offset = Column(Integer, nullable=True)
     detail_scheduled_timing_repeat_bounds_start = Column(DateTime(timezone=True), nullable=True)
     detail_scheduled_timing_repeat_bounds_end = Column(DateTime(timezone=True), nullable=True)
+    # timing.repeat.bounds[x] — Duration variant
+    detail_scheduled_timing_repeat_bounds_duration_value = Column(Numeric, nullable=True)
+    detail_scheduled_timing_repeat_bounds_duration_comparator = Column(String, nullable=True)
+    detail_scheduled_timing_repeat_bounds_duration_unit = Column(String, nullable=True)
+    detail_scheduled_timing_repeat_bounds_duration_system = Column(String, nullable=True)
+    detail_scheduled_timing_repeat_bounds_duration_code = Column(String, nullable=True)
+    # timing.repeat.bounds[x] — Range variant (low / high SimpleQuantity)
+    detail_scheduled_timing_repeat_bounds_range_low_value = Column(Numeric, nullable=True)
+    detail_scheduled_timing_repeat_bounds_range_low_unit = Column(String, nullable=True)
+    detail_scheduled_timing_repeat_bounds_range_low_system = Column(String, nullable=True)
+    detail_scheduled_timing_repeat_bounds_range_low_code = Column(String, nullable=True)
+    detail_scheduled_timing_repeat_bounds_range_high_value = Column(Numeric, nullable=True)
+    detail_scheduled_timing_repeat_bounds_range_high_unit = Column(String, nullable=True)
+    detail_scheduled_timing_repeat_bounds_range_high_system = Column(String, nullable=True)
+    detail_scheduled_timing_repeat_bounds_range_high_code = Column(String, nullable=True)
 
     # detail.scheduled[x] — scheduledPeriod variant
     detail_scheduled_period_start = Column(DateTime(timezone=True), nullable=True)

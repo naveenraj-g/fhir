@@ -1,6 +1,6 @@
 from dependency_injector import containers, providers
 from app.di.core import CoreContainer
-from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer, MedicationRequestContainer, ObservationContainer, OrganizationContainer, PractitionerRoleContainer, ProcedureContainer, ScheduleContainer, SlotContainer, HealthcareServiceContainer, ClaimContainer, ClaimResponseContainer, InvoiceContainer, LocationContainer, CoverageContainer, MedicationContainer, AllergyIntoleranceContainer, ProvenanceContainer, TaskContainer, CarePlanContainer, RelatedPersonContainer, SpecimenContainer, DocumentReferenceContainer, ImmunizationContainer, AuditEventContainer, EpisodeOfCareContainer, TerminologyContainer, InsurancePlanContainer
+from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer, MedicationRequestContainer, ObservationContainer, OrganizationContainer, PractitionerRoleContainer, ProcedureContainer, ScheduleContainer, SlotContainer, HealthcareServiceContainer, ClaimContainer, ClaimResponseContainer, InvoiceContainer, LocationContainer, CoverageContainer, MedicationContainer, AllergyIntoleranceContainer, ProvenanceContainer, TaskContainer, CarePlanContainer, RelatedPersonContainer, SpecimenContainer, DocumentReferenceContainer, ImmunizationContainer, AuditEventContainer, EpisodeOfCareContainer, TerminologyContainer, InsurancePlanContainer, QuestionnaireContainer, RiskAssessmentContainer, FlagContainer, PlanDefinitionContainer, ActivityDefinitionContainer, CareTeamContainer
 
 
 class Container(containers.DeclarativeContainer):
@@ -186,6 +186,36 @@ class Container(containers.DeclarativeContainer):
 
     insurance_plan = providers.Container(
         InsurancePlanContainer,
+        core=core,
+    )
+
+    questionnaire = providers.Container(
+        QuestionnaireContainer,
+        core=core,
+    )
+
+    risk_assessment = providers.Container(
+        RiskAssessmentContainer,
+        core=core,
+    )
+
+    flag = providers.Container(
+        FlagContainer,
+        core=core,
+    )
+
+    plan_definition = providers.Container(
+        PlanDefinitionContainer,
+        core=core,
+    )
+
+    activity_definition = providers.Container(
+        ActivityDefinitionContainer,
+        core=core,
+    )
+
+    care_team = providers.Container(
+        CareTeamContainer,
         core=core,
     )
 

@@ -85,28 +85,88 @@ def fhir_task_note(n: "TaskNote") -> dict:
     return entry
 
 
+def _strip(d: dict) -> dict:
+    """Drop None values (keeps 0 / False)."""
+    return {k: v for k, v in d.items() if v is not None}
+
+
 def _fhir_value_x(item: "TaskInput | TaskOutput") -> dict:
-    if item.value_boolean is not None:
-        return {"valueBoolean": item.value_boolean}
-    if item.value_code is not None:
-        return {"valueCode": item.value_code}
-    if item.value_date is not None:
-        return {"valueDate": item.value_date.isoformat()}
-    if item.value_date_time is not None:
-        return {"valueDateTime": item.value_date_time.isoformat()}
-    if item.value_decimal is not None:
-        return {"valueDecimal": float(item.value_decimal)}
-    if item.value_integer is not None:
-        return {"valueInteger": item.value_integer}
-    if item.value_string is not None:
-        return {"valueString": item.value_string}
-    if item.value_uri is not None:
-        return {"valueUri": item.value_uri}
+    """Emit the single populated value[x] element of a Task.input / Task.output row."""
+    g = lambda name: getattr(item, f"value_{name}", None)  # noqa: E731
+    simple = (
+        ("boolean", "valueBoolean", lambda v: v),
+        ("code", "valueCode", lambda v: v),
+        ("date", "valueDate", lambda v: v.isoformat()),
+        ("date_time", "valueDateTime", lambda v: v.isoformat()),
+        ("decimal", "valueDecimal", float),
+        ("integer", "valueInteger", lambda v: v),
+        ("string", "valueString", lambda v: v),
+        ("uri", "valueUri", lambda v: v),
+        ("time", "valueTime", lambda v: v),
+        ("instant", "valueInstant", lambda v: v.isoformat()),
+        ("markdown", "valueMarkdown", lambda v: v),
+        ("canonical", "valueCanonical", lambda v: v),
+        ("url", "valueUrl", lambda v: v),
+        ("positive_int", "valuePositiveInt", lambda v: v),
+        ("unsigned_int", "valueUnsignedInt", lambda v: v),
+        ("base64_binary", "valueBase64Binary", lambda v: v),
+        ("id", "valueId", lambda v: v),
+    )
+    for name, key, conv in simple:
+        if g(name) is not None:
+            return {key: conv(g(name))}
+
     if item.value_reference_type and item.value_reference_id is not None:
         ref: dict = {"reference": f"{item.value_reference_type}/{item.value_reference_id}"}
         if item.value_reference_display:
             ref["display"] = item.value_reference_display
         return {"valueReference": ref}
+
+    if any(g(f"coding_{n}") for n in ("system", "code", "display")):
+        return {"valueCoding": _strip({"system": g("coding_system"), "code": g("coding_code"), "display": g("coding_display")})}
+    cc = _cc(g("codeable_concept_system"), g("codeable_concept_code"), g("codeable_concept_display"), g("codeable_concept_text"))
+    if cc:
+        return {"valueCodeableConcept": cc}
+    if any(g(f"quantity_{n}") is not None for n in ("value", "unit", "system", "code")):
+        return {"valueQuantity": _strip({
+            "value": g("quantity_value"), "unit": g("quantity_unit"),
+            "system": g("quantity_system"), "code": g("quantity_code")})}
+    if g("period_start") or g("period_end"):
+        return {"valuePeriod": _strip({
+            "start": g("period_start").isoformat() if g("period_start") else None,
+            "end": g("period_end").isoformat() if g("period_end") else None})}
+    if any(g(f"range_{n}") is not None for n in ("low_value", "low_unit", "high_value", "high_unit")):
+        rng: dict = {}
+        low = _strip({"value": g("range_low_value"), "unit": g("range_low_unit")})
+        high = _strip({"value": g("range_high_value"), "unit": g("range_high_unit")})
+        if low:
+            rng["low"] = low
+        if high:
+            rng["high"] = high
+        return {"valueRange": rng}
+    if any(g(f"attachment_{n}") is not None for n in (
+            "content_type", "language", "data", "url", "size", "hash", "title", "creation")):
+        creation = g("attachment_creation")
+        return {"valueAttachment": _strip({
+            "contentType": g("attachment_content_type"), "language": g("attachment_language"),
+            "data": g("attachment_data"), "url": g("attachment_url"), "size": g("attachment_size"),
+            "hash": g("attachment_hash"), "title": g("attachment_title"),
+            "creation": creation.isoformat() if creation else None})}
+    if any(g(f"identifier_{n}") for n in ("use", "system", "value")):
+        return {"valueIdentifier": _strip({
+            "use": g("identifier_use"), "system": g("identifier_system"), "value": g("identifier_value")})}
+    if g("money_value") is not None or g("money_currency"):
+        return {"valueMoney": _strip({"value": g("money_value"), "currency": g("money_currency")})}
+    if any(g(f"ratio_{n}") is not None for n in (
+            "numerator_value", "numerator_unit", "denominator_value", "denominator_unit")):
+        ratio: dict = {}
+        num = _strip({"value": g("ratio_numerator_value"), "unit": g("ratio_numerator_unit")})
+        den = _strip({"value": g("ratio_denominator_value"), "unit": g("ratio_denominator_unit")})
+        if num:
+            ratio["numerator"] = num
+        if den:
+            ratio["denominator"] = den
+        return {"valueRatio": ratio}
     return {}
 
 

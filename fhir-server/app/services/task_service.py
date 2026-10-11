@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 
 from app.fhir.mappers.task import to_fhir_task, to_plain_task
 from app.models.task.task import TaskModel
-from app.repository.task_repository import TaskRepository
+from app.repository.task_repository import TaskRepository, TaskSearch
 from app.schemas.task.input import TaskCreateSchema, TaskPatchSchema
 
 
@@ -23,19 +23,21 @@ class TaskService:
         self,
         user_id: str,
         org_id: str,
+        search: Optional[TaskSearch] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[TaskModel], int]:
-        return await self.repository.get_me(user_id, org_id, limit=limit, offset=offset)
+        return await self.repository.get_me(user_id, org_id, search=search, limit=limit, offset=offset)
 
     async def list_tasks(
         self,
         user_id: Optional[str] = None,
         org_id: Optional[str] = None,
+        search: Optional[TaskSearch] = None,
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[TaskModel], int]:
-        return await self.repository.list(user_id=user_id, org_id=org_id, limit=limit, offset=offset)
+        return await self.repository.list(user_id=user_id, org_id=org_id, search=search, limit=limit, offset=offset)
 
     async def create_task(
         self,

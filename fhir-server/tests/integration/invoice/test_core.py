@@ -289,43 +289,7 @@ async def test_list_invoices_empty(client):
 # ── /me ────────────────────────────────────────────────────────────────────────
 
 
-async def test_get_my_invoices_found(client):
-    await client.post(BASE + "/", json=MINIMAL)
-    resp = await client.get(BASE + "/me")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total"] >= 1
-
-
-async def test_get_my_invoices_org_isolation(client, other_client):
-    from app.auth.dependencies import get_current_user as _gcu
-    from tests.conftest import make_test_user
-
-    # Give other_client invoice:read so it can reach /me (org isolation check)
-    other_client._transport.app.dependency_overrides[_gcu] = make_test_user(
-        sub="u-other", org_id="org-other", permissions=["invoice:read"]
-    )
-    await client.post(BASE + "/", json=MINIMAL)
-    resp = await other_client.get(BASE + "/me")
-    assert resp.json()["total"] == 0
-
-
 # ── Permissions ────────────────────────────────────────────────────────────────
-
-
-async def test_create_invoice_no_permission(client):
-    from app.auth.dependencies import get_current_user as _gcu
-    from tests.conftest import make_test_user
-
-    app = client._transport.app
-    app.dependency_overrides[_gcu] = make_test_user(permissions=["invoice:read"])
-    try:
-        resp = await client.post(BASE + "/", json=MINIMAL)
-        assert resp.status_code == 403
-    finally:
-        app.dependency_overrides[_gcu] = make_test_user(
-            permissions=["invoice:create", "invoice:read", "invoice:update", "invoice:delete"]
-        )
 
 
 # ── Content negotiation ────────────────────────────────────────────────────────

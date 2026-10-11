@@ -1,12 +1,14 @@
 """Integration tests for /api/fhir/v1/tasks endpoints."""
-import pytest
-
-from app.auth.dependencies import get_current_user
-from app.main import app
-from tests.conftest import make_test_user
 
 BASE = "/api/fhir/v1/tasks"
 FHIR_ACCEPT = {"Accept": "application/fhir+json"}
+
+
+def _with_org(query: str) -> str:
+    """Every search requires org_id (tenant scope) — add the default test org unless the query sets one."""
+    if "org_id=" in query:
+        return query
+    return f"org_id=org-test&{query}" if query else "org_id=org-test"
 
 MINIMAL = {
     "user_id": "u-test",
@@ -314,12 +316,12 @@ async def test_create_extra_field_rejected(client):
 
 async def test_create_invalid_status(client):
     resp = await client.post(BASE + "/", json={**MINIMAL, "status": "not-a-status"})
-    assert resp.status_code == 422
+    assert resp.status_code == 400
 
 
 async def test_create_invalid_intent(client):
     resp = await client.post(BASE + "/", json={**MINIMAL, "intent": "invalid"})
-    assert resp.status_code == 422
+    assert resp.status_code == 400
 
 
 async def test_create_invalid_focus_format(client):
@@ -413,7 +415,7 @@ async def test_get_task_not_found(client):
 async def test_list_tasks(client):
     await _create(client)
     await _create(client)
-    resp = await client.get(BASE + "/")
+    resp = await client.get(BASE + "/?org_id=org-test")
     assert resp.status_code == 200
     data = resp.json()
     assert data["total"] >= 2
@@ -422,7 +424,7 @@ async def test_list_tasks(client):
 
 async def test_list_tasks_fhir(client):
     await _create(client)
-    resp = await client.get(BASE + "/", headers=FHIR_ACCEPT)
+    resp = await client.get(BASE + "/?org_id=org-test", headers=FHIR_ACCEPT)
     assert resp.status_code == 200
     data = resp.json()
     assert data["resourceType"] == "Bundle"
@@ -433,34 +435,11 @@ async def test_list_tasks_fhir(client):
 async def test_list_tasks_pagination(client):
     for _ in range(3):
         await _create(client)
-    resp = await client.get(BASE + "/?limit=2&offset=0")
+    resp = await client.get(BASE + "/?" + _with_org("limit=2&offset=0"))
     assert resp.status_code == 200
     data = resp.json()
     assert len(data["data"]) <= 2
     assert data["limit"] == 2
-
-
-# ── /me ──────────────────────────────────────────────────────────────────────────
-
-
-async def test_me_returns_own_tasks(client):
-    await _create(client)
-    resp = await client.get(BASE + "/me")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total"] >= 1
-
-
-async def test_me_does_not_return_other_users(client, other_client):
-    _gcu = get_current_user
-    perms = ["task:create", "task:read", "task:update", "task:delete"]
-    client._transport.app.dependency_overrides[_gcu] = make_test_user(permissions=perms)
-    await _create(client)
-    other_client._transport.app.dependency_overrides[_gcu] = make_test_user(
-        sub="u-other", org_id="org-other", permissions=["task:read"]
-    )
-    resp = await other_client.get(BASE + "/me")
-    assert resp.json()["total"] == 0
 
 
 # ── Patch ────────────────────────────────────────────────────────────────────────
@@ -541,7 +520,7 @@ async def test_patch_invalid_status(client):
     created = await _create(client)
     task_id = created["id"]
     resp = await client.patch(f"{BASE}/{task_id}", json={"status": "not-valid"})
-    assert resp.status_code == 422
+    assert resp.status_code == 400
 
 
 # ── Delete ───────────────────────────────────────────────────────────────────────
@@ -559,27 +538,6 @@ async def test_delete_task(client):
 async def test_delete_task_not_found(client):
     resp = await client.delete(f"{BASE}/999999999")
     assert resp.status_code == 404
-
-
-# ── Auth ─────────────────────────────────────────────────────────────────────────
-
-
-async def test_create_without_permission(client):
-    _gcu = get_current_user
-    client._transport.app.dependency_overrides[_gcu] = make_test_user(permissions=[])
-    resp = await client.post(BASE + "/", json=MINIMAL)
-    assert resp.status_code == 403
-
-
-async def test_delete_without_permission(client):
-    _gcu = get_current_user
-    perms = ["task:create", "task:read", "task:update", "task:delete"]
-    client._transport.app.dependency_overrides[_gcu] = make_test_user(permissions=perms)
-    created = await _create(client)
-    task_id = created["id"]
-    client._transport.app.dependency_overrides[_gcu] = make_test_user(permissions=["task:read"])
-    resp = await client.delete(f"{BASE}/{task_id}")
-    assert resp.status_code == 403
 
 
 # ── note with author_reference ─────────────────────────────────────────────────
@@ -651,3 +609,187 @@ async def test_group_identifier_fhir(client):
     assert gi.get("system") == "http://example.org/group"
     assert gi.get("value") == "GRP-001"
     assert gi.get("use") == "usual"
+
+
+# ── value[x]: the extended variants ───────────────────────────────────────────
+
+
+async def _first_input(client, item, headers=None):
+    resp = await client.post(BASE + "/", json={**MINIMAL, "inputs": [{"type_code": "t", **item}]}, headers=headers or {})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    return body["input"][0] if headers else body["inputs"][0]
+
+
+async def test_input_value_variants_roundtrip_fhir(client):
+    cases = {
+        "value_time": ("09:30:00", "valueTime", "09:30:00"),
+        "value_instant": ("2024-01-01T10:00:00Z", "valueInstant", "2024-01-01T10:00:00+00:00"),
+        "value_markdown": ("**bold**", "valueMarkdown", "**bold**"),
+        "value_canonical": ("http://x/Q/1", "valueCanonical", "http://x/Q/1"),
+        "value_url": ("http://x/y", "valueUrl", "http://x/y"),
+        "value_positive_int": (3, "valuePositiveInt", 3),
+        "value_unsigned_int": (0, "valueUnsignedInt", 0),
+        "value_base64_binary": ("aGk=", "valueBase64Binary", "aGk="),
+        "value_id": ("abc-1", "valueId", "abc-1"),
+    }
+    for field, (sent, key, expected) in cases.items():
+        item = await _first_input(client, {field: sent}, FHIR_ACCEPT)
+        assert item[key] == expected, (field, item)
+
+
+async def test_input_complex_value_variants(client):
+    fhir = FHIR_ACCEPT
+    i = await _first_input(client, {"value_coding_system": "http://s", "value_coding_code": "c1", "value_coding_display": "C1"}, fhir)
+    assert i["valueCoding"] == {"system": "http://s", "code": "c1", "display": "C1"}
+    i = await _first_input(client, {"value_codeable_concept_code": "cc", "value_codeable_concept_text": "txt"}, fhir)
+    assert i["valueCodeableConcept"] == {"coding": [{"code": "cc"}], "text": "txt"}
+    i = await _first_input(client, {"value_quantity_value": 5, "value_quantity_unit": "mg"}, fhir)
+    assert i["valueQuantity"] == {"value": 5.0, "unit": "mg"}
+    i = await _first_input(client, {"value_period_start": "2024-01-01T00:00:00Z", "value_period_end": "2024-02-01T00:00:00Z"}, fhir)
+    assert i["valuePeriod"]["start"].startswith("2024-01-01") and i["valuePeriod"]["end"].startswith("2024-02-01")
+    i = await _first_input(client, {"value_range_low_value": 1, "value_range_high_value": 9, "value_range_high_unit": "kg"}, fhir)
+    assert i["valueRange"] == {"low": {"value": 1.0}, "high": {"value": 9.0, "unit": "kg"}}
+    i = await _first_input(client, {"value_attachment_content_type": "application/pdf", "value_attachment_url": "http://x/y.pdf", "value_attachment_size": 12}, fhir)
+    assert i["valueAttachment"] == {"contentType": "application/pdf", "url": "http://x/y.pdf", "size": 12}
+    i = await _first_input(client, {"value_identifier_system": "urn:x", "value_identifier_value": "ID-1"}, fhir)
+    assert i["valueIdentifier"] == {"system": "urn:x", "value": "ID-1"}
+    i = await _first_input(client, {"value_money_value": 12.5, "value_money_currency": "USD"}, fhir)
+    assert i["valueMoney"] == {"value": 12.5, "currency": "USD"}
+    i = await _first_input(client, {"value_ratio_numerator_value": 1, "value_ratio_denominator_value": 4}, fhir)
+    assert i["valueRatio"] == {"numerator": {"value": 1.0}, "denominator": {"value": 4.0}}
+
+
+async def test_value_x_exactly_one_and_output_variants(client):
+    two = {**MINIMAL, "inputs": [{"type_code": "t", "value_string": "a", "value_integer": 1}]}
+    assert (await client.post(BASE + "/", json=two)).status_code == 400
+    none = {**MINIMAL, "inputs": [{"type_code": "t"}]}
+    assert (await client.post(BASE + "/", json=none)).status_code == 400
+    ok = await _create(client, {**MINIMAL, "outputs": [{"type_code": "r", "value_quantity_value": 7, "value_quantity_unit": "kg"}]})
+    assert ok["outputs"][0]["value_quantity_value"] == 7 and ok["outputs"][0]["value_quantity_unit"] == "kg"
+    assert (await client.post(BASE + "/", json={**MINIMAL, "outputs": [{"type_code": "r", "value_reference": "bad"}]})).status_code == 422
+
+
+# ── PATCH: clear references, replace child lists, invariants ──────────────────
+
+
+async def test_patch_clears_references_with_null(client):
+    created = await _create(client, {**MINIMAL, "for": "Patient/10001", "owner": "Practitioner/30001",
+                                     "owner_display": "Dr", "focus": "ServiceRequest/80001"})
+    tid = created["id"]
+    resp = await client.patch(f"{BASE}/{tid}", json={"owner": None, "for": None})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body.get("owner_id") is None and body.get("owner_display") is None
+    assert body.get("for_id") is None
+    assert body["focus_id"] == 80001                       # untouched
+
+
+async def test_patch_replaces_and_clears_child_lists(client):
+    created = await _create(client, {
+        **MINIMAL,
+        "identifiers": [{"system": "urn:t", "value": "T-1"}],
+        "based_on": [{"reference": "ServiceRequest/80001"}],
+        "performer_types": [{"coding_code": "doc"}],
+        "inputs": [{"type_code": "a", "value_string": "x"}],
+    })
+    tid = created["id"]
+    resp = await client.patch(f"{BASE}/{tid}", json={
+        "identifiers": [{"system": "urn:t", "value": "T-2"}, {"value": "T-3"}],
+        "based_on": [],
+        "outputs": [{"type_code": "o", "value_decimal": 2.5}],
+    })
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert [i["value"] for i in body["identifiers"]] == ["T-2", "T-3"]
+    assert not body.get("based_on")                       # [] cleared the list (plain output omits empty lists)
+    assert body["outputs"][0]["value_decimal"] == 2.5
+    assert len(body["performer_types"]) == 1 and len(body["inputs"]) == 1       # omitted lists untouched
+    # validation applies to replaced lists
+    assert (await client.patch(f"{BASE}/{tid}", json={"part_of": [{"reference": "Patient/1"}]})).status_code == 422
+    assert (await client.patch(f"{BASE}/{tid}", json={"inputs": [{"type_code": "a"}]})).status_code == 400
+
+
+async def test_patch_rejects_null_status_and_bad_reference(client):
+    created = await _create(client)
+    tid = created["id"]
+    assert (await client.patch(f"{BASE}/{tid}", json={"status": None})).status_code == 400
+    assert (await client.patch(f"{BASE}/{tid}", json={"intent": None})).status_code == 400
+    assert (await client.patch(f"{BASE}/{tid}", json={"owner": "Condition/1"})).status_code == 422
+
+
+async def test_last_modified_not_before_authored(client):
+    bad = {**MINIMAL, "authored_on": "2024-02-01T00:00:00Z", "last_modified": "2024-01-01T00:00:00Z"}
+    assert (await client.post(BASE + "/", json=bad)).status_code == 400
+    created = await _create(client, {**MINIMAL, "authored_on": "2024-02-01T00:00:00Z"})
+    resp = await client.patch(f"{BASE}/{created['id']}", json={"last_modified": "2024-01-01T00:00:00Z"})
+    assert resp.status_code == 422
+
+
+# ── FHIR R4 search parameters ─────────────────────────────────────────────────
+
+
+async def _ids(client, query: str) -> set:
+    r = await client.get(f"{BASE}/?{_with_org(query)}")
+    assert r.status_code == 200, r.text
+    return {d["id"] for d in r.json()["data"]}
+
+
+async def test_search_params(client):
+    a = await _create(client, {
+        **FULL,
+        "identifiers": [{"system": "urn:t", "value": "TASK-1"}],
+        "based_on": [{"reference": "ServiceRequest/80001"}],
+        "part_of": [{"reference": "Task/280500"}],
+        "performer_types": [{"coding_system": "http://s", "coding_code": "nurse"}],
+    })
+    b = await _create(client, {**MINIMAL, "status": "completed", "intent": "plan", "priority": "stat",
+                               "for": "Patient/10002", "authored_on": "2023-05-01T00:00:00Z"})
+    assert await _ids(client, f"_id={a['id']}") == {a["id"]}
+    assert await _ids(client, "status=completed") == {b["id"]}
+    assert await _ids(client, "status=completed,in-progress") == {a["id"], b["id"]}
+    assert (await client.get(BASE + "/?" + _with_org("status=bogus"))).status_code == 422
+    assert await _ids(client, "intent=plan") == {b["id"]}
+    assert await _ids(client, "priority=urgent") == {a["id"]}
+    assert await _ids(client, "priority=stat") == {b["id"]}
+    assert await _ids(client, "identifier=urn:t|TASK-1") == {a["id"]}
+    assert await _ids(client, "group-identifier=http://example.org/group|GRP-001") == {a["id"]}
+    assert await _ids(client, "code=http://snomed.info/sct|3457005") == {a["id"]}
+    assert await _ids(client, "business-status=waiting") == {a["id"]}
+    assert await _ids(client, "performer=nurse") == {a["id"]}
+    assert await _ids(client, "patient=Patient/10001") == {a["id"]}
+    assert await _ids(client, "patient=10002") == {b["id"]}
+    assert await _ids(client, "subject=Patient/10001") == {a["id"]}
+    assert await _ids(client, "focus=ServiceRequest/80001") == {a["id"]}
+    assert await _ids(client, "encounter=Encounter/20001") == {a["id"]}
+    assert await _ids(client, "requester=Practitioner/30001") == {a["id"]}
+    assert await _ids(client, "based-on=ServiceRequest/80001") == {a["id"]}
+    assert await _ids(client, "part-of=Task/280500") == {a["id"]}
+    assert await _ids(client, "authored-on=2024-01-15") == {a["id"]}
+    assert await _ids(client, "authored-on=ge2024-01-01&authored-on=lt2024-02-01") == {a["id"]}
+    assert await _ids(client, "authored-on=lt2024-01-01") == {b["id"]}
+    assert await _ids(client, "modified=ge2024-01-15") == {a["id"]}
+    assert await _ids(client, "period=ap2024-01-15") == {a["id"]}
+    assert a["id"] in await _ids(client, "_lastUpdated=ge2000-01-01")
+    for bad in ("patient=Group/1", "owner=Condition/1", "part-of=Patient/1", "authored-on=notadate", "_id=x"):
+        assert (await client.get(f"{BASE}/?{_with_org(bad)}")).status_code == 422, bad
+
+
+async def test_search_scoped_by_org_and_optional_user(client):
+    a = await _create(client, {**MINIMAL, "user_id": "user-a", "org_id": "org-a"})
+    b = await _create(client, {**MINIMAL, "user_id": "user-b", "org_id": "org-b"})
+    assert await _ids(client, "user_id=user-a&org_id=org-a") == {a["id"]}
+    assert await _ids(client, "org_id=org-b") == {b["id"]}                  # org scopes the result
+    assert await _ids(client, "org_id=org-a&user_id=user-b") == set()       # user_id narrows further
+    assert await _ids(client, "org_id=org-a") == {a["id"]}
+
+
+async def test_search_requires_org_id(client):
+    """org_id is mandatory on every search; user_id is optional."""
+    await client.post(BASE + "/", json=MINIMAL)
+    for url in (BASE + "/", f"{BASE}/?limit=5", BASE + "/?user_id=u-test"):
+        assert (await client.get(url)).status_code == 400, url
+    assert (await client.get(f"{BASE}/?org_id=")).status_code == 400                 # blank is not a tenant
+    assert (await client.get(f"{BASE}/?org_id=org-test")).status_code == 200
+    assert (await client.get(f"{BASE}/?org_id=org-test&user_id=nobody")).json()["total"] == 0
+    assert (await client.get(f"{BASE}/?org_id=other-org")).json()["total"] == 0

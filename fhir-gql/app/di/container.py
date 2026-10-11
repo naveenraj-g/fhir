@@ -38,6 +38,17 @@ from app.di.core import CoreContainer
 from app.di.modules import (
     AppointmentContainer,
     ConditionContainer,
+    ProcedureContainer,
+    QuestionnaireContainer,
+    QuestionnaireResponseContainer,
+    RiskAssessmentContainer,
+    FlagContainer,
+    PlanDefinitionContainer,
+    CarePlanContainer,
+    CareTeamContainer,
+    ActivityDefinitionContainer,
+    TaskContainer,
+    EpisodeOfCareContainer,
     DiagnosticReportContainer,
     DocumentReferenceContainer,
     EncounterContainer,
@@ -188,6 +199,90 @@ class Container(containers.DeclarativeContainer):
     # clinical/verification status, onset, abatement, stage, and evidence.
     condition = providers.Container(
         ConditionContainer,
+        core=core,
+    )
+
+    # Domain container for Procedure resources.
+    # A Procedure records an action performed on or for a patient (surgery, biopsy,
+    # therapy, ...) with performer, reason, outcome, complication and device details.
+    procedure = providers.Container(
+        ProcedureContainer,
+        core=core,
+    )
+
+    # Domain container for Questionnaire resources.
+    # A Questionnaire is a structured form definition: a recursive tree of groups,
+    # questions and display items with answer options, initial values and enableWhen logic.
+    questionnaire = providers.Container(
+        QuestionnaireContainer,
+        core=core,
+    )
+
+    # Domain container for QuestionnaireResponse resources.
+    # A QuestionnaireResponse records the answers given to a Questionnaire: a recursive
+    # item/answer tree plus subject, encounter, author, source and authored date.
+    questionnaire_response = providers.Container(
+        QuestionnaireResponseContainer,
+        core=core,
+    )
+
+    # Domain container for RiskAssessment resources.
+    # A RiskAssessment is an assessment of the likely outcome(s) for a patient or group, with
+    # predictions (outcome, probability, qualitative risk, timeframe), basis and mitigation.
+    risk_assessment = providers.Container(
+        RiskAssessmentContainer,
+        core=core,
+    )
+
+    # Domain container for Flag resources.
+    # A Flag is a prospective warning about a potential issue when providing care (allergy alert,
+    # safety or administrative flag) attached to a patient, location, group, organization, etc.
+    flag = providers.Container(
+        FlagContainer,
+        core=core,
+    )
+
+    # Domain container for PlanDefinition resources.
+    # A PlanDefinition is a protocol / order set / decision-support rule: goals plus a recursive action tree.
+    plan_definition = providers.Container(
+        PlanDefinitionContainer,
+        core=core,
+    )
+
+    # Domain container for ActivityDefinition resources.
+    # An ActivityDefinition is the definition of an action to be performed (a request template).
+    activity_definition = providers.Container(
+        ActivityDefinitionContainer,
+        core=core,
+    )
+
+    # Domain container for CarePlan resources.
+    # A CarePlan describes the intended care for a patient or group: goals, care team and activities.
+    care_plan = providers.Container(
+        CarePlanContainer,
+        core=core,
+    )
+
+    # Domain container for CareTeam resources.
+    # A CareTeam lists the people and organizations planned to coordinate a patient's care.
+    care_team = providers.Container(
+        CareTeamContainer,
+        core=core,
+    )
+
+    # Domain container for Task resources.
+    # A Task is a unit of work to be performed (tracks a focus request through its lifecycle,
+    # with requester, owner, performer type, inputs and outputs).
+    task = providers.Container(
+        TaskContainer,
+        core=core,
+    )
+
+    # Domain container for EpisodeOfCare resources.
+    # An EpisodeOfCare groups the encounters and care for a patient's health condition or programme
+    # (status + history, type, diagnoses, period, managing organization, care manager, team).
+    episode_of_care = providers.Container(
+        EpisodeOfCareContainer,
         core=core,
     )
 

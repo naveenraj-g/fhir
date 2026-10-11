@@ -50,6 +50,12 @@ import app.models.audit_event.audit_event  # noqa: F401
 import app.models.episode_of_care.episode_of_care  # noqa: F401
 import app.models.terminology.terminology  # noqa: F401
 import app.models.insurance_plan.insurance_plan  # noqa: F401
+import app.models.questionnaire.questionnaire  # noqa: F401
+import app.models.risk_assessment.risk_assessment  # noqa: F401
+import app.models.flag.flag  # noqa: F401
+import app.models.plan_definition.plan_definition  # noqa: F401
+import app.models.activity_definition.activity_definition  # noqa: F401
+import app.models.care_team.care_team  # noqa: F401
 
 # Read alembic.ini logging config
 config = context.config

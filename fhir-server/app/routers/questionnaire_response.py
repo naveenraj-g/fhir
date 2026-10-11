@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
@@ -8,6 +8,7 @@ from app.core.content_negotiation import format_response, format_paginated_respo
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.questionnaire_response import get_questionnaire_response_service
 from app.models.questionnaire_response.questionnaire_response import QuestionnaireResponseModel
+from app.repository.questionnaire_response_repository import QRSearch
 from app.schemas.fhir import (
     FHIRQuestionnaireResponseSchema,
     FHIRQuestionnaireResponseBundle,
@@ -85,25 +86,16 @@ async def create_questionnaire_response(
     )
 
 
-# Declared before /{questionnaire_response_id} to avoid routing conflicts.
-
-
-
 @router.get(
     "/{questionnaire_response_id}",
     operation_id="get_questionnaire_response_by_id",
     summary="Retrieve a QuestionnaireResponse resource by public questionnaire_response_id",
     description=(
         "Fetches a single QuestionnaireResponse by its public integer `questionnaire_response_id`. "
-        "Access is subject to organization-scoped authorization. "
         + _CONTENT_NEG
     ),
     response_description="The requested QuestionnaireResponse resource",
-    responses={
-        **_SINGLE_200,
-        403: {"description": "Forbidden — caller lacks `questionnaire_response:read` permission or the resource belongs to a different organization"},
-        **_ERR_NOT_FOUND,
-    },
+    responses={**_SINGLE_200, **_ERR_NOT_FOUND},
 )
 async def get_questionnaire_response(
     request: Request,
@@ -125,8 +117,11 @@ async def get_questionnaire_response(
     operation_id="patch_questionnaire_response",
     summary="Partially update a QuestionnaireResponse resource",
     description=(
-        "Only lifecycle fields are patchable: `status` (e.g. `in-progress` → `completed`), `authored`. "
-        "To correct or replace item answers, delete and re-create the QuestionnaireResponse. "
+        "Patchable fields: `status` (cannot be null), `questionnaire`, `authored`, and the references `subject`, "
+        "`encounter`, `author`, `source` (as `Type/id`; null clears) with their `*_display`. "
+        "The child lists `based_on`, `part_of` and the item/answer tree `item` are also patchable with REPLACE "
+        "semantics: a list that is sent replaces the stored list in full, `[]` clears it, an omitted list is left "
+        "untouched. To correct answers send the corrected `item` tree (and typically `status: amended`). "
         + _CONTENT_NEG
     ),
     response_description="The updated QuestionnaireResponse resource",
@@ -157,33 +152,58 @@ async def patch_questionnaire_response(
 @router.get(
     "/",
     operation_id="list_questionnaire_responses",
-    summary="List all QuestionnaireResponse resources",
+    summary="Search QuestionnaireResponse resources",
     description=(
-        "Returns a paginated list of QuestionnaireResponse resources. "
-        "Filter by `status`, `patient_id`, `questionnaire`, `authored_from`, `authored_to`, `user_id`, or `org_id`. "
-        "Use `limit` and `offset` for pagination. "
+        "Searches QuestionnaireResponses using the FHIR R4 search parameters "
+        "(https://www.hl7.org/fhir/R4/questionnaireresponse.html#search). "
+        "Token params (`status`, `identifier`) accept `code`, `system|code`, `|code` or `system|`; comma = OR. "
+        "Reference params (`subject`, `patient`, `encounter`, `author`, `source`, `based-on`, `part-of`) accept "
+        "`Type/id` or a bare numeric id. `questionnaire` matches the stored canonical URL or `Questionnaire/<id>`. "
+        "Date params (`authored`, `_lastUpdated`) take an optional prefix eq|ne|gt|lt|ge|le|sa|eb|ap; repeat for AND "
+        "(e.g. `authored=ge2024-01-01&authored=lt2024-02-01`). "
+        "`org_id` is mandatory on every search (tenant scope) and `user_id` is optional; paginate with `limit` / `offset`. "
         + _CONTENT_NEG
     ),
     response_description="Paginated QuestionnaireResponse resources",
-    responses={**_LIST_200},
+    responses={**_LIST_200, **_ERR_VALIDATION},
 )
 async def list_questionnaire_responses(
     request: Request,
-    qr_status: Optional[str] = Query(None, alias="status"),
-    patient_id: Optional[int] = Query(None),
-    questionnaire: Optional[str] = Query(None),
-    authored_from: Optional[datetime] = Query(None),
-    authored_to: Optional[datetime] = Query(None),
-    user_id: Optional[str] = Query(None),
-    org_id: Optional[str] = Query(None),
+    id_: Optional[str] = Query(None, alias="_id", description="Public questionnaire_response_id(s), comma-separated."),
+    identifier: Optional[str] = Query(None, description="Token `[system|]value` of QuestionnaireResponse.identifier."),
+    questionnaire: Optional[str] = Query(None, description="Canonical URL, or `Questionnaire/<id>`, of the answered Questionnaire."),
+    qr_status: Optional[str] = Query(
+        None, alias="status",
+        description="Token: in-progress|completed|amended|entered-in-error|stopped (comma = OR).",
+    ),
+    subject: Optional[str] = Query(None, description="Subject reference (any type), e.g. `Patient/10001`."),
+    patient: Optional[str] = Query(None, description="Subject patient reference: `Patient/10001` or `10001`."),
+    encounter: Optional[str] = Query(None, description="Encounter reference: `Encounter/20001` or `20001`."),
+    author: Optional[str] = Query(None, description="Author reference: Device|Practitioner|PractitionerRole|Patient|RelatedPerson|Organization."),
+    source: Optional[str] = Query(None, description="Source reference: Patient|Practitioner|PractitionerRole|RelatedPerson."),
+    based_on: Optional[str] = Query(None, alias="based-on", description="basedOn reference: CarePlan|ServiceRequest."),
+    part_of: Optional[str] = Query(None, alias="part-of", description="partOf reference: Observation|Procedure."),
+    authored: Optional[List[str]] = Query(None, description="Authored date with optional prefix, e.g. `ge2024-01-01`. Repeat for AND."),
+    last_updated: Optional[List[str]] = Query(None, alias="_lastUpdated", description="Last-updated instant with optional prefix. Repeat for AND."),
+    patient_id: Optional[int] = Query(None, description="Legacy: public patient_id. Same as `patient`."),
+    authored_from: Optional[datetime] = Query(None, description="Legacy: authored >= this value."),
+    authored_to: Optional[datetime] = Query(None, description="Legacy: authored <= this value."),
+    user_id: Optional[str] = Query(None, description="Optional: restrict to records owned by this user."),
+    org_id: str = Query(..., min_length=1, description="Tenant organization id — mandatory scope of every search."),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     qr_service: QuestionnaireResponseService = Depends(get_questionnaire_response_service),
 ):
+    search = QRSearch(
+        id=id_, identifier=identifier, questionnaire=questionnaire, q_status=qr_status,
+        subject=subject,
+        patient=patient or (str(patient_id) if patient_id is not None else None),
+        encounter=encounter, author=author, source=source, based_on=based_on, part_of=part_of,
+        authored=authored or [], last_updated=last_updated or [],
+        authored_from=authored_from, authored_to=authored_to,
+    )
     responses, total = await qr_service.list_questionnaire_responses(
-        user_id=user_id, org_id=org_id, status=qr_status, patient_id=patient_id,
-        questionnaire=questionnaire, authored_from=authored_from,
-        authored_to=authored_to, limit=limit, offset=offset,
+        user_id=user_id, org_id=org_id, search=search, limit=limit, offset=offset,
     )
     return format_paginated_response(
         [qr_service._to_fhir(qr) for qr in responses],

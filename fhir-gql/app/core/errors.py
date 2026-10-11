@@ -14,6 +14,7 @@ Design pattern:
 """
 
 from fastapi import HTTPException, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -76,7 +77,11 @@ async def validation_exception_handler(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         # exc.errors() returns a list of dicts with `loc`, `msg`, and `type` fields
         # describing exactly which field failed and why.
-        content={"detail": exc.errors()},
+        # Custom pydantic validators (field_validator / model_validator raising ValueError)
+        # put the live exception object in each error's `ctx`; json.dumps cannot serialise
+        # that, so the handler itself would crash into a 500. jsonable_encoder with an
+        # Exception -> str encoder turns it into its message so a 422 is always returned.
+        content={"detail": jsonable_encoder(exc.errors(), custom_encoder={Exception: str})},
     )
 
 

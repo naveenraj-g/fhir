@@ -1,7 +1,5 @@
 """Integration tests for /api/v1/vitals endpoints."""
-from app.auth.dependencies import get_current_user
 from app.main import app
-from tests.conftest import make_test_user
 
 BASE = "/api/v1/vitals"
 
@@ -68,16 +66,6 @@ async def test_list_pagination(client):
     r = await client.get(f"{BASE}/?limit=2&offset=0")
     assert r.status_code == 200
     assert len(r.json()["data"]) <= 2
-
-
-async def test_me_filters_by_user(client):
-    await client.post(BASE + "/", json={**MINIMAL, "user_id": "user-a", "org_id": "org-a"})
-    await client.post(BASE + "/", json={**MINIMAL, "user_id": "user-b", "org_id": "org-b"})
-    app.dependency_overrides[get_current_user] = make_test_user(sub="user-a", org_id="org-a")
-    r = await client.get(f"{BASE}/me")
-    assert r.status_code == 200
-    for item in r.json()["data"]:
-        assert item["user_id"] == "user-a"
 
 
 async def test_patch_steps(client):

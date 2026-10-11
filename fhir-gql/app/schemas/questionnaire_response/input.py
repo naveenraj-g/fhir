@@ -1,0 +1,320 @@
+"""
+Input schemas for QuestionnaireResponse endpoints (fhir-gql gateway).
+
+Mirrors the fhir-server input contract so invalid bodies are rejected at the
+gateway with a 422 before any network call. References are `Type/id` strings;
+only their format is validated (never whether the target exists).
+"""
+
+from datetime import date as Date, datetime
+from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.schemas.enums import IdentifierUse, QuestionnaireResponseStatus
+
+
+# ── Answer value sub-types ─────────────────────────────────────────────────────
+
+
+class AnswerCodingInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    system: Optional[str] = None
+    code: Optional[str] = None
+    display: Optional[str] = None
+
+
+class AnswerQuantityInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    system: Optional[str] = None
+    code: Optional[str] = None
+
+
+class AnswerAttachmentInput(BaseModel):
+    """valueAttachment — Attachment datatype (R4)."""
+
+    model_config = ConfigDict(extra="forbid")
+    content_type: Optional[str] = Field(None, description="MIME type, e.g. 'application/pdf'. Required if data is present.")
+    language: Optional[str] = Field(None, description="BCP-47 language code.")
+    data: Optional[str] = Field(None, description="Base64-encoded content.")
+    url: Optional[str] = Field(None, description="URI where the data can be found.")
+    size: Optional[int] = Field(None, description="Number of bytes before base64 encoding.")
+    hash: Optional[str] = Field(None, description="Base64-encoded SHA-1 hash.")
+    title: Optional[str] = Field(None, description="Label to display in place of the data.")
+    creation: Optional[datetime] = Field(None, description="Date attachment was first created.")
+
+
+# ── basedOn / partOf reference inputs ─────────────────────────────────────────
+
+
+class QRBasedOnInput(BaseModel):
+    """basedOn — Reference(CarePlan | ServiceRequest)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reference: str = Field(..., description="FHIR reference, e.g. 'ServiceRequest/80001' or 'CarePlan/1'.")
+    reference_display: Optional[str] = None
+
+
+class QRPartOfInput(BaseModel):
+    """partOf — Reference(Observation | Procedure)."""
+
+    model_config = ConfigDict(extra="forbid")
+    reference: str = Field(..., description="FHIR reference, e.g. 'Observation/1' or 'Procedure/100001'.")
+    reference_display: Optional[str] = None
+
+
+# ── Answer input ───────────────────────────────────────────────────────────────
+
+
+class AnswerInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    value_boolean: Optional[bool] = None
+    value_decimal: Optional[float] = None
+    value_integer: Optional[int] = None
+    value_date: Optional[Date] = Field(None, description="Date answer (YYYY-MM-DD).", examples=["2024-06-01"])
+    value_datetime: Optional[datetime] = None
+    value_time: Optional[str] = Field(None, description="Time answer (HH:MM:SS).", examples=["09:00:00"])
+    value_string: Optional[str] = None
+    value_uri: Optional[str] = None
+    value_coding: Optional[AnswerCodingInput] = None
+    value_quantity: Optional[AnswerQuantityInput] = None
+    value_reference: Optional[str] = Field(
+        None,
+        description="Reference answer, e.g. 'Patient/10001'.",
+    )
+    value_reference_display: Optional[str] = None
+    value_attachment: Optional[AnswerAttachmentInput] = None
+    item: Optional[List["ItemInput"]] = None
+
+    @model_validator(mode="after")
+    def _at_most_one_value(self):
+        """answer.value[x] is 0..1 — reject answers that carry more than one value variant."""
+        used = [name for name, present in {
+            "boolean": self.value_boolean is not None,
+            "decimal": self.value_decimal is not None,
+            "integer": self.value_integer is not None,
+            "date": self.value_date is not None,
+            "dateTime": self.value_datetime is not None,
+            "time": self.value_time is not None,
+            "string": self.value_string is not None,
+            "uri": self.value_uri is not None,
+            "Coding": self.value_coding is not None,
+            "Quantity": self.value_quantity is not None,
+            "Reference": self.value_reference is not None,
+            "Attachment": self.value_attachment is not None,
+        }.items() if present]
+        if len(used) > 1:
+            raise ValueError(f"answer allows at most one value[x] variant; got {used}.")
+        return self
+
+
+# ── Item input (recursive) ─────────────────────────────────────────────────────
+
+
+class ItemInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    link_id: str = Field(..., description="Pointer to the specific item from the Questionnaire.", examples=["1.1"])
+    definition: Optional[str] = None
+    text: Optional[str] = Field(None, description="Question text or group name.", examples=["What is your date of birth?"])
+    answer: Optional[List[AnswerInput]] = None
+    item: Optional[List["ItemInput"]] = None
+
+
+AnswerInput.model_rebuild()
+ItemInput.model_rebuild()
+
+
+# ── Create / patch ─────────────────────────────────────────────────────────────
+
+
+class QuestionnaireResponseCreateSchema(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "user_id": "user-uuid-123",
+                "org_id": "org-uuid-456",
+                "questionnaire": "http://example.org/fhir/Questionnaire/phq-9",
+                "status": "completed",
+                "identifier_use": "official",
+                "identifier_system": "http://example.org/identifiers",
+                "identifier_value": "qr-2024-001",
+                "subject": "Patient/10001",
+                "encounter": "Encounter/20001",
+                "authored": "2024-06-01T09:00:00Z",
+                "author": "Practitioner/30001",
+                "source": "Patient/10001",
+                "based_on": [
+                    {"reference": "ServiceRequest/80001"}
+                ],
+                "item": [
+                    {
+                        "link_id": "1",
+                        "text": "Over the last 2 weeks, how often have you felt down?",
+                        "answer": [
+                            {
+                                "value_coding": {
+                                    "system": "http://loinc.org",
+                                    "code": "LA6568-5",
+                                    "display": "Not at all",
+                                }
+                            }
+                        ],
+                    }
+                ],
+            }
+        },
+    )
+
+    user_id: Optional[str] = None
+    org_id: Optional[str] = None
+    created_by: Optional[str] = None
+    questionnaire: Optional[str] = Field(
+        None,
+        description="Canonical URL (or 'Questionnaire/<id>') of the Questionnaire this response answers.",
+        examples=["http://example.org/fhir/Questionnaire/phq-9"],
+    )
+    status: QuestionnaireResponseStatus
+
+    # identifier (0..1 in R4)
+    identifier_use: Optional[IdentifierUse] = Field(
+        None, description="usual | official | temp | secondary | old"
+    )
+    identifier_type_system: Optional[str] = None
+    identifier_type_code: Optional[str] = None
+    identifier_type_display: Optional[str] = None
+    identifier_type_text: Optional[str] = None
+    identifier_system: Optional[str] = None
+    identifier_value: Optional[str] = None
+    identifier_period_start: Optional[datetime] = None
+    identifier_period_end: Optional[datetime] = None
+    identifier_assigner: Optional[str] = None
+
+    # basedOn (0..*)
+    based_on: Optional[List[QRBasedOnInput]] = Field(
+        None,
+        description="Plan or order fulfilled by this response.",
+    )
+
+    # partOf (0..*)
+    part_of: Optional[List[QRPartOfInput]] = Field(
+        None,
+        description="Procedure or observation this questionnaire response is part of.",
+    )
+
+    subject: Optional[str] = Field(
+        None,
+        description="Subject reference (any resource type), e.g. 'Patient/10001'.",
+    )
+    subject_display: Optional[str] = None
+    encounter: Optional[str] = Field(
+        None,
+        description="Encounter reference, e.g. 'Encounter/20001'.",
+    )
+    encounter_display: Optional[str] = None
+    authored: Optional[datetime] = Field(None, description="Date/time the answers were gathered.")
+    author: Optional[str] = Field(
+        None,
+        description="Who recorded the answers, e.g. 'Practitioner/30001' or 'Patient/10001'.",
+    )
+    author_display: Optional[str] = None
+    source: Optional[str] = Field(
+        None,
+        description="Who answered the questions (if different from author), e.g. 'Patient/10001'.",
+    )
+    source_display: Optional[str] = None
+    item: Optional[List[ItemInput]] = None
+
+
+class QuestionnaireResponsePatchSchema(BaseModel):
+    """
+    PATCH body — scalar and reference fields plus the child lists (basedOn, partOf and the
+    item/answer tree, with REPLACE semantics; send `[]` to clear one). To correct answers,
+    send the corrected `item` tree and set status to 'amended'. References are 'Type/id'
+    strings. `status` cannot be null.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: Optional[QuestionnaireResponseStatus] = Field(
+        None, description="in-progress | completed | amended | entered-in-error | stopped (cannot be null)."
+    )
+    questionnaire: Optional[str] = None
+    authored: Optional[datetime] = None
+    subject: Optional[str] = Field(None, description="Subject reference (any resource type), e.g. 'Patient/10001'.")
+    subject_display: Optional[str] = None
+    encounter: Optional[str] = Field(None, description="Encounter reference, e.g. 'Encounter/20001'.")
+    author: Optional[str] = Field(None, description="Device|Practitioner|PractitionerRole|Patient|RelatedPerson|Organization.")
+    author_display: Optional[str] = None
+    source: Optional[str] = Field(None, description="Patient|Practitioner|PractitionerRole|RelatedPerson.")
+    source_display: Optional[str] = None
+    updated_by: Optional[str] = None
+
+    # Child lists — REPLACE semantics: a list that is sent replaces the stored one in full;
+    # an omitted list is left untouched. Send [] to clear a list (null is dropped by the gateway).
+    # Sending `item` replaces the ENTIRE item/answer tree.
+    based_on: Optional[List[QRBasedOnInput]] = None
+    part_of: Optional[List[QRPartOfInput]] = None
+    item: Optional[List[ItemInput]] = None
+
+    @field_validator("status")
+    @classmethod
+    def _status_not_null(cls, v):
+        if v is None:
+            raise ValueError("must not be null")
+        return v
+
+
+# ── List / search ──────────────────────────────────────────────────────────────
+
+
+class ListQuestionnaireResponsesSchema(BaseModel):
+    """
+    Search parameters for GET /questionnaire-responses — the FHIR R4 search params.
+
+    The router builds this from explicitly declared Query parameters (several FHIR
+    names are hyphenated or underscore-prefixed and are not valid Python
+    identifiers); the service then forwards it to the fhir-server.
+
+    Token params (`status`, `identifier`): `code` | `system|code` | `|code` | `system|`; comma = OR.
+    Reference params (`subject`, `patient`, `encounter`, `author`, `source`,
+    `based_on`, `part_of`): `Type/id` or bare numeric id; comma = OR.
+    Date params (`authored`, `last_updated`): optional prefix eq|ne|gt|lt|ge|le|sa|eb|ap;
+    repeat for AND (e.g. a range).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: Optional[str] = Field(None, description="_id — public questionnaire_response_id(s), comma-separated.")
+    identifier: Optional[str] = Field(None, description="Token `[system|]value` of QuestionnaireResponse.identifier.")
+    questionnaire: Optional[str] = Field(None, description="Canonical URL or `Questionnaire/<id>` of the answered Questionnaire.")
+    status: Optional[str] = Field(None, description="Token: in-progress|completed|amended|entered-in-error|stopped (comma = OR).")
+    subject: Optional[str] = Field(None, description="Subject reference (any type), e.g. 'Patient/10001'.")
+    patient: Optional[str] = Field(None, description="Subject patient reference: 'Patient/10001' or '10001'.")
+    encounter: Optional[str] = Field(None, description="Encounter reference: 'Encounter/20001' or '20001'.")
+    author: Optional[str] = Field(None, description="Author reference: Device|Practitioner|PractitionerRole|Patient|RelatedPerson|Organization.")
+    source: Optional[str] = Field(None, description="Source reference: Patient|Practitioner|PractitionerRole|RelatedPerson.")
+    based_on: Optional[str] = Field(None, description="based-on reference: CarePlan|ServiceRequest.")
+    part_of: Optional[str] = Field(None, description="part-of reference: Observation|Procedure.")
+    authored: Optional[List[str]] = Field(None, description="Authored date with optional prefix e.g. 'ge2024-01-01'.")
+    last_updated: Optional[List[str]] = Field(None, description="_lastUpdated instant with optional prefix.")
+    # Tenant-scoping filters — optional so admin callers can query across users/orgs.
+    user_id: Optional[str] = Field(None, description="Optional: restrict to records owned by this user (JWT subject).")
+    org_id: str = Field(..., min_length=1, description="Tenant organization ID — mandatory scope of every search.")
+    limit: int = Field(50, ge=1, le=200, description="Max records per page.")
+    offset: int = Field(0, ge=0, description="Records to skip.")
+
+    @field_validator("status")
+    @classmethod
+    def _validate_status_tokens(cls, v: Optional[str]) -> Optional[str]:
+        """Reject unknown status codes early (comma-separated OR list allowed) with a gateway 422."""
+        if v is None:
+            return v
+        allowed = {s.value for s in QuestionnaireResponseStatus}
+        bad = [t for t in v.split(",") if t.strip() and t.strip() not in allowed]
+        if bad:
+            raise ValueError(f"Invalid status {bad}. Allowed: {sorted(allowed)}")
+        return v

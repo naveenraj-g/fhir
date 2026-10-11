@@ -34,6 +34,12 @@ from .audit_event import AuditEventContainer
 from .episode_of_care import EpisodeOfCareContainer
 from .terminology import TerminologyContainer
 from .insurance_plan import InsurancePlanContainer
+from .questionnaire import QuestionnaireContainer
+from .risk_assessment import RiskAssessmentContainer
+from .flag import FlagContainer
+from .plan_definition import PlanDefinitionContainer
+from .activity_definition import ActivityDefinitionContainer
+from .care_team import CareTeamContainer
 
 __all__ = [
     "PatientContainer",
@@ -72,4 +78,10 @@ __all__ = [
     "EpisodeOfCareContainer",
     "TerminologyContainer",
     "InsurancePlanContainer",
+    "QuestionnaireContainer",
+    "RiskAssessmentContainer",
+    "FlagContainer",
+    "PlanDefinitionContainer",
+    "ActivityDefinitionContainer",
+    "CareTeamContainer",
 ]

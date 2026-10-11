@@ -1,8 +1,6 @@
 """Core practitioner endpoint coverage."""
 
-from app.auth.dependencies import get_current_user
 from app.main import app
-from tests.conftest import make_test_user
 from tests.helpers.assertions import (
     assert_fhir_bundle,
     assert_fhir_practitioner,
@@ -150,48 +148,6 @@ async def test_list_practitioners_empty(client):
     data = resp.json()
     assert data["total"] == 0
     assert data["data"] == []
-
-
-async def test_get_my_practitioner_profile_found(client):
-    await client.post(BASE + "/", json=MINIMAL)
-    resp = await client.get(BASE + "/me")
-    assert resp.status_code == 200
-    assert_plain_practitioner(resp.json(), gender="female")
-
-
-async def test_get_my_practitioner_profile_not_found(client):
-    resp = await client.get(BASE + "/me")
-    assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-
-
-async def test_get_my_practitioner_profile_org_isolation(client, other_client):
-    app.dependency_overrides[get_current_user] = make_test_user(
-        permissions=["practitioner:create", "practitioner:read", "practitioner:update", "practitioner:delete"]
-    )
-    await client.post(BASE + "/", json=MINIMAL)
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="u-other",
-        org_id="org-other",
-        permissions=["practitioner:create", "practitioner:read", "practitioner:update", "practitioner:delete"],
-    )
-    try:
-        resp = await other_client.get(BASE + "/me")
-        assert_operation_outcome(resp.json(), expected_status=404, response_status=resp.status_code)
-    finally:
-        app.dependency_overrides[get_current_user] = make_test_user(
-            permissions=["practitioner:create", "practitioner:read", "practitioner:update", "practitioner:delete"]
-        )
-
-
-async def test_create_practitioner_no_permission(client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=["practitioner:read"])
-    try:
-        resp = await client.post(BASE + "/", json=MINIMAL)
-        assert_operation_outcome(resp.json(), expected_status=403, response_status=resp.status_code)
-    finally:
-        app.dependency_overrides[get_current_user] = make_test_user(
-            permissions=["practitioner:create", "practitioner:read", "practitioner:update", "practitioner:delete"]
-        )
 
 
 async def test_practitioner_content_negotiation_defaults_to_plain(client):

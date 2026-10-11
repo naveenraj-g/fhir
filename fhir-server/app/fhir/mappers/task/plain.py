@@ -105,8 +105,25 @@ def plain_task_restriction_recipient(rr: "TaskRestrictionRecipient") -> dict:
     }
 
 
-def plain_task_input(i: "TaskInput") -> dict:
-    return {
+# Extra value[x] columns beyond the original primitives (kept in one tuple so input and output stay identical).
+_EXTRA_VALUE_FIELDS = (
+    "time", "instant", "markdown", "canonical", "url", "positive_int", "unsigned_int", "base64_binary", "id",
+    "coding_system", "coding_code", "coding_display",
+    "codeable_concept_system", "codeable_concept_code", "codeable_concept_display", "codeable_concept_text",
+    "quantity_value", "quantity_unit", "quantity_system", "quantity_code",
+    "period_start", "period_end",
+    "range_low_value", "range_low_unit", "range_high_value", "range_high_unit",
+    "attachment_content_type", "attachment_language", "attachment_data", "attachment_url",
+    "attachment_size", "attachment_hash", "attachment_title", "attachment_creation",
+    "identifier_use", "identifier_system", "identifier_value",
+    "money_value", "money_currency",
+    "ratio_numerator_value", "ratio_numerator_unit", "ratio_denominator_value", "ratio_denominator_unit",
+)
+
+
+def _plain_value_item(i) -> dict:
+    """Shared plain builder for Task.input / Task.output rows (same columns on both tables)."""
+    data = {
         "id": i.id,
         "type_system": i.type_system,
         "type_code": i.type_code,
@@ -124,27 +141,19 @@ def plain_task_input(i: "TaskInput") -> dict:
         "value_reference_id": i.value_reference_id,
         "value_reference_display": i.value_reference_display,
     }
+    for name in _EXTRA_VALUE_FIELDS:
+        v = getattr(i, f"value_{name}", None)
+        data[f"value_{name}"] = v.isoformat() if hasattr(v, "isoformat") else v
+    return data
+
+
+def plain_task_input(i: "TaskInput") -> dict:
+    return _plain_value_item(i)
 
 
 def plain_task_output(o: "TaskOutput") -> dict:
-    return {
-        "id": o.id,
-        "type_system": o.type_system,
-        "type_code": o.type_code,
-        "type_display": o.type_display,
-        "type_text": o.type_text,
-        "value_boolean": o.value_boolean,
-        "value_code": o.value_code,
-        "value_date": o.value_date.isoformat() if o.value_date else None,
-        "value_date_time": o.value_date_time.isoformat() if o.value_date_time else None,
-        "value_decimal": float(o.value_decimal) if o.value_decimal is not None else None,
-        "value_integer": o.value_integer,
-        "value_string": o.value_string,
-        "value_uri": o.value_uri,
-        "value_reference_type": o.value_reference_type,
-        "value_reference_id": o.value_reference_id,
-        "value_reference_display": o.value_reference_display,
-    }
+    return _plain_value_item(o)
+
 
 
 def to_plain_task(model: "TaskModel") -> dict:

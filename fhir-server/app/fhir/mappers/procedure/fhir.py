@@ -38,6 +38,7 @@ def _fhir_performed(proc) -> dict:
     if proc.performed_age_value is not None:
         age = {k: v for k, v in {
             "value": proc.performed_age_value,
+            "comparator": proc.performed_age_comparator,
             "unit": proc.performed_age_unit,
             "system": proc.performed_age_system,
             "code": proc.performed_age_code,
@@ -49,11 +50,15 @@ def _fhir_performed(proc) -> dict:
             range_["low"] = {k: v for k, v in {
                 "value": proc.performed_range_low_value,
                 "unit": proc.performed_range_low_unit,
+                "system": proc.performed_range_low_system,
+                "code": proc.performed_range_low_code,
             }.items() if v is not None}
         if proc.performed_range_high_value is not None:
             range_["high"] = {k: v for k, v in {
                 "value": proc.performed_range_high_value,
                 "unit": proc.performed_range_high_unit,
+                "system": proc.performed_range_high_system,
+                "code": proc.performed_range_high_code,
             }.items() if v is not None}
         return {"performedRange": range_}
     return {}
@@ -190,8 +195,8 @@ def to_fhir_procedure(proc) -> dict:
     if subject:
         result["subject"] = subject
 
-    if proc.encounter and proc.encounter.encounter_id:
-        enc: dict = {"reference": f"Encounter/{proc.encounter.encounter_id}"}
+    if proc.encounter_id is not None:
+        enc: dict = {"reference": f"Encounter/{proc.encounter_id}"}
         if proc.encounter_display:
             enc["display"] = proc.encounter_display
         result["encounter"] = enc
@@ -210,7 +215,7 @@ def to_fhir_procedure(proc) -> dict:
     if performers:
         result["performer"] = performers
 
-    location = _fhir_ref(proc.location_type, proc.location_reference_id, proc.location_display)
+    location = _fhir_ref(proc.location_type, proc.location_id, proc.location_display)
     if location:
         result["location"] = location
 

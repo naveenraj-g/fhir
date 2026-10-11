@@ -1,9 +1,7 @@
 """Integration tests for /api/fhir/v1/related-persons endpoints."""
 import pytest
 
-from app.auth.dependencies import get_current_user
 from app.main import app
-from tests.conftest import make_test_user
 
 BASE = "/api/fhir/v1/related-persons"
 FHIR_ACCEPT = {"Accept": "application/fhir+json"}
@@ -220,25 +218,6 @@ async def test_list_pagination(client):
 # ── /me ───────────────────────────────────────────────────────────────────────
 
 
-async def test_me_returns_only_user_records(client):
-    user_a = {**MINIMAL, "user_id": "user-a", "org_id": "org-a"}
-    user_b = {**MINIMAL, "user_id": "user-b", "org_id": "org-b"}
-
-    await client.post(BASE + "/", json=user_a)
-    await client.post(BASE + "/", json=user_b)
-
-    app.dependency_overrides[get_current_user] = make_test_user(
-        sub="user-a",
-        org_id="org-a",
-        permissions=["related_person:read"],
-    )
-    r = await client.get(f"{BASE}/me")
-    assert r.status_code == 200
-    data = r.json()
-    for item in data["data"]:
-        assert item["user_id"] == "user-a"
-
-
 # ── Patch ─────────────────────────────────────────────────────────────────────
 
 
@@ -314,29 +293,3 @@ async def test_delete_related_person_not_found(client):
 # ── Auth / Permissions ────────────────────────────────────────────────────────
 
 
-async def test_create_requires_auth(client):
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=[])
-    r = await client.post(BASE + "/", json=MINIMAL)
-    assert r.status_code in (401, 403)
-
-
-async def test_read_requires_auth(client):
-    app.dependency_overrides[get_current_user] = make_test_user(
-        permissions=["related_person:create", "related_person:read", "related_person:delete"]
-    )
-    r_create = await client.post(BASE + "/", json=MINIMAL)
-    rp_id = r_create.json()["id"]
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=[])
-    r = await client.get(f"{BASE}/{rp_id}")
-    assert r.status_code in (401, 403)
-
-
-async def test_delete_requires_auth(client):
-    app.dependency_overrides[get_current_user] = make_test_user(
-        permissions=["related_person:create", "related_person:read", "related_person:delete"]
-    )
-    r_create = await client.post(BASE + "/", json=MINIMAL)
-    rp_id = r_create.json()["id"]
-    app.dependency_overrides[get_current_user] = make_test_user(permissions=[])
-    r = await client.delete(f"{BASE}/{rp_id}")
-    assert r.status_code in (401, 403)

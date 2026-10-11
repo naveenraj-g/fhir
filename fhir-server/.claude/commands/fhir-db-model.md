@@ -121,7 +121,7 @@ Child tables must have: `id` (PK), `<parent>_id` (FK, indexed, NOT NULL), `org_i
 **FHIR Organization reference fields** must follow the same `_type` + `_id` + `_display` pattern as every other reference:
 - Use the shared `OrganizationReferenceType` enum from `app/models/enums.py` (single value: `ORGANIZATION = "Organization"`)
 - PostgreSQL type name: `organization_reference_type` (defined once, reused with `create_type=False` across all tables)
-- `managing_organization_id` stores the **internal `organization.id` PK** (not the public `organization_id` sequence). Add a real `ForeignKey("organization.id")` with `index=True` and `lazy="selectin"` relationship.
+- `managing_organization_id` stores the **public `organization_id`** from the reference string. **No `ForeignKey`, no `relationship`, no existence lookup** — references to other resources are never real foreign keys.
 - Example for a 0..1 Reference(Organization) on the main table:
 ```python
 from app.models.enums import OrganizationReferenceType
@@ -130,51 +130,41 @@ managing_organization_type = Column(
     Enum(OrganizationReferenceType, name="organization_reference_type", create_type=False),
     nullable=True,
 )
-managing_organization_id = Column(Integer, ForeignKey("organization.id"), nullable=True, index=True)
+managing_organization_id = Column(Integer, nullable=True, index=True)   # public id, no FK
 managing_organization_display = Column(String, nullable=True)
-managing_organization = relationship("OrganizationModel", foreign_keys=[managing_organization_id], lazy="selectin")
 ```
 - Input schema: `managing_organization: Optional[str] = Field(None, description="FHIR reference, e.g. 'Organization/100'.")`
-- Repository: parse the string → look up `organization.id` where `organization.organization_id == 100` → store internal PK
-- Mapper FHIR output: navigate relationship → `f"Organization/{model.managing_organization.organization_id}"`
+- Repository: parse the string (`Type/id`, allowed type only) → store `_type` and the numeric id as-is. Never query the referenced table.
+- Mapper FHIR output: `f"Organization/{model.managing_organization_id}"`
 - Response schema: expose `managing_organization_type`, `managing_organization_id`, `managing_organization_display`
+- Search by reference: `reference_clause(Model.managing_organization_type, Model.managing_organization_id, parse_reference_param(value, ...))` — no joins.
 
-**This rule applies to ALL reference `_id` columns** — whether `encounter_id`, `subject_id`, `reference_id`, or any named reference column. They always store the **internal PK** (`resource.id`), never the public sequence ID. The public ID for FHIR output is always read through the relationship.
+**This rule applies to ALL reference columns** — `encounter_id`, `subject_id`, `reference_id`, or any named reference column: they hold the **public id**, never an internal PK, and are never foreign keys. The ONLY foreign keys are the child-table → own-parent links (`<child>.<parent>_id → <parent>.id`).
 
 ## Step 6 — Sequence allocation
 
-Pick the next unused block from CLAUDE.md:
-Patient=10000, Encounter=20000, Practitioner=30000, Appointment=40000, QR=60000, Vitals=70000, ServiceRequest=80000, MedicationRequest=90000, Procedure=100000, DiagnosticReport=110000, Condition=120000, DeviceRequest=130000, PractitionerRole=140000.
+Pick the next unused block from the sequence table in `CLAUDE.md` (it lists every resource and the "Next available block"), name the sequence `<resource>_pub_seq`, and add the new row to that table when done.
 
 ## Step 7 — Migration
 
-After writing the model, generate a migration:
+After writing the model (and registering `import app.models.<resource>.<resource>` in `migrations/env.py`), generate and CLEAN a migration:
 ```
-uv run alembic revision --autogenerate -m "<description>"
+uv run alembic revision --autogenerate -m "add <resource>"
 ```
+Cleanup — run `python scripts/clean_migration.py <migration.py> <resource>_pub_seq [shared_enum,...]` (list shared PG enums as the 3rd argument), which does steps 1–3 mechanically:
+1. Strip the unrelated drift autogenerate adds: `CREATE/DROP SEQUENCE` for every OTHER resource and the `questionnaire_response_item` foreign key. Keep only this resource's `CREATE SEQUENCE IF NOT EXISTS <resource>_pub_seq START <N> INCREMENT 1` / `DROP SEQUENCE IF EXISTS`.
+2. Replace every `sa.Enum(...)` with `postgresql.ENUM(..., name='pg_type', create_type=False)` (the same type used by several columns is created once).
+3. At the start of `upgrade()` create each distinct enum: `postgresql.ENUM(..., name='pg_type').create(op.get_bind(), checkfirst=True)`; at the end of `downgrade()` drop them (`postgresql.ENUM(name='pg_type').drop(op.get_bind(), checkfirst=True)`). Shared types (`organization_reference_type`, `encounter_reference_type`, ...) are never created/dropped.
+4. If converting VARCHAR → Enum add `postgresql_using='col::pg_type_name'`.
+5. Prove it: `uv run alembic upgrade head && uv run alembic downgrade -1 && uv run alembic upgrade head`.
 
-Autogenerate enum values are reliable (all enums use key = value convention — no name/value mismatch). Still update the generated file to use the `postgresql.ENUM` pattern for proper create/drop handling:
-1. Replace `sa.Enum(...)` with `postgresql.ENUM(...)` at module level: `_my_enum = postgresql.ENUM('VALUE1', 'VALUE2', name='pg_type_name')`.
-2. Call `_my_enum.create(op.get_bind(), checkfirst=True)` at the start of `upgrade()`.
-3. Use `create_type=False` on any `add_column`/`alter_column` that references the type.
-4. If converting VARCHAR → Enum, add `postgresql_using='col::pg_type_name'`.
-5. In `downgrade()`, revert columns first, then call `_my_enum.drop(op.get_bind(), checkfirst=True)`.
-
-Apply with: `uv run alembic upgrade head`
+When a value set is identical to another resource's, re-use the Python enum class but give the PG type a resource-specific name (so dropping one resource never breaks another). Enum DB labels are the Python member names; the FHIR code is the value (hyphenated codes → underscored member names).
 
 ## Step 8 — Full stack checklist
 
-After the model and migration, walk every layer:
+Follow `/new-fhir-resource` for the rest (schemas, mappers, repository with R4 search + replace-semantics PATCH, service, deps, DI, router, tests, then the fhir-gql layer). Remember the standing rules: `org_id` mandatory on search, references are format-only public-id columns (no FK), no `/me`, no sub-resource endpoints.
 
-- [ ] `app/models/<resource>/enums.py` — new Enum classes
-- [ ] `app/models/<resource>/<resource>.py` — ORM model + child tables
-- [ ] `app/models/<resource>/__init__.py` — exports
-- [ ] `app/schemas/<resource>/input.py` — CreateSchema, PatchSchema; CodeableReference inputs include both concept and reference fields
-- [ ] `app/schemas/fhir/<resource>.py` — FHIRXxxSchema, PlainXxxResponse, PaginatedXxxResponse, FHIRXxxBundle
-- [ ] `app/fhir/mappers/<resource>.py` — to_fhir / to_plain; CodeableReference outputs `{"concept": {...}, "reference": {...}}`
-- [ ] `app/repository/<resource>_repository.py` — CRUD, `_with_relationships`, `_apply_list_filters`, `_cast_ref_type` for closed-set enums
-- [ ] Migration generated and manually fixed
-- [ ] `uv run alembic upgrade head` applied
+For datatypes that nest deeply or recur (Quantity, Range, Ratio, Period, Expression, Attachment, Timing, Dosage) use the flat column factories in `app/models/plan_definition/columns.py` with the pack/unpack codec in `app/fhir/mappers/plan_definition/codec.py`; for recursive structures (action trees, questionnaire items) store the tree flat (`parent_id` + `position`, every row carrying the root id) and rebuild it in the mapper.
 
 ## Reminders
 
