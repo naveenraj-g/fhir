@@ -5,9 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from app.core.content_negotiation import format_paginated_response, format_response
 from app.core.schema_utils import inline_schema
 from app.deps.plan_definition_deps import resolve_plan_definition
+from app.di.dependencies.definition_apply import get_definition_apply_service
 from app.di.dependencies.plan_definition import get_plan_definition_service
 from app.models.plan_definition.plan_definition import PlanDefinitionModel
 from app.repository.plan_definition_repository import PlanDefinitionSearch
+from app.schemas.definition_apply import APPLY_200, PlanDefinitionApplyRequest
 from app.schemas.plan_definition import PlanDefinitionCreateSchema, PlanDefinitionPatchSchema
 from app.schemas.plan_definition.response import (
     FHIRPlanDefinitionBundle,
@@ -15,6 +17,7 @@ from app.schemas.plan_definition.response import (
     PaginatedPlanDefinitionResponse,
     PlainPlanDefinitionResponse,
 )
+from app.services.definition_apply_service import DefinitionApplyService
 from app.services.plan_definition_service import PlanDefinitionService
 
 router = APIRouter()
@@ -215,3 +218,35 @@ async def delete_plan_definition(
 ):
     await service.delete_plan_definition(plan_definition.plan_definition_id)
     return None
+
+
+@router.post(
+    "/{plan_definition_id}/$apply",
+    operation_id="apply_plan_definition",
+    summary="Apply a PlanDefinition to a subject — generate its ServiceRequests ($apply)",
+    description=(
+        "FHIR operation `PlanDefinition/$apply` "
+        "(https://www.hl7.org/fhir/R4/plandefinition-operation-apply.html). Walks the plan's actions in order and, for "
+        "every action whose `definitionCanonical` is an ActivityDefinition of this organization, generates one "
+        "ServiceRequest for the `subject` (code, intent, priority, timing and quantity come from the ActivityDefinition; "
+        "`practitioner` becomes the requester; the action description becomes the patient instruction; "
+        "`instantiates_canonical` links back to the ActivityDefinition and this PlanDefinition). "
+        "Only ActivityDefinition kind `ServiceRequest` is generated — other kinds, retired definitions, unresolved "
+        "definitions and already-generated ones are returned in `skipped` with the reason. "
+        "`persist=false` (default) is a preview and saves nothing; `persist=true` saves every ServiceRequest in one "
+        "transaction. `selected_actions` limits the run to chosen `action[].id` values. "
+        "Returns plain JSON by default, or a `collection` Bundle with `Accept: application/fhir+json`."
+    ),
+    response_description="The generated ServiceRequests and the skipped actions",
+    responses={**APPLY_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def apply_plan_definition(
+    payload: PlanDefinitionApplyRequest,
+    request: Request,
+    plan_definition: PlanDefinitionModel = Depends(resolve_plan_definition),
+    apply_service: DefinitionApplyService = Depends(get_definition_apply_service),
+):
+    if plan_definition.org_id != payload.org_id:
+        raise HTTPException(status_code=404, detail="PlanDefinition not found")
+    result = await apply_service.apply_plan_definition(plan_definition, payload)
+    return format_response(apply_service.to_fhir(result), apply_service.to_plain(result), request)

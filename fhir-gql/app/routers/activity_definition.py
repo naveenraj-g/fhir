@@ -6,6 +6,7 @@ Endpoints:
   GET    /activity-definitions/{id}   — fetch a single ActivityDefinition by public ID
   GET    /activity-definitions/       — paginated FHIR R4 search (name, status, topic, depends-on, ...)
   PATCH  /activity-definitions/{id}   — partial update; every child list is replaced when sent
+  POST   /activity-definitions/{id}/$apply — apply to a subject: generate ServiceRequests
   DELETE /activity-definitions/{id}   — permanent delete (cascades to all child records)
 
 All routes support content negotiation:
@@ -26,6 +27,7 @@ from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response, get_accept_header
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.activity_definition import get_activity_definition_service
+from app.schemas.definition_apply import APPLY_200, ActivityDefinitionApplySchema
 from app.schemas.activity_definition.input import ActivityDefinitionCreateSchema, ActivityDefinitionPatchSchema, ListActivityDefinitionsSchema
 from app.schemas.activity_definition.response import FHIRActivityDefinitionBundle, FHIRActivityDefinitionSchema, PlainActivityDefinitionResponse, PaginatedActivityDefinitionResponse
 from app.services.activity_definition_service import ActivityDefinitionService
@@ -273,3 +275,32 @@ async def delete_activity_definition(
 ) -> None:
     """Permanently delete an ActivityDefinition and cascade to its child records."""
     await service.delete(resource_id, actor)
+
+
+# ── POST /activity-definitions/{resource_id}/$apply ───────────────────────────────────────────────
+
+
+@router.post(
+    "/{resource_id}/$apply",
+    operation_id="apply_activity_definition",
+    summary="Apply an ActivityDefinition to a subject — generate one ServiceRequest",
+    description=(
+        "FHIR operation `ActivityDefinition/$apply`. Turns this template into one ServiceRequest for the `subject` (code, intent, priority, timing and quantity are copied; `practitioner` becomes the requester). "
+        "Only ActivityDefinition kind `ServiceRequest` is generated — other kinds, retired or unresolved definitions and "
+        "ones already generated for the same subject/encounter are returned in `skipped` with the reason. "
+        "`persist=false` (default) is a preview and saves nothing; `persist=true` saves every ServiceRequest in one "
+        "transaction. Send `Accept: application/fhir+json` to receive a `collection` Bundle."
+    ),
+    responses={**APPLY_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("service_request", "create"))],
+)
+async def apply_activity_definition(
+    resource_id: int,
+    dto: ActivityDefinitionApplySchema,
+    request: Request,
+    actor: AuthUser = Depends(require_permission("service_request", "create")),
+    service: ActivityDefinitionService = Depends(get_activity_definition_service),
+) -> JSONResponse:
+    """Generate (preview or persist) the ServiceRequests of this ActivityDefinition for a subject."""
+    data = await service.apply(resource_id, dto, actor, accept=get_accept_header(request))
+    return format_response(data, request)

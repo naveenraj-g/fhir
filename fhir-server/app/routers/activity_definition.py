@@ -6,8 +6,10 @@ from app.core.content_negotiation import format_paginated_response, format_respo
 from app.core.schema_utils import inline_schema
 from app.deps.activity_definition_deps import resolve_activity_definition
 from app.di.dependencies.activity_definition import get_activity_definition_service
+from app.di.dependencies.definition_apply import get_definition_apply_service
 from app.models.activity_definition.activity_definition import ActivityDefinitionModel
 from app.repository.activity_definition_repository import ActivityDefinitionSearch
+from app.schemas.definition_apply import APPLY_200, ActivityDefinitionApplyRequest
 from app.schemas.activity_definition import ActivityDefinitionCreateSchema, ActivityDefinitionPatchSchema
 from app.schemas.activity_definition.response import (
     FHIRActivityDefinitionBundle,
@@ -16,6 +18,7 @@ from app.schemas.activity_definition.response import (
     PlainActivityDefinitionResponse,
 )
 from app.services.activity_definition_service import ActivityDefinitionService
+from app.services.definition_apply_service import DefinitionApplyService
 
 router = APIRouter()
 
@@ -217,3 +220,32 @@ async def delete_activity_definition(
 ):
     await service.delete_activity_definition(activity_definition.activity_definition_id)
     return None
+
+
+@router.post(
+    "/{activity_definition_id}/$apply",
+    operation_id="apply_activity_definition",
+    summary="Apply an ActivityDefinition to a subject — generate one ServiceRequest ($apply)",
+    description=(
+        "FHIR operation `ActivityDefinition/$apply` "
+        "(https://www.hl7.org/fhir/R4/activitydefinition-operation-apply.html). Turns this template into a "
+        "ServiceRequest for the `subject` (code, intent, priority, timing and quantity are copied; `practitioner` "
+        "becomes the requester; `instantiates_canonical` links back to this definition). Only kind `ServiceRequest` "
+        "is generated — any other kind, a retired definition, or one already generated for the same subject/encounter "
+        "comes back in `skipped` with the reason. `persist=false` (default) is a preview and saves nothing; "
+        "`persist=true` saves the ServiceRequest. Returns plain JSON by default, or a `collection` Bundle with "
+        "`Accept: application/fhir+json`."
+    ),
+    response_description="The generated ServiceRequest, or the reason it was skipped",
+    responses={**APPLY_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+)
+async def apply_activity_definition(
+    payload: ActivityDefinitionApplyRequest,
+    request: Request,
+    activity_definition: ActivityDefinitionModel = Depends(resolve_activity_definition),
+    apply_service: DefinitionApplyService = Depends(get_definition_apply_service),
+):
+    if activity_definition.org_id != payload.org_id:
+        raise HTTPException(status_code=404, detail="ActivityDefinition not found")
+    result = await apply_service.apply_activity_definition(activity_definition, payload)
+    return format_response(apply_service.to_fhir(result), apply_service.to_plain(result), request)

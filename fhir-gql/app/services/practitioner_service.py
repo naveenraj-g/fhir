@@ -270,7 +270,7 @@ class PractitionerService:
             HTTPException(404): If no Practitioner is found for actor.sub.
         """
         # Internal pre-check: always plain JSON (omit accept) so we can inspect data[].
-        result = await self._client.list(user_id=actor.sub, limit=1, offset=0)
+        result = await self._client.list(user_id=actor.sub, org_id=actor.org_id, limit=1, offset=0)
         data = result.get("data", [])
         if not data:
             raise HTTPException(

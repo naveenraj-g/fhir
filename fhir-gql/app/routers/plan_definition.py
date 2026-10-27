@@ -6,6 +6,7 @@ Endpoints:
   GET    /plan-definitions/{id}   — fetch a single PlanDefinition by public ID
   GET    /plan-definitions/       — paginated FHIR R4 search (name, status, type, topic, definition, ...)
   PATCH  /plan-definitions/{id}   — partial update; every child list (incl. goal / action) is replaced when sent
+  POST   /plan-definitions/{id}/$apply — apply to a subject: generate ServiceRequests
   DELETE /plan-definitions/{id}   — permanent delete (cascades to all child records)
 
 All routes support content negotiation:
@@ -26,6 +27,7 @@ from app.auth.rbac import require_permission
 from app.core.content_negotiation import format_paginated_response, format_response, get_accept_header
 from app.core.schema_utils import inline_schema
 from app.di.dependencies.plan_definition import get_plan_definition_service
+from app.schemas.definition_apply import APPLY_200, PlanDefinitionApplySchema
 from app.schemas.plan_definition.input import PlanDefinitionCreateSchema, PlanDefinitionPatchSchema, ListPlanDefinitionsSchema
 from app.schemas.plan_definition.response import FHIRPlanDefinitionBundle, FHIRPlanDefinitionSchema, PlainPlanDefinitionResponse, PaginatedPlanDefinitionResponse
 from app.services.plan_definition_service import PlanDefinitionService
@@ -274,3 +276,32 @@ async def delete_plan_definition(
 ) -> None:
     """Permanently delete a PlanDefinition and cascade to its child records."""
     await service.delete(resource_id, actor)
+
+
+# ── POST /plan-definitions/{resource_id}/$apply ───────────────────────────────────────────────
+
+
+@router.post(
+    "/{resource_id}/$apply",
+    operation_id="apply_plan_definition",
+    summary="Apply a PlanDefinition to a subject — generate its ServiceRequests",
+    description=(
+        "FHIR operation `PlanDefinition/$apply`. Walks the plan's actions in order and, for every action whose `definitionCanonical` is an ActivityDefinition of this organization, generates one ServiceRequest for the `subject` (code, intent, priority, timing and quantity come from the ActivityDefinition; `practitioner` becomes the requester; the action description becomes the patient instruction). `selected_actions` limits the run to chosen `action[].id` values. "
+        "Only ActivityDefinition kind `ServiceRequest` is generated — other kinds, retired or unresolved definitions and "
+        "ones already generated for the same subject/encounter are returned in `skipped` with the reason. "
+        "`persist=false` (default) is a preview and saves nothing; `persist=true` saves every ServiceRequest in one "
+        "transaction. Send `Accept: application/fhir+json` to receive a `collection` Bundle."
+    ),
+    responses={**APPLY_200, **_ERR_NOT_FOUND, **_ERR_VALIDATION},
+    dependencies=[Depends(require_permission("service_request", "create"))],
+)
+async def apply_plan_definition(
+    resource_id: int,
+    dto: PlanDefinitionApplySchema,
+    request: Request,
+    actor: AuthUser = Depends(require_permission("service_request", "create")),
+    service: PlanDefinitionService = Depends(get_plan_definition_service),
+) -> JSONResponse:
+    """Generate (preview or persist) the ServiceRequests of this PlanDefinition for a subject."""
+    data = await service.apply(resource_id, dto, actor, accept=get_accept_header(request))
+    return format_response(data, request)

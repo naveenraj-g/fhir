@@ -88,6 +88,23 @@ def _parse_ref(ref_str: Optional[str]) -> tuple:
     return parts[0], int(parts[1])
 
 
+def _parse_open_ref(ref: str) -> Tuple[str, int]:
+    """Parse 'ResourceType/id' into (type_str, id_int) without enum validation; raises HTTP 422 on a bad format."""
+    parts = ref.split("/", 1)
+    if len(parts) != 2:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid reference format: '{ref}'. Expected 'ResourceType/id'.",
+        )
+    try:
+        return parts[0], int(parts[1])
+    except ValueError:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid reference id in: '{ref}'. Id must be an integer.",
+        )
+
+
 def _cast_ref_type(type_str: Optional[str], enum_cls, field: str):
     """Cast a string resource type to an enum; raises HTTP 422 if not valid."""
     if not type_str:

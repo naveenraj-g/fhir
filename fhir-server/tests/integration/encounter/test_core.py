@@ -148,3 +148,15 @@ async def test_delete_not_found(client):
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 
+
+
+async def test_create_with_service_provider(client):
+    data = await _create(client, {**MINIMAL, "service_provider": "Organization/190001", "service_provider_display": "Main Clinic"})
+    assert (data["service_provider_type"], data["service_provider_id"]) == ("Organization", 190001)
+    assert data["service_provider_display"] == "Main Clinic"
+
+
+@pytest.mark.parametrize("bad", ["nonsense", "Organization/abc", "Patient/1"])
+async def test_create_with_invalid_service_provider(client, bad):
+    r = await client.post(BASE + "/", json={**MINIMAL, "service_provider": bad})
+    assert r.status_code in (400, 422), r.text

@@ -73,6 +73,23 @@ terminology-seed-bindings-r4:
 # Load all terminologies in order (each is idempotent — safe to re-run)
 terminology-all: terminology-fhir-r4 terminology-icd10cm terminology-rxnorm terminology-loinc terminology-snomed terminology-seed-bindings-r4
 
+# ── Seed data ─────────────────────────────────────────────────────────────────
+
+# Seed the SIMS preventive health screening PlanDefinitions + ActivityDefinitions for one tenant
+# Usage: just seed-screening f5ea33b0-60b1-4a30-9791-8040829d9cc6
+seed-screening ORG_ID:
+    uv run python scripts/seed_preventive_health_screening.py --org-id {{ORG_ID}}
+
+# Same, but roll everything back at the end (shows what would be created)
+# Usage: just seed-screening-dry f5ea33b0-60b1-4a30-9791-8040829d9cc6
+seed-screening-dry ORG_ID:
+    uv run python scripts/seed_preventive_health_screening.py --org-id {{ORG_ID}} --dry-run
+
+# Delete that org's existing screening definitions, then seed them fresh
+# Usage: just seed-screening-clean f5ea33b0-60b1-4a30-9791-8040829d9cc6
+seed-screening-clean ORG_ID:
+    uv run python scripts/seed_preventive_health_screening.py --org-id {{ORG_ID}} --clean
+
 # ── VPS / Production ──────────────────────────────────────────────────────────
 
 IMAGE := "ghcr.io/naveenraj-g/fhir-server-v1"

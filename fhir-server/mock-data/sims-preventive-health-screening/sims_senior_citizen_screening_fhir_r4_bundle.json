@@ -1,0 +1,857 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "timestamp": "2026-10-25T00:00:00Z",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "senior-citizen-health-screening-plan",
+        "url": "https://fhir.example.org/r4/PlanDefinition/senior-citizen-health-screening-plan",
+        "version": "1.0.0",
+        "name": "SeniorCitizenHealthScreeningPlan",
+        "title": "Senior Citizen Health Screening Plan",
+        "status": "draft",
+        "experimental": true,
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "order-set",
+              "display": "Order Set"
+            }
+          ]
+        },
+        "description": "Draft FHIR R4 order-set PlanDefinition based on the SIMS Hospitals Senior Citizen Health Screening Package page. The package is described for people over 65 years and includes laboratory tests, imaging, diagnostic procedures, and consultations. The source lists Pap Smear (Women) / PSA (Men), and lists both Vitamin D and Vitamin D3; confirm alternative/duplicate semantics with the hospital. This bundle is not a clinically validated protocol.",
+        "purpose": "Group ServiceRequest-producing activities for the Senior Citizen Health Screening package.",
+        "action": [
+          {
+            "id": "cbc-esr",
+            "title": "Complete blood count with ESR",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/cbc-esr|1.0.0",
+            "textEquivalent": "Complete blood count with ESR",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "blood-group-rh",
+            "title": "Blood grouping and Rh typing",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/blood-group-rh|1.0.0",
+            "textEquivalent": "Blood grouping and Rh typing",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "fasting-blood-sugar",
+            "title": "Fasting blood sugar",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/fasting-blood-sugar|1.0.0",
+            "textEquivalent": "Fasting blood sugar",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "postprandial-blood-sugar",
+            "title": "Post-prandial blood sugar",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/postprandial-blood-sugar|1.0.0",
+            "textEquivalent": "Post-prandial blood sugar",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "hba1c",
+            "title": "HbA1c",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/hba1c|1.0.0",
+            "textEquivalent": "HbA1c",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "renal-function",
+            "title": "Renal function test",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/renal-function|1.0.0",
+            "textEquivalent": "Renal function test",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "liver-function",
+            "title": "Liver function test",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/liver-function|1.0.0",
+            "textEquivalent": "Liver function test",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "lipid-profile",
+            "title": "Lipid profile",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/lipid-profile|1.0.0",
+            "textEquivalent": "Lipid profile",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "tsh",
+            "title": "Thyroid stimulating hormone (TSH)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/tsh|1.0.0",
+            "textEquivalent": "Thyroid stimulating hormone (TSH)",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "uric-acid",
+            "title": "Uric acid",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/uric-acid|1.0.0",
+            "textEquivalent": "Uric acid",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "urine-routine",
+            "title": "Urine routine examination",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/urine-routine|1.0.0",
+            "textEquivalent": "Urine routine examination",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "stool-routine",
+            "title": "Stool routine examination",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/stool-routine|1.0.0",
+            "textEquivalent": "Stool routine examination",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "pap-smear",
+            "title": "Pap smear",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/pap-smear|1.0.0",
+            "textEquivalent": "Pap smear",
+            "description": "The source lists Pap Smear for women / PSA for men. Treat these as alternative, eligibility-dependent activities, not both routine orders."
+          },
+          {
+            "id": "psa",
+            "title": "Prostate-specific antigen (PSA)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/psa|1.0.0",
+            "textEquivalent": "Prostate-specific antigen (PSA)",
+            "description": "The source lists Pap Smear for women / PSA for men. Treat these as alternative, eligibility-dependent activities, not both routine orders."
+          },
+          {
+            "id": "ecg",
+            "title": "Electrocardiogram (ECG)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/ecg|1.0.0",
+            "textEquivalent": "Electrocardiogram (ECG)",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "chest-xray",
+            "title": "Chest X-ray",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/chest-xray|1.0.0",
+            "textEquivalent": "Chest X-ray",
+            "description": "Confirm clinical appropriateness and pregnancy status where relevant before ordering imaging."
+          },
+          {
+            "id": "abdominal-ultrasound",
+            "title": "Abdominal ultrasound",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/abdominal-ultrasound|1.0.0",
+            "textEquivalent": "Abdominal ultrasound",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "vitamin-d",
+            "title": "Vitamin D",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/vitamin-d|1.0.0",
+            "textEquivalent": "Vitamin D",
+            "description": "The source lists both Vitamin D and Vitamin D3. Confirm whether these are distinct orderables or duplicate naming in the hospital catalog before ordering both."
+          },
+          {
+            "id": "vitamin-b12",
+            "title": "Vitamin B12",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/vitamin-b12|1.0.0",
+            "textEquivalent": "Vitamin B12",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "general-physician-consultation",
+            "title": "General physician consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/general-physician-consultation|1.0.0",
+            "textEquivalent": "General physician consultation",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "general-surgeon-consultation",
+            "title": "General surgeon consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/general-surgeon-consultation|1.0.0",
+            "textEquivalent": "General surgeon consultation",
+            "description": "The source lists General Surgeon / Gynaecologist consultation; apply the relevant consultation based on patient needs and hospital workflow."
+          },
+          {
+            "id": "gynaecologist-consultation",
+            "title": "Gynaecologist consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/gynaecologist-consultation|1.0.0",
+            "textEquivalent": "Gynaecologist consultation",
+            "description": "The source lists General Surgeon / Gynaecologist consultation; apply the relevant consultation based on patient needs and hospital workflow."
+          },
+          {
+            "id": "breast-consultation",
+            "title": "Breast consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/breast-consultation|1.0.0",
+            "textEquivalent": "Breast consultation",
+            "description": "Confirm the specific consultation type and eligibility with the hospital."
+          },
+          {
+            "id": "free-t4",
+            "title": "Free T4",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/free-t4|1.0.0",
+            "textEquivalent": "Free T4",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "serum-calcium",
+            "title": "Serum calcium",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/serum-calcium|1.0.0",
+            "textEquivalent": "Serum calcium",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "serum-electrolytes",
+            "title": "Serum electrolytes",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/serum-electrolytes|1.0.0",
+            "textEquivalent": "Serum electrolytes",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "vitamin-d3",
+            "title": "Vitamin D3",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/vitamin-d3|1.0.0",
+            "textEquivalent": "Vitamin D3",
+            "description": "The source lists both Vitamin D and Vitamin D3. Confirm whether these are distinct orderables or duplicate naming in the hospital catalog before ordering both."
+          },
+          {
+            "id": "echocardiography-2d",
+            "title": "2D echocardiography",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/echocardiography-2d|1.0.0",
+            "textEquivalent": "2D echocardiography",
+            "description": "Confirm the clinical protocol and whether this is routinely included for every eligible patient."
+          },
+          {
+            "id": "dexa-whole-body",
+            "title": "DEXA whole body scan",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/dexa-whole-body|1.0.0",
+            "textEquivalent": "DEXA whole body scan",
+            "description": "Confirm the exact DEXA protocol and clinical indication with the hospital."
+          },
+          {
+            "id": "ophthalmologist-consultation",
+            "title": "Ophthalmologist consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/ophthalmologist-consultation|1.0.0",
+            "textEquivalent": "Ophthalmologist consultation",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "ent-consultation",
+            "title": "ENT consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/ent-consultation|1.0.0",
+            "textEquivalent": "ENT consultation",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "dental-consultation",
+            "title": "Dental consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/dental-consultation|1.0.0",
+            "textEquivalent": "Dental consultation",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          },
+          {
+            "id": "diet-counselling",
+            "title": "Diet counselling",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/diet-counselling|1.0.0",
+            "textEquivalent": "Diet counselling",
+            "description": "Confirm the exact coded orderable and clinical applicability with the hospital before production use."
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "cbc-esr",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/cbc-esr",
+        "version": "1.0.0",
+        "name": "cbc_esr",
+        "title": "Complete blood count with ESR",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Complete blood count with ESR. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Complete blood count with ESR"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "blood-group-rh",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/blood-group-rh",
+        "version": "1.0.0",
+        "name": "blood_group_rh",
+        "title": "Blood grouping and Rh typing",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Blood grouping and Rh typing. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Blood grouping and Rh typing"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "fasting-blood-sugar",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/fasting-blood-sugar",
+        "version": "1.0.0",
+        "name": "fasting_blood_sugar",
+        "title": "Fasting blood sugar",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Fasting blood sugar. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Fasting blood sugar"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "postprandial-blood-sugar",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/postprandial-blood-sugar",
+        "version": "1.0.0",
+        "name": "postprandial_blood_sugar",
+        "title": "Post-prandial blood sugar",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Post-prandial blood sugar. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Post-prandial blood sugar"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "hba1c",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/hba1c",
+        "version": "1.0.0",
+        "name": "hba1c",
+        "title": "HbA1c",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for HbA1c. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "HbA1c"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "renal-function",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/renal-function",
+        "version": "1.0.0",
+        "name": "renal_function",
+        "title": "Renal function test",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Renal function test. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Renal function test"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "liver-function",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/liver-function",
+        "version": "1.0.0",
+        "name": "liver_function",
+        "title": "Liver function test",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Liver function test. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Liver function test"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "lipid-profile",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/lipid-profile",
+        "version": "1.0.0",
+        "name": "lipid_profile",
+        "title": "Lipid profile",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Lipid profile. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Lipid profile"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "tsh",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/tsh",
+        "version": "1.0.0",
+        "name": "tsh",
+        "title": "Thyroid stimulating hormone (TSH)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Thyroid stimulating hormone (TSH). Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Thyroid stimulating hormone (TSH)"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "uric-acid",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/uric-acid",
+        "version": "1.0.0",
+        "name": "uric_acid",
+        "title": "Uric acid",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Uric acid. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Uric acid"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "urine-routine",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/urine-routine",
+        "version": "1.0.0",
+        "name": "urine_routine",
+        "title": "Urine routine examination",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Urine routine examination. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Urine routine examination"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "stool-routine",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/stool-routine",
+        "version": "1.0.0",
+        "name": "stool_routine",
+        "title": "Stool routine examination",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Stool routine examination. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Stool routine examination"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "pap-smear",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/pap-smear",
+        "version": "1.0.0",
+        "name": "pap_smear",
+        "title": "Pap smear",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Pap smear. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Screening procedure. The source lists Pap Smear for women / PSA for men. Treat these as alternative, eligibility-dependent activities, not both routine orders.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Pap smear"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "psa",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/psa",
+        "version": "1.0.0",
+        "name": "psa",
+        "title": "Prostate-specific antigen (PSA)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Prostate-specific antigen (PSA). Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory / screening. The source lists Pap Smear for women / PSA for men. Treat these as alternative, eligibility-dependent activities, not both routine orders.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Prostate-specific antigen (PSA)"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "ecg",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/ecg",
+        "version": "1.0.0",
+        "name": "ecg",
+        "title": "Electrocardiogram (ECG)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Electrocardiogram (ECG). Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Diagnostic procedure. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Electrocardiogram (ECG)"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "chest-xray",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/chest-xray",
+        "version": "1.0.0",
+        "name": "chest_xray",
+        "title": "Chest X-ray",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Chest X-ray. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Diagnostic imaging. Confirm clinical appropriateness and pregnancy status where relevant before ordering imaging.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Chest X-ray"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "abdominal-ultrasound",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/abdominal-ultrasound",
+        "version": "1.0.0",
+        "name": "abdominal_ultrasound",
+        "title": "Abdominal ultrasound",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Abdominal ultrasound. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Diagnostic imaging. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Abdominal ultrasound"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "vitamin-d",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/vitamin-d",
+        "version": "1.0.0",
+        "name": "vitamin_d",
+        "title": "Vitamin D",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Vitamin D. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. The source lists both Vitamin D and Vitamin D3. Confirm whether these are distinct orderables or duplicate naming in the hospital catalog before ordering both.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Vitamin D"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "vitamin-b12",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/vitamin-b12",
+        "version": "1.0.0",
+        "name": "vitamin_b12",
+        "title": "Vitamin B12",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Vitamin B12. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Vitamin B12"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "general-physician-consultation",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/general-physician-consultation",
+        "version": "1.0.0",
+        "name": "general_physician_consultation",
+        "title": "General physician consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for General physician consultation. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Clinical consultation. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "General physician consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "general-surgeon-consultation",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/general-surgeon-consultation",
+        "version": "1.0.0",
+        "name": "general_surgeon_consultation",
+        "title": "General surgeon consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for General surgeon consultation. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Clinical consultation. The source lists General Surgeon / Gynaecologist consultation; apply the relevant consultation based on patient needs and hospital workflow.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "General surgeon consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "gynaecologist-consultation",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/gynaecologist-consultation",
+        "version": "1.0.0",
+        "name": "gynaecologist_consultation",
+        "title": "Gynaecologist consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Gynaecologist consultation. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Clinical consultation. The source lists General Surgeon / Gynaecologist consultation; apply the relevant consultation based on patient needs and hospital workflow.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Gynaecologist consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "breast-consultation",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/breast-consultation",
+        "version": "1.0.0",
+        "name": "breast_consultation",
+        "title": "Breast consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Breast consultation. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Clinical consultation. Confirm the specific consultation type and eligibility with the hospital.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Breast consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "free-t4",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/free-t4",
+        "version": "1.0.0",
+        "name": "free_t4",
+        "title": "Free T4",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Free T4. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Free T4"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "serum-calcium",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/serum-calcium",
+        "version": "1.0.0",
+        "name": "serum_calcium",
+        "title": "Serum calcium",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Serum calcium. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Serum calcium"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "serum-electrolytes",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/serum-electrolytes",
+        "version": "1.0.0",
+        "name": "serum_electrolytes",
+        "title": "Serum electrolytes",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Serum electrolytes. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Serum electrolytes"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "vitamin-d3",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/vitamin-d3",
+        "version": "1.0.0",
+        "name": "vitamin_d3",
+        "title": "Vitamin D3",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Vitamin D3. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Laboratory. The source lists both Vitamin D and Vitamin D3. Confirm whether these are distinct orderables or duplicate naming in the hospital catalog before ordering both.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Vitamin D3"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "echocardiography-2d",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/echocardiography-2d",
+        "version": "1.0.0",
+        "name": "echocardiography_2d",
+        "title": "2D echocardiography",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for 2D echocardiography. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Diagnostic procedure. Confirm the clinical protocol and whether this is routinely included for every eligible patient.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "2D echocardiography"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "dexa-whole-body",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/dexa-whole-body",
+        "version": "1.0.0",
+        "name": "dexa_whole_body",
+        "title": "DEXA whole body scan",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for DEXA whole body scan. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Diagnostic imaging. Confirm the exact DEXA protocol and clinical indication with the hospital.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "DEXA whole body scan"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "ophthalmologist-consultation",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/ophthalmologist-consultation",
+        "version": "1.0.0",
+        "name": "ophthalmologist_consultation",
+        "title": "Ophthalmologist consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Ophthalmologist consultation. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Clinical consultation. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Ophthalmologist consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "ent-consultation",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/ent-consultation",
+        "version": "1.0.0",
+        "name": "ent_consultation",
+        "title": "ENT consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for ENT consultation. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Clinical consultation. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "ENT consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "dental-consultation",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/dental-consultation",
+        "version": "1.0.0",
+        "name": "dental_consultation",
+        "title": "Dental consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Dental consultation. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Clinical consultation. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Dental consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "diet-counselling",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/diet-counselling",
+        "version": "1.0.0",
+        "name": "diet_counselling",
+        "title": "Diet counselling",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Diet counselling. Listed on the SIMS Hospitals Senior Citizen Health Screening Package page (>65 years). Category: Clinical consultation. Confirm the exact coded orderable and clinical applicability with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Diet counselling"
+        },
+        "intent": "order"
+      }
+    }
+  ]
+}

@@ -1,0 +1,809 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "timestamp": "2026-10-25T00:00:00Z",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "diabetic-health-screening-plan",
+        "url": "https://fhir.example.org/r4/PlanDefinition/diabetic-health-screening-plan",
+        "version": "1.0.0",
+        "name": "DiabeticHealthScreeningPlan",
+        "title": "Diabetic Health Screening Plan",
+        "status": "draft",
+        "experimental": true,
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "order-set",
+              "display": "Order Set"
+            }
+          ]
+        },
+        "description": "Draft FHIR R4 order-set PlanDefinition based on the items listed on the SIMS Hospitals Diabetic Health Screening Package page. This is a package representation, not a clinically validated protocol. Validate the complete order set, eligibility, sex-specific screening, conditional tests, and sequencing with the hospital before production use.",
+        "purpose": "Group ServiceRequest-producing activities for the diabetic health screening package.",
+        "action": [
+          {
+            "id": "cbc-esr",
+            "title": "Complete blood count with ESR",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/cbc-esr|1.0.0",
+            "textEquivalent": "Complete blood count with ESR"
+          },
+          {
+            "id": "fasting-blood-sugar",
+            "title": "Fasting blood sugar",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/fasting-blood-sugar|1.0.0",
+            "textEquivalent": "Fasting blood sugar"
+          },
+          {
+            "id": "postprandial-blood-sugar",
+            "title": "Post-prandial blood sugar",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/postprandial-blood-sugar|1.0.0",
+            "textEquivalent": "Post-prandial blood sugar"
+          },
+          {
+            "id": "hba1c",
+            "title": "HbA1c",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/hba1c|1.0.0",
+            "textEquivalent": "HbA1c"
+          },
+          {
+            "id": "renal-function",
+            "title": "Renal function test",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/renal-function|1.0.0",
+            "textEquivalent": "Renal function test"
+          },
+          {
+            "id": "liver-function",
+            "title": "Liver function test",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/liver-function|1.0.0",
+            "textEquivalent": "Liver function test"
+          },
+          {
+            "id": "lipid-profile",
+            "title": "Lipid profile",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/lipid-profile|1.0.0",
+            "textEquivalent": "Lipid profile"
+          },
+          {
+            "id": "tsh",
+            "title": "Thyroid stimulating hormone",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/tsh|1.0.0",
+            "textEquivalent": "Thyroid stimulating hormone"
+          },
+          {
+            "id": "uric-acid",
+            "title": "Uric acid",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/uric-acid|1.0.0",
+            "textEquivalent": "Uric acid"
+          },
+          {
+            "id": "urine-routine",
+            "title": "Urine routine examination",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/urine-routine|1.0.0",
+            "textEquivalent": "Urine routine examination"
+          },
+          {
+            "id": "stool-routine",
+            "title": "Stool routine examination",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/stool-routine|1.0.0",
+            "textEquivalent": "Stool routine examination"
+          },
+          {
+            "id": "pap-smear",
+            "title": "Pap smear",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/pap-smear|1.0.0",
+            "textEquivalent": "Pap smear",
+            "description": "Sex-specific screening. Apply only where clinically appropriate and according to the hospital's eligibility protocol."
+          },
+          {
+            "id": "psa",
+            "title": "Prostate-specific antigen (PSA)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/psa|1.0.0",
+            "textEquivalent": "Prostate-specific antigen (PSA)",
+            "description": "Sex-specific screening. Apply only where clinically appropriate and according to the hospital's eligibility protocol."
+          },
+          {
+            "id": "ecg",
+            "title": "Electrocardiogram (ECG)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/ecg|1.0.0",
+            "textEquivalent": "Electrocardiogram (ECG)"
+          },
+          {
+            "id": "chest-xray",
+            "title": "Chest X-ray",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/chest-xray|1.0.0",
+            "textEquivalent": "Chest X-ray",
+            "description": "Confirm pregnancy status and clinical appropriateness before ordering imaging."
+          },
+          {
+            "id": "abdominal-ultrasound",
+            "title": "Abdominal ultrasound",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/abdominal-ultrasound|1.0.0",
+            "textEquivalent": "Abdominal ultrasound"
+          },
+          {
+            "id": "vitamin-d",
+            "title": "Vitamin D",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/vitamin-d|1.0.0",
+            "textEquivalent": "Vitamin D"
+          },
+          {
+            "id": "vitamin-b12",
+            "title": "Vitamin B12",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/vitamin-b12|1.0.0",
+            "textEquivalent": "Vitamin B12"
+          },
+          {
+            "id": "general-physician-consult",
+            "title": "General physician consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/general-physician-consult|1.0.0",
+            "textEquivalent": "General physician consultation"
+          },
+          {
+            "id": "general-surgeon-consult",
+            "title": "General surgeon consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/general-surgeon-consult|1.0.0",
+            "textEquivalent": "General surgeon consultation",
+            "description": "Confirm whether consultation is applicable for this patient; package page does not specify selection criteria."
+          },
+          {
+            "id": "gynaecologist-consult",
+            "title": "Gynaecologist consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/gynaecologist-consult|1.0.0",
+            "textEquivalent": "Gynaecologist consultation",
+            "description": "Confirm whether consultation is applicable for this patient; package page does not specify selection criteria."
+          },
+          {
+            "id": "breast-consult",
+            "title": "Breast consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/breast-consult|1.0.0",
+            "textEquivalent": "Breast consultation",
+            "description": "Confirm whether consultation is applicable for this patient; package page does not specify selection criteria."
+          },
+          {
+            "id": "serum-electrolytes",
+            "title": "Serum electrolytes",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/serum-electrolytes|1.0.0",
+            "textEquivalent": "Serum electrolytes"
+          },
+          {
+            "id": "crp",
+            "title": "C-reactive protein (CRP)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/crp|1.0.0",
+            "textEquivalent": "C-reactive protein (CRP)"
+          },
+          {
+            "id": "two-d-echo",
+            "title": "2D echocardiography",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/two-d-echo|1.0.0",
+            "textEquivalent": "2D echocardiography",
+            "description": "Order according to the hospital's clinical protocol and clinician's decision."
+          },
+          {
+            "id": "urine-microalbumin",
+            "title": "Urine microalbumin",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/urine-microalbumin|1.0.0",
+            "textEquivalent": "Urine microalbumin"
+          },
+          {
+            "id": "diabetic-vascular-screening",
+            "title": "Diabetic vascular screening study",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/diabetic-vascular-screening|1.0.0",
+            "textEquivalent": "Diabetic vascular screening study",
+            "description": "Confirm exact procedure name, protocol, and orderable code with the hospital."
+          },
+          {
+            "id": "peripheral-neuropathy-assessment",
+            "title": "Peripheral neuropathy assessment",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/peripheral-neuropathy-assessment|1.0.0",
+            "textEquivalent": "Peripheral neuropathy assessment",
+            "description": "Confirm the assessment workflow and orderable code with the hospital."
+          },
+          {
+            "id": "ophthalmologist-consult",
+            "title": "Ophthalmologist consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/ophthalmologist-consult|1.0.0",
+            "textEquivalent": "Ophthalmologist consultation"
+          },
+          {
+            "id": "ent-consult",
+            "title": "ENT consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/ent-consult|1.0.0",
+            "textEquivalent": "ENT consultation"
+          },
+          {
+            "id": "dental-consult",
+            "title": "Dental consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/dental-consult|1.0.0",
+            "textEquivalent": "Dental consultation"
+          },
+          {
+            "id": "diet-counselling",
+            "title": "Diet counselling",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/diet-counselling|1.0.0",
+            "textEquivalent": "Diet counselling"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "cbc-esr",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/cbc-esr",
+        "version": "1.0.0",
+        "name": "cbc_esr",
+        "title": "Complete blood count with ESR",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Complete blood count with ESR. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Complete blood count with ESR"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "fasting-blood-sugar",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/fasting-blood-sugar",
+        "version": "1.0.0",
+        "name": "fasting_blood_sugar",
+        "title": "Fasting blood sugar",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Fasting blood sugar. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Fasting blood sugar"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "postprandial-blood-sugar",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/postprandial-blood-sugar",
+        "version": "1.0.0",
+        "name": "postprandial_blood_sugar",
+        "title": "Post-prandial blood sugar",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Post-prandial blood sugar. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Post-prandial blood sugar"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "hba1c",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/hba1c",
+        "version": "1.0.0",
+        "name": "hba1c",
+        "title": "HbA1c",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for HbA1c. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "HbA1c"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "renal-function",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/renal-function",
+        "version": "1.0.0",
+        "name": "renal_function",
+        "title": "Renal function test",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Renal function test. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Renal function test"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "liver-function",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/liver-function",
+        "version": "1.0.0",
+        "name": "liver_function",
+        "title": "Liver function test",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Liver function test. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Liver function test"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "lipid-profile",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/lipid-profile",
+        "version": "1.0.0",
+        "name": "lipid_profile",
+        "title": "Lipid profile",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Lipid profile. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Lipid profile"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "tsh",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/tsh",
+        "version": "1.0.0",
+        "name": "tsh",
+        "title": "Thyroid stimulating hormone",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Thyroid stimulating hormone. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Thyroid stimulating hormone"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "uric-acid",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/uric-acid",
+        "version": "1.0.0",
+        "name": "uric_acid",
+        "title": "Uric acid",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Uric acid. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Uric acid"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "urine-routine",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/urine-routine",
+        "version": "1.0.0",
+        "name": "urine_routine",
+        "title": "Urine routine examination",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Urine routine examination. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Urine routine examination"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "stool-routine",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/stool-routine",
+        "version": "1.0.0",
+        "name": "stool_routine",
+        "title": "Stool routine examination",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Stool routine examination. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Stool routine examination"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "pap-smear",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/pap-smear",
+        "version": "1.0.0",
+        "name": "pap_smear",
+        "title": "Pap smear",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Pap smear. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory / screening. Confirm exact coded orderable and clinical applicability before production use. Sex-specific screening. Apply only where clinically appropriate and according to the hospital's eligibility protocol.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Pap smear"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "psa",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/psa",
+        "version": "1.0.0",
+        "name": "psa",
+        "title": "Prostate-specific antigen (PSA)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Prostate-specific antigen (PSA). Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory / screening. Confirm exact coded orderable and clinical applicability before production use. Sex-specific screening. Apply only where clinically appropriate and according to the hospital's eligibility protocol.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Prostate-specific antigen (PSA)"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "ecg",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/ecg",
+        "version": "1.0.0",
+        "name": "ecg",
+        "title": "Electrocardiogram (ECG)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Electrocardiogram (ECG). Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Diagnostic procedure. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Electrocardiogram (ECG)"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "chest-xray",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/chest-xray",
+        "version": "1.0.0",
+        "name": "chest_xray",
+        "title": "Chest X-ray",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Chest X-ray. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Diagnostic imaging. Confirm exact coded orderable and clinical applicability before production use. Confirm pregnancy status and clinical appropriateness before ordering imaging.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Chest X-ray"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "abdominal-ultrasound",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/abdominal-ultrasound",
+        "version": "1.0.0",
+        "name": "abdominal_ultrasound",
+        "title": "Abdominal ultrasound",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Abdominal ultrasound. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Diagnostic imaging. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Abdominal ultrasound"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "vitamin-d",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/vitamin-d",
+        "version": "1.0.0",
+        "name": "vitamin_d",
+        "title": "Vitamin D",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Vitamin D. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Vitamin D"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "vitamin-b12",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/vitamin-b12",
+        "version": "1.0.0",
+        "name": "vitamin_b12",
+        "title": "Vitamin B12",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Vitamin B12. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Vitamin B12"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "general-physician-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/general-physician-consult",
+        "version": "1.0.0",
+        "name": "general_physician_consult",
+        "title": "General physician consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for General physician consultation. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Clinical consultation. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "General physician consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "general-surgeon-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/general-surgeon-consult",
+        "version": "1.0.0",
+        "name": "general_surgeon_consult",
+        "title": "General surgeon consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for General surgeon consultation. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Clinical consultation. Confirm exact coded orderable and clinical applicability before production use. Confirm whether consultation is applicable for this patient; package page does not specify selection criteria.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "General surgeon consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "gynaecologist-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/gynaecologist-consult",
+        "version": "1.0.0",
+        "name": "gynaecologist_consult",
+        "title": "Gynaecologist consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Gynaecologist consultation. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Clinical consultation. Confirm exact coded orderable and clinical applicability before production use. Confirm whether consultation is applicable for this patient; package page does not specify selection criteria.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Gynaecologist consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "breast-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/breast-consult",
+        "version": "1.0.0",
+        "name": "breast_consult",
+        "title": "Breast consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Breast consultation. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Clinical consultation. Confirm exact coded orderable and clinical applicability before production use. Confirm whether consultation is applicable for this patient; package page does not specify selection criteria.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Breast consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "serum-electrolytes",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/serum-electrolytes",
+        "version": "1.0.0",
+        "name": "serum_electrolytes",
+        "title": "Serum electrolytes",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Serum electrolytes. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Serum electrolytes"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "crp",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/crp",
+        "version": "1.0.0",
+        "name": "crp",
+        "title": "C-reactive protein (CRP)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for C-reactive protein (CRP). Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "C-reactive protein (CRP)"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "two-d-echo",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/two-d-echo",
+        "version": "1.0.0",
+        "name": "two_d_echo",
+        "title": "2D echocardiography",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for 2D echocardiography. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Diagnostic procedure. Confirm exact coded orderable and clinical applicability before production use. Order according to the hospital's clinical protocol and clinician's decision.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "2D echocardiography"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "urine-microalbumin",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/urine-microalbumin",
+        "version": "1.0.0",
+        "name": "urine_microalbumin",
+        "title": "Urine microalbumin",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Urine microalbumin. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Laboratory. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Urine microalbumin"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "diabetic-vascular-screening",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/diabetic-vascular-screening",
+        "version": "1.0.0",
+        "name": "diabetic_vascular_screening",
+        "title": "Diabetic vascular screening study",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Diabetic vascular screening study. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Diagnostic procedure. Confirm exact coded orderable and clinical applicability before production use. Confirm exact procedure name, protocol, and orderable code with the hospital.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Diabetic vascular screening study"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "peripheral-neuropathy-assessment",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/peripheral-neuropathy-assessment",
+        "version": "1.0.0",
+        "name": "peripheral_neuropathy_assessment",
+        "title": "Peripheral neuropathy assessment",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Peripheral neuropathy assessment. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Clinical assessment. Confirm exact coded orderable and clinical applicability before production use. Confirm the assessment workflow and orderable code with the hospital.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Peripheral neuropathy assessment"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "ophthalmologist-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/ophthalmologist-consult",
+        "version": "1.0.0",
+        "name": "ophthalmologist_consult",
+        "title": "Ophthalmologist consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Ophthalmologist consultation. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Clinical consultation. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Ophthalmologist consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "ent-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/ent-consult",
+        "version": "1.0.0",
+        "name": "ent_consult",
+        "title": "ENT consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for ENT consultation. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Clinical consultation. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "ENT consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "dental-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/dental-consult",
+        "version": "1.0.0",
+        "name": "dental_consult",
+        "title": "Dental consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Dental consultation. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Clinical consultation. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Dental consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "diet-counselling",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/diet-counselling",
+        "version": "1.0.0",
+        "name": "diet_counselling",
+        "title": "Diet counselling",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Diet counselling. Listed on SIMS Hospitals Diabetic Health Screening Package page. Category: Clinical consultation. Confirm exact coded orderable and clinical applicability before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Diet counselling"
+        },
+        "intent": "order"
+      }
+    }
+  ]
+}

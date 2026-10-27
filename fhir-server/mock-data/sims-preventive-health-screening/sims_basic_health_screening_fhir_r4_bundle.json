@@ -1,0 +1,563 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "timestamp": "2026-10-25T00:00:00Z",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "basic-health-screening-plan",
+        "url": "https://fhir.example.org/r4/PlanDefinition/basic-health-screening-plan",
+        "version": "1.0.0",
+        "name": "BasicHealthScreeningPlan",
+        "title": "Basic Health Screening Plan",
+        "status": "draft",
+        "experimental": true,
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "order-set",
+              "display": "Order Set"
+            }
+          ]
+        },
+        "description": "Draft plan based on the currently rendered SIMS Hospitals page at the supplied URL, which displays Basic Health Screening rather than a comprehensive heart-specific package. The page lists fasting for 12 hours and says the package is for men and women above 40. Clinical staff must validate the package, eligibility, conditional items, and sequencing before use.",
+        "purpose": "Group the package's ServiceRequest-producing activities into a reusable screening order set.",
+        "action": [
+          {
+            "id": "cbc-esr",
+            "title": "Complete blood count with ESR",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/cbc-esr|1.0.0",
+            "textEquivalent": "Complete blood count with ESR"
+          },
+          {
+            "id": "blood-group-rh",
+            "title": "Blood grouping and Rh typing",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/blood-group-rh|1.0.0",
+            "textEquivalent": "Blood grouping and Rh typing"
+          },
+          {
+            "id": "fasting-glucose",
+            "title": "Fasting blood glucose",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/fasting-glucose|1.0.0",
+            "textEquivalent": "Fasting blood glucose"
+          },
+          {
+            "id": "postprandial-glucose",
+            "title": "Post-prandial blood glucose",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/postprandial-glucose|1.0.0",
+            "textEquivalent": "Post-prandial blood glucose"
+          },
+          {
+            "id": "hba1c",
+            "title": "HbA1c",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/hba1c|1.0.0",
+            "textEquivalent": "HbA1c"
+          },
+          {
+            "id": "renal-function",
+            "title": "Renal function test",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/renal-function|1.0.0",
+            "textEquivalent": "Renal function test"
+          },
+          {
+            "id": "liver-function",
+            "title": "Liver function test",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/liver-function|1.0.0",
+            "textEquivalent": "Liver function test"
+          },
+          {
+            "id": "lipid-profile",
+            "title": "Lipid profile",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/lipid-profile|1.0.0",
+            "textEquivalent": "Lipid profile"
+          },
+          {
+            "id": "tsh",
+            "title": "Thyroid stimulating hormone (TSH)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/tsh|1.0.0",
+            "textEquivalent": "Thyroid stimulating hormone (TSH)"
+          },
+          {
+            "id": "uric-acid",
+            "title": "Uric acid",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/uric-acid|1.0.0",
+            "textEquivalent": "Uric acid"
+          },
+          {
+            "id": "urine-routine",
+            "title": "Urine routine examination",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/urine-routine|1.0.0",
+            "textEquivalent": "Urine routine examination"
+          },
+          {
+            "id": "stool-routine",
+            "title": "Stool routine examination",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/stool-routine|1.0.0",
+            "textEquivalent": "Stool routine examination"
+          },
+          {
+            "id": "pap-smear",
+            "title": "Pap smear",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/pap-smear|1.0.0",
+            "textEquivalent": "Pap smear",
+            "description": "Sex-specific alternative; do not order both automatically. Apply eligibility and clinical rules."
+          },
+          {
+            "id": "psa",
+            "title": "Prostate-specific antigen (PSA)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/psa|1.0.0",
+            "textEquivalent": "Prostate-specific antigen (PSA)",
+            "description": "Sex-specific alternative; do not order both automatically. Apply eligibility and clinical rules."
+          },
+          {
+            "id": "ecg",
+            "title": "Electrocardiogram (ECG)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/ecg|1.0.0",
+            "textEquivalent": "Electrocardiogram (ECG)"
+          },
+          {
+            "id": "chest-xray",
+            "title": "Chest X-ray",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/chest-xray|1.0.0",
+            "textEquivalent": "Chest X-ray",
+            "description": "Confirm pregnancy status and clinical appropriateness before ordering imaging."
+          },
+          {
+            "id": "abdominal-ultrasound",
+            "title": "Abdominal ultrasound",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/abdominal-ultrasound|1.0.0",
+            "textEquivalent": "Abdominal ultrasound"
+          },
+          {
+            "id": "general-physician-consult",
+            "title": "General physician consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/general-physician-consult|1.0.0",
+            "textEquivalent": "General physician consultation"
+          },
+          {
+            "id": "general-surgeon-consult",
+            "title": "General surgeon consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/general-surgeon-consult|1.0.0",
+            "textEquivalent": "General surgeon consultation",
+            "description": "Confirm whether this consultation is applicable for this patient; package page lists consultations but does not define selection criteria."
+          },
+          {
+            "id": "gynaecologist-consult",
+            "title": "Gynaecologist consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/gynaecologist-consult|1.0.0",
+            "textEquivalent": "Gynaecologist consultation",
+            "description": "Confirm whether this consultation is applicable for this patient; package page lists consultations but does not define selection criteria."
+          },
+          {
+            "id": "breast-consult",
+            "title": "Breast specialist consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/breast-consult|1.0.0",
+            "textEquivalent": "Breast specialist consultation",
+            "description": "Confirm whether this consultation is applicable for this patient; package page lists consultations but does not define selection criteria."
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "cbc-esr",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/cbc-esr",
+        "version": "1.0.0",
+        "name": "cbc_esr",
+        "title": "Complete blood count with ESR",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Complete blood count with ESR. Package source lists this item under Basic Health Screening. Category/notes: Laboratory test. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Complete blood count with ESR"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "blood-group-rh",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/blood-group-rh",
+        "version": "1.0.0",
+        "name": "blood_group_rh",
+        "title": "Blood grouping and Rh typing",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Blood grouping and Rh typing. Package source lists this item under Basic Health Screening. Category/notes: Laboratory test. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Blood grouping and Rh typing"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "fasting-glucose",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/fasting-glucose",
+        "version": "1.0.0",
+        "name": "fasting_glucose",
+        "title": "Fasting blood glucose",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Fasting blood glucose. Package source lists this item under Basic Health Screening. Category/notes: Laboratory test. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Fasting blood glucose"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "postprandial-glucose",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/postprandial-glucose",
+        "version": "1.0.0",
+        "name": "postprandial_glucose",
+        "title": "Post-prandial blood glucose",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Post-prandial blood glucose. Package source lists this item under Basic Health Screening. Category/notes: Laboratory test. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Post-prandial blood glucose"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "hba1c",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/hba1c",
+        "version": "1.0.0",
+        "name": "hba1c",
+        "title": "HbA1c",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: HbA1c. Package source lists this item under Basic Health Screening. Category/notes: Laboratory test. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "HbA1c"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "renal-function",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/renal-function",
+        "version": "1.0.0",
+        "name": "renal_function",
+        "title": "Renal function test",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Renal function test. Package source lists this item under Basic Health Screening. Category/notes: Laboratory panel. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Renal function test"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "liver-function",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/liver-function",
+        "version": "1.0.0",
+        "name": "liver_function",
+        "title": "Liver function test",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Liver function test. Package source lists this item under Basic Health Screening. Category/notes: Laboratory panel. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Liver function test"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "lipid-profile",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/lipid-profile",
+        "version": "1.0.0",
+        "name": "lipid_profile",
+        "title": "Lipid profile",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Lipid profile. Package source lists this item under Basic Health Screening. Category/notes: Laboratory panel. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Lipid profile"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "tsh",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/tsh",
+        "version": "1.0.0",
+        "name": "tsh",
+        "title": "Thyroid stimulating hormone (TSH)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Thyroid stimulating hormone (TSH). Package source lists this item under Basic Health Screening. Category/notes: Laboratory test. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Thyroid stimulating hormone (TSH)"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "uric-acid",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/uric-acid",
+        "version": "1.0.0",
+        "name": "uric_acid",
+        "title": "Uric acid",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Uric acid. Package source lists this item under Basic Health Screening. Category/notes: Laboratory test. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Uric acid"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "urine-routine",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/urine-routine",
+        "version": "1.0.0",
+        "name": "urine_routine",
+        "title": "Urine routine examination",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Urine routine examination. Package source lists this item under Basic Health Screening. Category/notes: Laboratory test. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Urine routine examination"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "stool-routine",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/stool-routine",
+        "version": "1.0.0",
+        "name": "stool_routine",
+        "title": "Stool routine examination",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Stool routine examination. Package source lists this item under Basic Health Screening. Category/notes: Laboratory test. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Stool routine examination"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "pap-smear",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/pap-smear",
+        "version": "1.0.0",
+        "name": "pap_smear",
+        "title": "Pap smear",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Pap smear. Package source lists this item under Basic Health Screening. Category/notes: Sex-specific screening; apply only when clinically appropriate. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Pap smear"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "psa",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/psa",
+        "version": "1.0.0",
+        "name": "psa",
+        "title": "Prostate-specific antigen (PSA)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Prostate-specific antigen (PSA). Package source lists this item under Basic Health Screening. Category/notes: Sex-specific screening; apply only when clinically appropriate. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Prostate-specific antigen (PSA)"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "ecg",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/ecg",
+        "version": "1.0.0",
+        "name": "ecg",
+        "title": "Electrocardiogram (ECG)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Electrocardiogram (ECG). Package source lists this item under Basic Health Screening. Category/notes: Diagnostic procedure. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Electrocardiogram (ECG)"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "chest-xray",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/chest-xray",
+        "version": "1.0.0",
+        "name": "chest_xray",
+        "title": "Chest X-ray",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Chest X-ray. Package source lists this item under Basic Health Screening. Category/notes: Diagnostic imaging. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Chest X-ray"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "abdominal-ultrasound",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/abdominal-ultrasound",
+        "version": "1.0.0",
+        "name": "abdominal_ultrasound",
+        "title": "Abdominal ultrasound",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Abdominal ultrasound. Package source lists this item under Basic Health Screening. Category/notes: Diagnostic imaging. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Abdominal ultrasound"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "general-physician-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/general-physician-consult",
+        "version": "1.0.0",
+        "name": "general_physician_consult",
+        "title": "General physician consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: General physician consultation. Package source lists this item under Basic Health Screening. Category/notes: Clinical consultation. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "General physician consultation"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "general-surgeon-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/general-surgeon-consult",
+        "version": "1.0.0",
+        "name": "general_surgeon_consult",
+        "title": "General surgeon consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: General surgeon consultation. Package source lists this item under Basic Health Screening. Category/notes: Clinical consultation; use when indicated. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "General surgeon consultation"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "gynaecologist-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/gynaecologist-consult",
+        "version": "1.0.0",
+        "name": "gynaecologist_consult",
+        "title": "Gynaecologist consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Gynaecologist consultation. Package source lists this item under Basic Health Screening. Category/notes: Clinical consultation; use when indicated. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Gynaecologist consultation"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "breast-consult",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/breast-consult",
+        "version": "1.0.0",
+        "name": "breast_consult",
+        "title": "Breast specialist consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for: Breast specialist consultation. Package source lists this item under Basic Health Screening. Category/notes: Clinical consultation; use when indicated. Confirm exact orderable code, eligibility, and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Breast specialist consultation"
+        },
+        "intent": "order",
+        "doNotPerform": false
+      }
+    }
+  ]
+}

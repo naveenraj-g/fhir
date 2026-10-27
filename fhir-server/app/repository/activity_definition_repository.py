@@ -290,6 +290,18 @@ class ActivityDefinitionRepository:
             )
             return (await session.execute(stmt)).scalars().first()
 
+    async def find_for_apply(
+        self, org_id: str, public_id: Optional[int] = None, url: Optional[str] = None
+    ) -> Optional[ActivityDefinitionModel]:
+        """Resolve an action's definition inside one tenant, by public id or by canonical url (latest row wins)."""
+        if public_id is None and not url:
+            return None
+        M = ActivityDefinitionModel
+        stmt = select(M).where(M.org_id == org_id)
+        stmt = stmt.where(M.activity_definition_id == public_id) if public_id is not None else stmt.where(M.url == url)
+        async with self.session_factory() as session:
+            return (await session.execute(_with_relationships(stmt.order_by(M.id.desc())))).scalars().first()
+
     def _apply_list_filters(self, stmt, user_id, org_id, search: Optional[ActivityDefinitionSearch] = None):
         """user_id/org_id are tenant filters; `search` carries the FHIR R4 search parameters."""
         if user_id:

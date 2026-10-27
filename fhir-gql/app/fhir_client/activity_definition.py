@@ -113,3 +113,18 @@ class ActivityDefinitionClient:
             resource_id: The public integer activity_definition_id to delete.
         """
         await self._fhir.delete(f"{_PATH}/{resource_id}")
+
+    async def apply(self, resource_id: int, data: dict, actor: AuthUser, accept: str | None = None) -> dict:
+        """
+        POST /activity-definitions/{resource_id}/$apply — generate ServiceRequests from the ActivityDefinition for a subject.
+
+        Args:
+            resource_id: The public integer activity_definition_id.
+            data:        Serialised apply body (exclude_none=True, mode="json").
+            actor:       Authenticated caller — FhirClient stamps created_by from actor.sub.
+            accept:      Content-type preference forwarded to the fhir-server.
+
+        Returns:
+            Plain JSON `{definition, subject, persisted, total, service_requests, skipped}` or a FHIR `collection` Bundle.
+        """
+        return await self._fhir.post(f"{_PATH}/{resource_id}/$apply", data, actor, accept=accept)

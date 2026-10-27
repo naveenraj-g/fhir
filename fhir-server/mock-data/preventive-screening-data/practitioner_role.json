@@ -1,0 +1,87 @@
+{
+  "user_id": "user-admin-001",
+  "org_id": "0fb41e50-82a4-461e-96c7-bd11359d892d",
+  "practitioner": "Practitioner/30002",
+  "practitioner_display": "Dr. Elena Torres",
+  "organization": "Organization/190000",
+  "organization_display": "Sunrise Medical Center",
+  "active": true,
+  "period_start": "2025-01-01T00:00:00Z",
+  "availability_exceptions": "Not available on public holidays.",
+  "identifier": [
+    {
+      "system": "urn:sunrise:screening-practitioner-role",
+      "value": "preventive-physician"
+    }
+  ],
+  "code": [
+    {
+      "coding_system": "http://terminology.hl7.org/CodeSystem/practitioner-role",
+      "coding_code": "doctor",
+      "coding_display": "Doctor",
+      "text": "Doctor"
+    },
+    {
+      "coding_system": "http://snomed.info/sct",
+      "coding_code": "62247001",
+      "coding_display": "Family medicine specialist",
+      "text": "Family medicine specialist"
+    }
+  ],
+  "specialty": [
+    {
+      "coding_system": "http://snomed.info/sct",
+      "coding_code": "394814009",
+      "coding_display": "General practice",
+      "text": "General practice"
+    },
+    {
+      "coding_system": "http://snomed.info/sct",
+      "coding_code": "409968004",
+      "coding_display": "Preventive medicine",
+      "text": "Preventive medicine"
+    }
+  ],
+  "location": [
+    {
+      "reference": "Location/230000",
+      "reference_display": "Sunrise Medical Center — Main Clinic"
+    }
+  ],
+  "healthcare_service": [
+    {
+      "reference": "HealthcareService/150003",
+      "reference_display": "Preventive Health Screening"
+    }
+  ],
+  "characteristic": [],
+  "communication": [
+    {
+      "coding_system": "urn:ietf:bcp:47",
+      "coding_code": "en",
+      "coding_display": "English",
+      "text": "English"
+    }
+  ],
+  "contact": [],
+  "availability": [
+    {
+      "available_times": [
+        {
+          "days_of_week": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri"
+          ],
+          "all_day": false,
+          "available_start_time": "08:00:00",
+          "available_end_time": "13:00:00"
+        }
+      ],
+      "not_available_times": []
+    }
+  ],
+  "endpoint": []
+}

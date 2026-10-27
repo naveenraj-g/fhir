@@ -1,0 +1,58 @@
+{
+  "user_id": "user-admin-001",
+  "org_id": "0fb41e50-82a4-461e-96c7-bd11359d892d",
+  "active": true,
+  "comment": "Bookable time for Preventive Health Screening with the screening physician at the Main Clinic. Patients book one appointment; the physician chooses the screening plan when confirming it.",
+  "planning_horizon_start": "2026-01-01T00:00:00Z",
+  "planning_horizon_end": "2026-12-31T23:59:59Z",
+  "identifier": [
+    {
+      "system": "urn:sunrise:screening-schedule",
+      "value": "preventive-screening-main-clinic"
+    }
+  ],
+  "service_category": [
+    {
+      "coding_system": "http://terminology.hl7.org/CodeSystem/service-category",
+      "coding_code": "17",
+      "coding_display": "General Practice",
+      "text": "General Practice"
+    }
+  ],
+  "service_type": [
+    {
+      "coding_system": "http://terminology.hl7.org/CodeSystem/service-type",
+      "coding_code": "124",
+      "coding_display": "General Practice/GP (doctor)",
+      "text": "General Practice/GP (doctor)"
+    }
+  ],
+  "specialty": [
+    {
+      "coding_system": "http://snomed.info/sct",
+      "coding_code": "394814009",
+      "coding_display": "General practice",
+      "text": "General practice"
+    },
+    {
+      "coding_system": "http://snomed.info/sct",
+      "coding_code": "409968004",
+      "coding_display": "Preventive medicine",
+      "text": "Preventive medicine"
+    }
+  ],
+  "actor": [
+    {
+      "reference": "PractitionerRole/140000",
+      "reference_display": "Dr. Elena Torres — Preventive physician"
+    },
+    {
+      "reference": "HealthcareService/150003",
+      "reference_display": "Preventive Health Screening"
+    },
+    {
+      "reference": "Location/230000",
+      "reference_display": "Sunrise Medical Center — Main Clinic"
+    }
+  ]
+}

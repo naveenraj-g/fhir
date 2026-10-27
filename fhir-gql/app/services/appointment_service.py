@@ -324,6 +324,12 @@ class AppointmentService:
         if dto.description:
             payload["description"] = dto.description
 
+        # Specialty — copied as-is (exclude_none keeps the fhir-server payload clean).
+        # Appointment.specialty is a create-only child array, so booking is the only
+        # chance to set it; drgodly keys its preventive-medicine flow off it.
+        if dto.specialty:
+            payload["specialty"] = [s.model_dump(exclude_none=True) for s in dto.specialty]
+
         if dto.service_type_code:
             payload["service_type"] = [
                 {

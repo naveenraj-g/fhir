@@ -1,0 +1,157 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "timestamp": "2026-10-25T00:00:00Z",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "womens-wellness-plan",
+        "url": "https://fhir.example.org/r4/PlanDefinition/womens-wellness-plan",
+        "version": "1.0.0",
+        "name": "WomensWellnessPlan",
+        "title": "Women's Wellness Plan",
+        "status": "draft",
+        "experimental": true,
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "order-set",
+              "display": "Order Set"
+            }
+          ]
+        },
+        "description": "Draft FHIR R4 order-set PlanDefinition based on the current SIMS Hospitals Women's Wellness Package page. The page explicitly lists Mammogram, Pap Smear, Thyroid Profile, and CBC; it also says consultation is included. It states no prerequisites and that the package is for women. The consultation is included as a placeholder ServiceRequest activity pending confirmation of its exact type. Validate eligibility, exact thyroid panel composition, and the consultation workflow with the hospital before production use.",
+        "purpose": "Group ServiceRequest-producing activities for the Women's Wellness package.",
+        "action": [
+          {
+            "id": "mammogram",
+            "title": "Mammogram",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/mammogram|1.0.0",
+            "textEquivalent": "Mammogram",
+            "description": "The package page lists mammogram. Confirm age/risk eligibility, pregnancy/lactation context where relevant, and imaging protocol with the hospital before ordering."
+          },
+          {
+            "id": "pap-smear",
+            "title": "Pap smear",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/pap-smear|1.0.0",
+            "textEquivalent": "Pap smear",
+            "description": "The package page lists Pap smear. Confirm cervical screening eligibility, prior screening history, and the appropriate clinical protocol before ordering."
+          },
+          {
+            "id": "thyroid-profile",
+            "title": "Thyroid profile",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/thyroid-profile|1.0.0",
+            "textEquivalent": "Thyroid profile",
+            "description": "The package page lists Thyroid Profile but does not specify analytes. Confirm whether this means TSH alone or a panel including free T4/T3 with the hospital laboratory catalog."
+          },
+          {
+            "id": "complete-blood-count",
+            "title": "Complete blood count (CBC)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/complete-blood-count|1.0.0",
+            "textEquivalent": "Complete blood count (CBC)",
+            "description": "Confirm the exact coded orderable and clinical workflow with the hospital before production use."
+          },
+          {
+            "id": "consultation",
+            "title": "Women's wellness consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/consultation|1.0.0",
+            "textEquivalent": "Women's wellness consultation",
+            "description": "The package page says consultation is included but does not identify the specialty. Confirm the responsible clinician/specialty with the hospital."
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "mammogram",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/mammogram",
+        "version": "1.0.0",
+        "name": "mammogram",
+        "title": "Mammogram",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Mammogram. The SIMS Hospitals Women's Wellness Package page lists this item or states that consultation is included. Category: Diagnostic imaging. Confirm exact coded orderable and clinical eligibility before production use. The package page lists mammogram. Confirm age/risk eligibility, pregnancy/lactation context where relevant, and imaging protocol with the hospital before ordering.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Mammogram"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "pap-smear",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/pap-smear",
+        "version": "1.0.0",
+        "name": "pap_smear",
+        "title": "Pap smear",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Pap smear. The SIMS Hospitals Women's Wellness Package page lists this item or states that consultation is included. Category: Screening procedure. Confirm exact coded orderable and clinical eligibility before production use. The package page lists Pap smear. Confirm cervical screening eligibility, prior screening history, and the appropriate clinical protocol before ordering.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Pap smear"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "thyroid-profile",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/thyroid-profile",
+        "version": "1.0.0",
+        "name": "thyroid_profile",
+        "title": "Thyroid profile",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Thyroid profile. The SIMS Hospitals Women's Wellness Package page lists this item or states that consultation is included. Category: Laboratory panel. Confirm exact coded orderable and clinical eligibility before production use. The package page lists Thyroid Profile but does not specify analytes. Confirm whether this means TSH alone or a panel including free T4/T3 with the hospital laboratory catalog.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Thyroid profile"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "complete-blood-count",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/complete-blood-count",
+        "version": "1.0.0",
+        "name": "complete_blood_count",
+        "title": "Complete blood count (CBC)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Complete blood count (CBC). The SIMS Hospitals Women's Wellness Package page lists this item or states that consultation is included. Category: Laboratory test. Confirm exact coded orderable and clinical eligibility before production use. Confirm the exact coded orderable and clinical workflow with the hospital before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Complete blood count (CBC)"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "consultation",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/consultation",
+        "version": "1.0.0",
+        "name": "consultation",
+        "title": "Women's wellness consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Women's wellness consultation. The SIMS Hospitals Women's Wellness Package page lists this item or states that consultation is included. Category: Clinical consultation. Confirm exact coded orderable and clinical eligibility before production use. The package page says consultation is included but does not identify the specialty. Confirm the responsible clinician/specialty with the hospital.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Women's wellness consultation"
+        },
+        "intent": "order"
+      }
+    }
+  ]
+}

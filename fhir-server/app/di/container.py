@@ -1,6 +1,6 @@
 from dependency_injector import containers, providers
 from app.di.core import CoreContainer
-from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer, MedicationRequestContainer, ObservationContainer, OrganizationContainer, PractitionerRoleContainer, ProcedureContainer, ScheduleContainer, SlotContainer, HealthcareServiceContainer, ClaimContainer, ClaimResponseContainer, InvoiceContainer, LocationContainer, CoverageContainer, MedicationContainer, AllergyIntoleranceContainer, ProvenanceContainer, TaskContainer, CarePlanContainer, RelatedPersonContainer, SpecimenContainer, DocumentReferenceContainer, ImmunizationContainer, AuditEventContainer, EpisodeOfCareContainer, TerminologyContainer, InsurancePlanContainer, QuestionnaireContainer, RiskAssessmentContainer, FlagContainer, PlanDefinitionContainer, ActivityDefinitionContainer, CareTeamContainer
+from app.di.modules import PatientContainer, PractitionerContainer, EncounterContainer, AppointmentContainer, QuestionnaireResponseContainer, VitalsContainer, ConditionContainer, ServiceRequestContainer, DeviceRequestContainer, DiagnosticReportContainer, MedicationRequestContainer, ObservationContainer, OrganizationContainer, PractitionerRoleContainer, ProcedureContainer, ScheduleContainer, SlotContainer, HealthcareServiceContainer, ClaimContainer, ClaimResponseContainer, InvoiceContainer, LocationContainer, CoverageContainer, MedicationContainer, AllergyIntoleranceContainer, ProvenanceContainer, TaskContainer, CarePlanContainer, RelatedPersonContainer, SpecimenContainer, DocumentReferenceContainer, ImmunizationContainer, AuditEventContainer, EpisodeOfCareContainer, TerminologyContainer, InsurancePlanContainer, QuestionnaireContainer, RiskAssessmentContainer, FlagContainer, PlanDefinitionContainer, ActivityDefinitionContainer, CareTeamContainer, DefinitionApplyContainer
 
 
 class Container(containers.DeclarativeContainer):
@@ -216,6 +216,11 @@ class Container(containers.DeclarativeContainer):
 
     care_team = providers.Container(
         CareTeamContainer,
+        core=core,
+    )
+
+    definition_apply = providers.Container(
+        DefinitionApplyContainer,
         core=core,
     )
 

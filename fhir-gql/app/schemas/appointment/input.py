@@ -562,6 +562,13 @@ class BookAppointmentInput(BaseModel):
     )
 
     # ── Optional context ──────────────────────────────────────────────────────
+    specialty: Optional[List[AppointmentSpecialtyInput]] = Field(
+        None,
+        description=(
+            "Clinical specialties of the appointment (e.g. the booked PractitionerRole's specialties). "
+            "Stored as Appointment.specialty[]; e.g. SNOMED 409968004 marks a preventive-medicine visit."
+        ),
+    )
     service_type_code: Optional[str] = Field(None, description="Service type code (e.g. SNOMED or local code).")
     service_type_display: Optional[str] = Field(None, description="Human-readable label for the service type code.")
     reason_code: Optional[str] = Field(None, description="Coded reason for the appointment (e.g. ICD-10 or SNOMED).")

@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 
 from app.auth.models import AuthUser
 from app.fhir_client.plan_definition import PlanDefinitionClient
+from app.schemas.definition_apply import PlanDefinitionApplySchema
 from app.schemas.plan_definition.input import PlanDefinitionCreateSchema, PlanDefinitionPatchSchema, ListPlanDefinitionsSchema
 
 
@@ -155,3 +156,19 @@ class PlanDefinitionService:
             actor:       Authenticated caller (kept for RBAC consistency).
         """
         await self._client.delete(resource_id)
+
+    async def apply(self, resource_id: int, dto: PlanDefinitionApplySchema, actor: AuthUser, accept: str | None = None) -> dict:
+        """
+        Apply the PlanDefinition to a subject ($apply): generate (and, with `persist`, save) its ServiceRequests.
+
+        Args:
+            resource_id: The public integer ID on the fhir-server.
+            dto:         Validated apply input from the router.
+            actor:       Authenticated caller — FhirClient stamps created_by.
+            accept:      Content-type preference forwarded to the fhir-server.
+
+        Returns:
+            The generated ServiceRequests and the skipped actions (plain JSON or FHIR Bundle).
+        """
+        payload = dto.model_dump(exclude_none=True, mode="json")
+        return await self._client.apply(resource_id, payload, actor, accept=accept)

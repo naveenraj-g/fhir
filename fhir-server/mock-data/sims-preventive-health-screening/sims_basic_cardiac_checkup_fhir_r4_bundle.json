@@ -1,0 +1,349 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "timestamp": "2026-10-25T00:00:00Z",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "PlanDefinition",
+        "id": "basic-cardiac-checkup-plan",
+        "url": "https://fhir.example.org/r4/PlanDefinition/basic-cardiac-checkup-plan",
+        "version": "1.0.0",
+        "name": "BasicCardiacCheckupPlan",
+        "title": "Basic Cardiac Checkup Plan",
+        "status": "draft",
+        "experimental": true,
+        "type": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/plan-definition-type",
+              "code": "order-set",
+              "display": "Order Set"
+            }
+          ]
+        },
+        "description": "Draft FHIR R4 order-set PlanDefinition based on the SIMS Hospitals Basic Cardiac Checkup Package page. The page lists CBC with ESR, fasting and post-prandial blood sugar, HbA1c, renal function, lipid profile, uric acid, ECG, chest X-ray, ECHO/TMT, cardiologist consultation, and diet counselling. The page does not specify whether ECHO and TMT are alternatives or both included; validate the package and clinical selection rules with the hospital before production use.",
+        "purpose": "Group ServiceRequest-producing activities for the Basic Cardiac Checkup package.",
+        "action": [
+          {
+            "id": "cbc-esr",
+            "title": "Complete blood count with ESR",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/cbc-esr|1.0.0",
+            "textEquivalent": "Complete blood count with ESR"
+          },
+          {
+            "id": "fasting-blood-sugar",
+            "title": "Fasting blood sugar",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/fasting-blood-sugar|1.0.0",
+            "textEquivalent": "Fasting blood sugar",
+            "description": "Follow the hospital's fasting instructions."
+          },
+          {
+            "id": "postprandial-blood-sugar",
+            "title": "Post-prandial blood sugar",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/postprandial-blood-sugar|1.0.0",
+            "textEquivalent": "Post-prandial blood sugar"
+          },
+          {
+            "id": "hba1c",
+            "title": "HbA1c",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/hba1c|1.0.0",
+            "textEquivalent": "HbA1c"
+          },
+          {
+            "id": "renal-function",
+            "title": "Renal function test",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/renal-function|1.0.0",
+            "textEquivalent": "Renal function test"
+          },
+          {
+            "id": "lipid-profile",
+            "title": "Lipid profile",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/lipid-profile|1.0.0",
+            "textEquivalent": "Lipid profile"
+          },
+          {
+            "id": "uric-acid",
+            "title": "Uric acid",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/uric-acid|1.0.0",
+            "textEquivalent": "Uric acid"
+          },
+          {
+            "id": "ecg",
+            "title": "Electrocardiogram (ECG)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/ecg|1.0.0",
+            "textEquivalent": "Electrocardiogram (ECG)"
+          },
+          {
+            "id": "chest-xray",
+            "title": "Chest X-ray",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/chest-xray|1.0.0",
+            "textEquivalent": "Chest X-ray",
+            "description": "Confirm clinical appropriateness and pregnancy status where relevant before ordering imaging."
+          },
+          {
+            "id": "echocardiography",
+            "title": "Echocardiography (ECHO)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/echocardiography|1.0.0",
+            "textEquivalent": "Echocardiography (ECHO)",
+            "description": "The source package lists 'ECHO / TMT'. Confirm with the hospital whether ECHO, TMT, or either one is included for this patient."
+          },
+          {
+            "id": "treadmill-test",
+            "title": "Treadmill test (TMT)",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/treadmill-test|1.0.0",
+            "textEquivalent": "Treadmill test (TMT)",
+            "description": "The source package lists 'ECHO / TMT'. Confirm with the hospital whether ECHO, TMT, or either one is included for this patient. Apply clinical suitability and contraindication checks before ordering."
+          },
+          {
+            "id": "cardiologist-consultation",
+            "title": "Cardiologist consultation",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/cardiologist-consultation|1.0.0",
+            "textEquivalent": "Cardiologist consultation",
+            "description": "Consultation is listed in the package; confirm the clinical workflow and scheduling requirements."
+          },
+          {
+            "id": "diet-counselling",
+            "title": "Diet counselling",
+            "definitionCanonical": "https://fhir.example.org/r4/ActivityDefinition/diet-counselling|1.0.0",
+            "textEquivalent": "Diet counselling"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "cbc-esr",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/cbc-esr",
+        "version": "1.0.0",
+        "name": "cbc_esr",
+        "title": "Complete blood count with ESR",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Complete blood count with ESR. Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Laboratory test. Confirm the exact orderable code and hospital protocol before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Complete blood count with ESR"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "fasting-blood-sugar",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/fasting-blood-sugar",
+        "version": "1.0.0",
+        "name": "fasting_blood_sugar",
+        "title": "Fasting blood sugar",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Fasting blood sugar. Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Laboratory test. Confirm the exact orderable code and hospital protocol before production use. Follow the hospital's fasting instructions.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Fasting blood sugar"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "postprandial-blood-sugar",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/postprandial-blood-sugar",
+        "version": "1.0.0",
+        "name": "postprandial_blood_sugar",
+        "title": "Post-prandial blood sugar",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Post-prandial blood sugar. Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Laboratory test. Confirm the exact orderable code and hospital protocol before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Post-prandial blood sugar"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "hba1c",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/hba1c",
+        "version": "1.0.0",
+        "name": "hba1c",
+        "title": "HbA1c",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for HbA1c. Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Laboratory test. Confirm the exact orderable code and hospital protocol before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "HbA1c"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "renal-function",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/renal-function",
+        "version": "1.0.0",
+        "name": "renal_function",
+        "title": "Renal function test",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Renal function test. Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Laboratory panel. Confirm the exact orderable code and hospital protocol before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Renal function test"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "lipid-profile",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/lipid-profile",
+        "version": "1.0.0",
+        "name": "lipid_profile",
+        "title": "Lipid profile",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Lipid profile. Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Laboratory panel. Confirm the exact orderable code and hospital protocol before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Lipid profile"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "uric-acid",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/uric-acid",
+        "version": "1.0.0",
+        "name": "uric_acid",
+        "title": "Uric acid",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Uric acid. Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Laboratory test. Confirm the exact orderable code and hospital protocol before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Uric acid"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "ecg",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/ecg",
+        "version": "1.0.0",
+        "name": "ecg",
+        "title": "Electrocardiogram (ECG)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Electrocardiogram (ECG). Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Diagnostic procedure. Confirm the exact orderable code and hospital protocol before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Electrocardiogram (ECG)"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "chest-xray",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/chest-xray",
+        "version": "1.0.0",
+        "name": "chest_xray",
+        "title": "Chest X-ray",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Chest X-ray. Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Diagnostic imaging. Confirm the exact orderable code and hospital protocol before production use. Confirm clinical appropriateness and pregnancy status where relevant before ordering imaging.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Chest X-ray"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "echocardiography",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/echocardiography",
+        "version": "1.0.0",
+        "name": "echocardiography",
+        "title": "Echocardiography (ECHO)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Echocardiography (ECHO). Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Diagnostic procedure. Confirm the exact orderable code and hospital protocol before production use. The source package lists 'ECHO / TMT'. Confirm with the hospital whether ECHO, TMT, or either one is included for this patient.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Echocardiography (ECHO)"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "treadmill-test",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/treadmill-test",
+        "version": "1.0.0",
+        "name": "treadmill_test",
+        "title": "Treadmill test (TMT)",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Treadmill test (TMT). Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Cardiac diagnostic procedure. Confirm the exact orderable code and hospital protocol before production use. The source package lists 'ECHO / TMT'. Confirm with the hospital whether ECHO, TMT, or either one is included for this patient. Apply clinical suitability and contraindication checks before ordering.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Treadmill test (TMT)"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "cardiologist-consultation",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/cardiologist-consultation",
+        "version": "1.0.0",
+        "name": "cardiologist_consultation",
+        "title": "Cardiologist consultation",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Cardiologist consultation. Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Clinical consultation. Confirm the exact orderable code and hospital protocol before production use. Consultation is listed in the package; confirm the clinical workflow and scheduling requirements.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Cardiologist consultation"
+        },
+        "intent": "order"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ActivityDefinition",
+        "id": "diet-counselling",
+        "url": "https://fhir.example.org/r4/ActivityDefinition/diet-counselling",
+        "version": "1.0.0",
+        "name": "diet_counselling",
+        "title": "Diet counselling",
+        "status": "draft",
+        "experimental": true,
+        "description": "Draft ServiceRequest template for Diet counselling. Listed on the SIMS Hospitals Basic Cardiac Checkup Package page. Category: Clinical consultation. Confirm the exact orderable code and hospital protocol before production use.",
+        "kind": "ServiceRequest",
+        "code": {
+          "text": "Diet counselling"
+        },
+        "intent": "order"
+      }
+    }
+  ]
+}
