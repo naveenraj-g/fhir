@@ -106,6 +106,33 @@ services:
     networks:
       - fhir-net
 
+  # -- Preventive health screening seeder ---------------------------------------
+  # Loads the SIMS screening PlanDefinitions + ActivityDefinitions (status active) for ONE tenant.
+  # Data is baked into the image - no host files needed. Run after the API has migrated the schema.
+  #
+  # Usage (on the VPS):
+  #   docker compose -f docker-compose.prod.yml run --rm screening-seeder --org-id <ORG_ID>
+  #   -- or --
+  #   just vps-seed-screening <ORG_ID>
+  #
+  # Extra flags are passed straight to the script: --dry-run, --clean, --status draft|active|retired
+  # Idempotent - re-running reuses existing ActivityDefinitions and skips existing PlanDefinitions.
+
+  screening-seeder:
+    image: ghcr.io/naveenraj-g/fhir-server-v1:latest
+    pull_policy: always
+    container_name: fhir-screening-seeder
+    env_file: .env
+    entrypoint: ["python", "scripts/seed_preventive_health_screening.py"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - seed
+    networks:
+      - fhir-net
+
 volumes:
   postgres_data:
   redis_data:

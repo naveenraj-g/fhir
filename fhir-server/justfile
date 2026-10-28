@@ -138,6 +138,12 @@ vps-logs-app:
 vps-seed:
     docker compose -f docker-compose.prod.yml run --rm fhir-seeder
 
+# Seed the preventive health screening plans for one tenant on the VPS (one-shot, idempotent)
+# Usage: just vps-seed-screening f5ea33b0-60b1-4a30-9791-8040829d9cc6
+# Extra flags: just vps-seed-screening <ORG_ID> --dry-run   (or --clean)
+vps-seed-screening ORG_ID *FLAGS:
+    docker compose -f docker-compose.prod.yml run --rm screening-seeder --org-id {{ORG_ID}} {{FLAGS}}
+
 # ── Migrations ────────────────────────────────────────────────────────────────
 
 # Apply all pending migrations

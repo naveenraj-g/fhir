@@ -34,6 +34,10 @@ COPY --chown=appuser:appgroup migrations ./migrations
 # Entrypoint runs migrations then hands off to uvicorn
 COPY --chown=appuser:appgroup entrypoint.sh ./
 COPY --chown=appuser:appgroup seed-all.sh ./
+
+# Preventive health screening seed (PlanDefinitions + ActivityDefinitions) — run on demand, see docker-compose.prod.yml
+COPY --chown=appuser:appgroup scripts/seed_preventive_health_screening.py ./scripts/
+COPY --chown=appuser:appgroup mock-data/sims-preventive-health-screening ./mock-data/sims-preventive-health-screening
 RUN chmod +x ./entrypoint.sh ./seed-all.sh
 
 USER appuser
